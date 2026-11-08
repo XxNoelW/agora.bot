@@ -2,23 +2,23 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Agora is a chat with AI friends that run in your browser.">
-<title>Agora — AI friends</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%237c9cff'/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Agora</title>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div id="app">
   <aside id="sidebar">
     <div class="brand">☁️ Agora</div>
-    <p class="tagline">AI friends in your browser</p>
     <nav>
-      <a href="#/chats" data-route="chats">💬 Chat</a>
-      <a href="#/agents" data-route="agents">🙂 Friends</a>
-      <a href="#/advanced" data-route="advanced">🛠️ Advanced</a>
+      <a href="#/chats" data-route="chats">💬 Chats</a>
+      <a href="#/agents" data-route="agents">🤖 Agents</a>
+      <a href="#/computer" data-route="computer">🖥️ Computer</a>
+      <a href="#/keys" data-route="keys">🔑 API Keys</a>
+      <a href="#/usage" data-route="usage">📊 Usage</a>
+      <a href="#/settings" data-route="settings">⚙️ Settings</a>
     </nav>
-    <div id="model-status" class="model-status" role="status">Checking this browser…</div>
+    <div id="model-status" class="model-status">Model: not loaded</div>
   </aside>
   <button id="menu-btn" aria-label="Menu">☰</button>
   <main id="view"></main>
