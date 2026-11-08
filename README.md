@@ -1,34 +1,40 @@
 # Agora
 
-A dashboard for a multi-agent AI workspace that runs entirely in your browser. It is plain HTML/CSS/ES modules: no build step and no server.
+A chat with AI friends that runs entirely in your browser. It is plain HTML, CSS, and JavaScript: no build step, no server, and no API key.
 
-- **Agents**: create, edit and delete agents (name, emoji avatar, system prompt).
-- **Chats**: group chats where agents take turns and answer each other (1–3 rounds, with a Stop button), plus 1:1 chats.
-- **AI**: [WebLLM](https://github.com/mlc-ai/web-llm) runs on WebGPU, so no API key is needed. Models: Qwen2.5‑1.5B (default), Qwen2.5‑3B, Llama‑3.2‑3B, Phi‑3.5‑mini.
-- **Shared computer**: a virtual filesystem and JS terminal that all agents share. Tools: `web_search`, `fetch_wikipedia_page`, `write_file`, `read_file`, `list_files`, `run_js`.
-- **API keys**: local `ak_…` keys for the in-page JS API `window.Agora.connect(key)`.
-- **Usage**: an "Unlimited" plan with message, tool and API counters.
-- **Settings**: model, temperature, max tokens, rounds, export/import as JSON, clear all data.
+- **Chat**: talk with one friend, or with a group. In a group, friends answer together, then they can reply to each other.
+- **Friends**: each friend has a name, a picture, and a short description of how they behave.
+- **Helper brain**: [WebLLM](https://github.com/mlc-ai/web-llm) `0.2.87` runs on WebGPU. The default is **Qwen2.5 Coder 7B** (best at coding and using tools, about 5 GB). Medium (Qwen2.5 3B) and Small (Qwen2.5 1.5B) are there for slower computers. Those ids are in that version's prebuilt model list.
+- **Web**: friends can search the web and read a page. Results include links. Search uses Wikipedia, DuckDuckGo quick answers, and DuckDuckGo's light results read through the keyless Jina reader (`r.jina.ai`), which allows browser requests.
+- **Shared notes**: files in this browser that every friend can use, plus a small JavaScript sandbox.
+- **Advanced**: the helper brain, notes, script-only keys, counters, and export/import. You can ignore this and just chat.
 
 ## Run locally
+
 ```
-python3 -m http.server 8000   # then open http://localhost:8000
+python3 -m http.server 8000
 ```
-ES modules don't load from `file://`, so you need a local server.
+
+Then open `http://localhost:8000`. ES modules do not load from `file://`.
 
 ## Deploy to GitHub Pages
+
 1. Push this folder to a GitHub repo (it must be the repo root).
 2. Go to **Settings → Pages → Build and deployment → Deploy from a branch**, then choose **main** / **/(root)** and save.
 3. Open `https://<user>.github.io/<repo>/`. The `.nojekyll` file makes Pages serve the files as they are.
 
-## Tool protocol
-Agents call a tool by writing a line `TOOL: name {json}`. The app runs the tool, gives the result back to that agent, and repeats this at most 3 times per turn. Tool activity is shown in the chat.
+## If a reply gets stuck
 
-## Limitations
-- You need a browser with WebGPU (Chrome/Edge 113+ on desktop, and some others). Without it, everything except AI replies still works and a warning is shown.
-- The first model load downloads about 1–4 GB. After that it is cached by the browser.
-- Small models sometimes ignore the tool protocol or misuse it, and multi-agent replies are only as good as the model.
-- All data (agents, chats, files, keys) lives in `localStorage` (about 5 MB) in this browser only. Nothing is synced.
-- API keys are local only. There is no backend, so they don't work from other sites or servers.
-- `web_search` uses the Wikipedia API (CORS `origin=*`). DuckDuckGo Instant Answers is tried first but is often blocked by CORS, in which case it is skipped without an error.
-- `run_js` runs in a Web Worker with a 3‑second timeout and no DOM. It is isolated from the page, but not a hardened security sandbox.
+Loading and writing have timeouts. If the download or the reply goes quiet, the "writing…" bubble is cleared and a short message explains what happened. Refreshing the page also clears a leftover "writing…" bubble. If the big helper will not load, pick **Small helper** under Advanced.
+
+## Tools
+
+Before answering, a friend replies with one line: `NONE` or `TOOL: name {json}`. The page runs the tool (at most twice) and then asks for a normal answer. Tool lines are also accepted in a few looser shapes, because small models are messy. `run_js` runs in a Web Worker for 3 seconds with no access to the page. It is not a security sandbox against a hostile program.
+
+## Limits
+
+- You need a browser with WebGPU (Chrome or Edge on a computer). Without it, you can still look around, and chat shows a plain explanation instead of hanging.
+- The first helper download is large (about 1.6 GB, 2.5 GB, or 5 GB). The browser keeps it after that.
+- Friends are only as careful as the model. Check the links they cite.
+- Friends, chats, notes, and keys stay in `localStorage` in this browser only.
+- Script keys (`window.Agora.connect`) work only on this page. There is no backend.
