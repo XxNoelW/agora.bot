@@ -1,6 +1,6 @@
 // Multi-agent turn-taking with tool loop
 import { state, save, agentById, uid } from './store.js';
-import { chat } from './llm.js';
+import { chat, isReady, onStatus, offStatus } from './llm.js';
 import { toolPrompt, parseToolCall, execTool } from './tools.js';
 
 const MAX_TOOL_LOOPS = 3;
@@ -52,10 +52,17 @@ export async function agentTurn(agent, conv, { onUpdate, signal }) {
     conv.messages.push(msg); onUpdate();
     const prompt = buildMessages(agent, { ...conv, messages: conv.messages.filter((m) => m !== msg) });
     let text;
+    let stat = null;
+    if (!isReady(s.model)) {
+      stat = (st) => { if (!msg.content || msg.loading) { msg.loading = true; msg.content = '⏳ Loading model (first time downloads ~1GB): ' + st.text + (st.progress ? ' ' + Math.round(st.progress * 100) + '%' : ''); onUpdate(true); } };
+      onStatus(stat);
+    }
     try {
       text = await chat(s.model, prompt, { temperature: s.temperature, maxTokens: s.maxTokens, signal,
-        onToken: (t) => { msg.content = t; onUpdate(true); } });
-    } catch (e) { msg.content = '⚠️ ' + e.message; msg.pending = false; msg.error = true; save(); onUpdate(); throw e; }
+        onToken: (t) => { if (stat) { offStatus(stat); stat = null; } msg.loading = false; msg.content = t; onUpdate(true); } });
+    } catch (e) { if (stat) offStatus(stat); msg.content = '⚠️ ' + e.message; msg.pending = false; msg.error = true; save(); onUpdate(); throw e; }
+    if (stat) { offStatus(stat); stat = null; }
+    msg.loading = false;
     const call = loop < MAX_TOOL_LOOPS ? parseToolCall(text) : null;
     if (call) {
       const before = text.slice(0, text.indexOf(call.raw)).trim();

@@ -7,6 +7,7 @@ const statusListeners = new Set();
 export let status = { text: 'Model: not loaded', progress: 0, ready: false };
 
 export const onStatus = (fn) => { statusListeners.add(fn); fn(status); };
+export const offStatus = (fn) => statusListeners.delete(fn);
 function setStatus(s) { status = { ...status, ...s }; statusListeners.forEach((f) => f(status)); }
 
 export function webgpuSupported() { return typeof navigator !== 'undefined' && 'gpu' in navigator; }
