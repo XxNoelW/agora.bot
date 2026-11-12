@@ -1,5 +1,11 @@
 # Decisions
 
+## 2026-11-12, student training
+
+- The student checkpoint is `Qwen/Qwen2.5-1.5B-Instruct`. The Hugging Face model card (`cardData.license` and the `license:apache-2.0` tag) says Apache 2.0. Checked 2026-11-12 at `https://huggingface.co/api/models/Qwen/Qwen2.5-1.5B-Instruct`. The license file is on that model repo. No other student id was invented.
+- Training runs on Kaggle, not in the browser. The site only explains the steps and displays a metrics file the notebook wrote.
+- The holdout is a fixed-seed slice and is not used for training. Before and after use that same slice.
+
 ## 2026-11-12, teachers
 
 - The spec wants API keys on a server. This site is static GitHub Pages and has no server. The visitor pastes their own OpenRouter key. It is stored only in this browser (`agona:openrouter-key`), apart from the rest of the saved data, so a downloaded copy does not include it. A "Forget key" button deletes it. The key is sent only to `https://openrouter.ai`. The log and the screen mask it.

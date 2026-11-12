@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-12, training notebook
+
+- Added a Kaggle GPU notebook that fine-tunes `Qwen/Qwen2.5-1.5B-Instruct` (Apache 2.0) with QLoRA on an approved JSONL file.
+- The notebook scores a fixed holdout before and after, and writes `agona-metrics.json` plus the adapter.
+- `scripts/kaggle-push.sh` pushes that notebook with the official Kaggle CLI. The token comes from `KAGGLE_API_TOKEN` and is not stored in the repo.
+- The Training page explains the upload and run steps. The Scores page imports the metrics file and shows only numbers that are in it.
+
 ## 2026-11-12
 
 - Rebuilt the static site as Agona, in the same repo.

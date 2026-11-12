@@ -8,6 +8,7 @@ import { isRunning } from './runner.js';
 import { readOpenRouterKey, formatPrice, isFreeModelId } from './openrouter.js';
 import { usingOpenRouter } from './generate.js';
 import { toJSONL } from './pipeline.js';
+import { parseMetrics, metricRows, worseKeys, STUDENT_CHECKPOINT, STUDENT_LICENSE } from './metrics.js';
 
 const I = (body) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 const iconClip = I('<path d="M8 12.5l6.2-6.2a3 3 0 114.2 4.2l-7.4 7.5a4.2 4.2 0 01-6-6l7.2-7.2"/>');
@@ -316,29 +317,51 @@ export function renderTraining() {
     : '<p class="muted">No tries yet.</p>';
   const approved = (state.examples || []).filter((item) => item.approval === 'approved' && !item.dropped).length;
   const jsonl = toJSONL(state.examples || []);
-  return `${head('Training', 'The Kaggle training notebook is the next step. It does not run now. You can download the approved examples as a text file. Only those can be used later.')}
-    <p class="badge">Training run is not connected yet</p>
-    ${trainer ? `<div class="card row">${figureHTML(trainer)}<p>Sári would start training only after you say yes. That run is not live yet.</p></div>` : ''}
-    <section class="card"><h2>Approved set</h2><p>${approved} example(s) could go forward. Left-out and rejected ones cannot.</p><button type="button" class="ghost" data-act="export-jsonl" ${jsonl ? '' : 'disabled'}>Download JSONL</button></section>
-    <form id="train-form" class="card">
-      <label>Data set</label>
-      <select disabled><option>${approved ? `${approved} approved example(s). Training does not run yet.` : 'No approved set yet'}</option></select>
-      <div class="row">
-        <label>LoRA rank, saved only here<input id="rank" type="number" min="1" max="64" value="${Number(state.trainingConfig.rank) || 8}"></label>
-        <label>Passes, saved only here<input id="epochs" type="number" min="1" max="3" value="${Number(state.trainingConfig.epochs) || 1}"></label>
-      </div>
-      <p class="small muted">These numbers stay in this browser. They are not sent anywhere.</p>
-      <button type="submit">Start training</button>
-    </form>
-    <section class="card"><h2>Earlier tries</h2>${runs}</section>`;
+  return `${head('Training', 'Training runs on Kaggle, not in this browser. Download the approved examples, run the notebook on a GPU, then import the metrics file on the Scores page.')}
+    <p class="badge">Student: ${esc(STUDENT_CHECKPOINT)} · license ${esc(STUDENT_LICENSE)}</p>
+    ${trainer ? `<div class="card row">${figureHTML(trainer)}<p>Sári does not start training from this page. A person runs the notebook after saying yes to the examples.</p></div>` : ''}
+    <section class="card"><h2>Approved set</h2><p>${approved} example(s) can go into the file. Left-out and rejected ones cannot.</p><button type="button" class="ghost" data-act="export-jsonl" ${jsonl ? '' : 'disabled'}>Download JSONL</button></section>
+    <section class="card">
+      <h2>Run it on Kaggle</h2>
+      <ol class="steps">
+        <li>Download the approved JSONL from this page.</li>
+        <li>On Kaggle, make a dataset and upload that file. Name the dataset <b>agona-approved</b> so the notebook can find <b>agona-approved.jsonl</b>.</li>
+        <li>On your computer, set <b>KAGGLE_API_TOKEN</b> (your KGAT_ token) and <b>KAGGLE_USERNAME</b>, then run <b>scripts/kaggle-push.sh</b>. The token stays in the environment. It is not saved in this repo.</li>
+        <li>Open the kernel, turn on a GPU, and run all cells. The notebook trains a small LoRA on ${esc(STUDENT_CHECKPOINT)} and writes <b>agona-metrics.json</b>.</li>
+        <li>Download that metrics file and import it on the Scores page. Only numbers from the file are shown.</li>
+      </ol>
+      <p class="small muted">The notebook keeps a fixed holdout out of training and scores the student before and after. You need at least 8 approved examples.</p>
+    </section>
+    <section class="card"><h2>Earlier notes on this computer</h2>${runs}</section>`;
+}
+
+function formatScore(value) {
+  if (value == null) return 'not in the file';
+  return String(Math.round(value * 1000) / 1000);
 }
 
 export function renderEval() {
-  return `${head('Scores', 'This is where a before-and-after check will go. Until there is a training run, there is no score. We do not invent numbers.')}
-    <p class="badge">Not ready yet</p>
-    <section class="card"><h2>Checks</h2><p class="muted">There is no before-score yet. The same questions should be used before and after training, plus a set that training never sees.</p></section>
-    <section class="card"><h2>Before / after</h2><p class="muted">No measurement yet.</p></section>
-    <section class="card"><h2>Mistakes and slips</h2><p class="muted">No list yet. If a skill gets worse later, it will show up here.</p></section>`;
+  const parsed = state.metrics ? parseMetrics(state.metrics) : null;
+  const metrics = parsed?.ok ? parsed.metrics : null;
+  const rows = metrics ? metricRows(metrics) : [];
+  const worse = metrics ? worseKeys(metrics) : [];
+  const table = metrics ? `<table class="scores"><tr><th>Check</th><th>Before</th><th>After</th><th>Change</th></tr>
+    ${rows.map((row) => `<tr><td>${esc(row.label)}</td><td>${esc(formatScore(row.before))}</td><td>${esc(formatScore(row.after))}</td><td>${row.change == null ? 'not in the file' : esc(formatScore(row.change))}</td></tr>`).join('')}</table>` : '';
+  return `${head('Scores', 'Before and after numbers come only from a metrics file the notebook wrote. This page does not invent scores.')}
+    <section class="card">
+      <h2>Import a metrics file</h2>
+      <p class="small muted">Download agona-metrics.json from the Kaggle notebook output, then choose it here.</p>
+      <label class="btn ghost">Choose metrics JSON<input id="metrics-file" type="file" accept="application/json,.json" hidden></label>
+      ${parsed && !parsed.ok ? `<p class="error-text">${esc(parsed.error)}</p>` : ''}
+    </section>
+    ${metrics ? `<section class="card">
+      <h2>Before / after</h2>
+      <p class="small muted">${esc(metrics.student || 'Student not named')} · license ${esc(metrics.license || 'not in the file')} · ${esc(metrics.method || 'method not in the file')}</p>
+      <p class="small muted">Holdout: ${metrics.holdout_size == null ? 'not in the file' : esc(String(metrics.holdout_size))} · Trained on: ${metrics.train_size == null ? 'not in the file' : esc(String(metrics.train_size))}</p>
+      ${table}
+      ${worse.length ? `<p class="error-text">Worse after training: ${esc(worse.join(', '))}.</p>` : '<p class="small muted">A higher exact match or token overlap is better. A lower loss is better.</p>'}
+      ${(metrics.notes || []).length ? `<h2>Notes from the file</h2><ul>${metrics.notes.map((note) => `<li>${esc(note)}</li>`).join('')}</ul>` : ''}
+    </section>` : `<section class="card"><h2>Before / after</h2><p class="muted">No measurement yet. Import the metrics file when the notebook finishes.</p></section>`}`;
 }
 
 export function renderLog() {

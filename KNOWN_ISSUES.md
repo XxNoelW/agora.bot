@@ -9,6 +9,7 @@
 - Notes, the log, and the OpenRouter key stay in this browser only.
 - Teacher prices are the strings from OpenRouter. This page does not turn them into a bill.
 - Free Qwen and DeepSeek models were not on the public list on 2026-11-12. The defaults are other free models that were listed.
-- Approved examples can be downloaded. Training on Kaggle is not built yet, and there is no before-and-after score.
+- The notebook is a real training script, but this environment does not run a GPU fine-tune. You run it on Kaggle.
+- Scores stay empty until you import `agona-metrics.json`. The page does not fill in missing numbers.
 - The handoff animation plays when both characters are on screen. The sentence stays either way.
 - OpenRouter must allow the browser call. If it blocks it, the page shows the error and does not hide it.

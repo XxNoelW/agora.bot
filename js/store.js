@@ -69,6 +69,7 @@ function blank(nav) {
     trainingConfig: { rank: 8, epochs: 1 },
     usage: { userMessages: 0, agentMessages: 0, toolCalls: 0, apiCalls: 0, openrouterCalls: 0 },
     examples: [],
+    metrics: null,
     settings: {
       model: pickDefaultModel(nav),
       modelMigrated: true,
@@ -181,6 +182,7 @@ export function migrateState(data, nav = globalThis.navigator) {
     audit: Array.isArray(src.audit) ? src.audit : [],
     teachers: Array.isArray(src.teachers) ? src.teachers.map(stripTeacherSecret) : [],
     examples: Array.isArray(src.examples) ? src.examples.map(stripExampleSecret) : [],
+    metrics: src.metrics && typeof src.metrics === 'object' ? src.metrics : null,
     trainingRuns: Array.isArray(src.trainingRuns) ? src.trainingRuns : [],
     approvals: Array.isArray(src.approvals) ? src.approvals : [],
     student: { ...base.student, ...(src.student || {}) },

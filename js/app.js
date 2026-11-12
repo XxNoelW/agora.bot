@@ -9,6 +9,7 @@ import {
   writeOpenRouterKey, forgetOpenRouterKey, readOpenRouterKey, redactSecrets, reserveCall,
 } from './openrouter.js';
 import { runTeacherPipeline, setApproval, toJSONL } from './pipeline.js';
+import { parseMetrics } from './metrics.js';
 import { usingOpenRouter } from './generate.js';
 import { runUserTask, pauseAgent, resumeAgent, stopAgent, isRunning } from './runner.js';
 import { watchFigures, playHandoff, figureHTML } from './characters.js';
@@ -730,6 +731,7 @@ document.addEventListener('change', async (event) => {
   const target = event.target;
   if (target?.id === 'file') onFile(target);
   if (target?.id === 'import-file') importFile(target);
+  if (target?.id === 'metrics-file') importMetrics(target);
   if (target?.id === 'tmpl') {
     const role = roleById(target.value);
     if (!role) return;
@@ -792,6 +794,24 @@ document.addEventListener('change', async (event) => {
   state.settings.maxParallel = next;
   save();
 });
+
+async function importMetrics(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    const parsed = parseMetrics(data);
+    if (!parsed.ok) { toast(parsed.error); return; }
+    state.metrics = parsed.metrics;
+    audit('scores', `imported metrics for ${parsed.metrics.student || 'unnamed student'}`);
+    save();
+    toast('Scores loaded from the file. No numbers were added.');
+    draw();
+  } catch (err) {
+    toast('Could not read that metrics file: ' + redactSecrets(err.message));
+  }
+}
 
 async function importFile(input) {
   const file = input.files?.[0];

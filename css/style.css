@@ -393,6 +393,10 @@ textarea { resize: vertical; }
 .example pre { white-space: pre-wrap; font-family: var(--mono); font-size: 13px; background: var(--bg); border-radius: 12px; padding: 10px; max-height: 220px; overflow: auto; }
 .checkline { display: flex; gap: 8px; align-items: center; color: var(--text); }
 .checkline input { width: auto; }
+.steps { margin: 8px 0 0; padding-left: 1.2rem; }
+.steps li { margin: 6px 0; }
+.scores { width: 100%; border-collapse: collapse; }
+.scores th, .scores td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
 #note-body { min-height: 140px; font-family: var(--mono); font-size: 13px; }
 
 .log { list-style: none; margin: 12px 0 0; padding: 0; }

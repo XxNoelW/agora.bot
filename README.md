@@ -23,7 +23,7 @@ Open `http://localhost:8000`. Modules do not load from `file://`.
 1. Write a job on the home page, for example: "Start three agents on the page, the server, and the tests."
 2. The first time, this computer downloads a helper. A bar shows the progress. Without WebGPU the page explains that, and you can use an OpenRouter teacher instead.
 3. On Teachers, paste your key, refresh the model list, and add at least two teachers. Ask them a question, then approve or reject each answer.
-4. Download the approved examples as JSONL. Training on Kaggle is not connected yet.
+4. Download the approved examples as JSONL. Upload that file to Kaggle and run `training/agona_student_lora.ipynb`, or push it with `scripts/kaggle-push.sh` after setting `KAGGLE_API_TOKEN` and `KAGGLE_USERNAME` in the environment. Import `agona-metrics.json` on the Scores page.
 
 ## Tests
 
