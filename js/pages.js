@@ -1,466 +1,155 @@
 import { esc, rich } from './text.js';
-import { state, agentById, workspaceChat, modelLabel, MODELS, prefersSmallModel } from './store.js';
+import { state, agentById } from './store.js';
 import { figureHTML, safeColor } from './characters.js';
-import { TEMPLATES, roleTitle, viewState, altText, STATE_LABEL, STATES } from './roles.js';
-import { isReady, status } from './llm.js';
-import { session } from './session.js';
-import { isRunning } from './runner.js';
-import { readOpenRouterKey, formatPrice, isFreeModelId } from './openrouter.js';
-import { usingOpenRouter } from './generate.js';
-import { toJSONL } from './pipeline.js';
-import { parseMetrics, metricRows, worseKeys, STUDENT_CHECKPOINT, STUDENT_LICENSE } from './metrics.js';
-
-const I = (body) => `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
-const iconClip = I('<path d="M8 12.5l6.2-6.2a3 3 0 114.2 4.2l-7.4 7.5a4.2 4.2 0 01-6-6l7.2-7.2"/>');
-const iconModel = I('<rect x="6" y="6" width="12" height="12" rx="3"/><path d="M9 12h6M12 9v6"/>');
-const iconSend = I('<path d="M12 17V7M8 10l4-4 4 4"/>');
-const iconStop = I('<rect x="7" y="7" width="10" height="10" rx="2"/>');
+import { viewState, altText, STATE_LABEL } from './roles.js';
+import { readOpenRouterKey } from './openrouter.js';
+import { extractSources } from './tools.js';
+import { listAgentChats } from './chats.js';
 
 const TOOL_LABEL = {
   web_search: 'looked on the web',
   read_page: 'read a page',
-  fetch_wikipedia_page: 'read a Wikipedia page',
+  fetch_wikipedia_page: 'read a page',
   write_file: 'saved a note',
   read_file: 'read a note',
   list_files: 'checked the notes',
-  run_js: 'did some math',
+  run_js: 'worked something out',
 };
 
-const TASK_LABEL = {
-  queued: 'Waiting',
-  running: 'Working',
-  done: 'Done',
-  error: 'Stuck',
-  paused: 'Paused',
-  skipped: 'Skipped',
-};
-
-function head(title, lead) {
-  return `<header class="page-head"><h1>${esc(title)}</h1>${lead ? `<p class="lead">${esc(lead)}</p>` : ''}</header>`;
+function sourceItems(message) {
+  if (Array.isArray(message.sources) && message.sources.length) return message.sources;
+  return extractSources(message.content || '');
 }
 
-export function bannerHTML() {
-  const gpu = session.gpu;
-  if (gpu.pending) return '<div class="banner">Checking if this browser can run a model on this computer…</div>';
-  if (!gpu.ok && usingOpenRouter()) return '<div class="banner ok"><b>Answers come from your OpenRouter teacher.</b><div class="small">Your key goes only to openrouter.ai. The helper on this computer is still the backup.</div></div>';
-  if (!gpu.ok) return `<div class="banner">${esc(gpu.reason)} You can still chat if you save an OpenRouter key and pick a teacher.</div>`;
-  if (status.error) {
-    return `<div class="banner"><b>${esc(status.text)}</b>${status.detail ? `<div class="small">${esc(status.detail)}</div>` : ''}<div class="row"><button type="button" data-act="load-model">Try again</button></div></div>`;
-  }
-  if (isReady(state.settings.model)) return '';
-  const pct = status.progress > 0 && status.progress < 1
-    ? `<div class="progress" role="progressbar" aria-valuenow="${Math.round(status.progress * 100)}" aria-valuemin="0" aria-valuemax="100"><div style="width:${Math.round(status.progress * 100)}%"></div></div>`
-    : '';
-  return `<div class="banner ok"><b>${esc(status.busy ? status.text : 'The helper runs on this computer.')}</b>
-    <div class="small">${esc(modelLabel(state.settings.model))}. The first download can take a while. After that, this browser keeps it.</div>
-    ${pct}
-    <div class="row"><button type="button" data-act="load-model" ${status.busy ? 'disabled' : ''}>${status.busy ? 'Working…' : 'Load the helper'}</button></div></div>`;
+function sourcesHTML(message) {
+  const sources = sourceItems(message).filter((item) => item && item.url);
+  if (!sources.length) return `<p>${esc(message.content || '')}</p>`;
+  return `<p class="src-label">Sources</p><ul class="sources">${sources.map((item) => `<li>
+      <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title || item.url)}</a>
+    </li>`).join('')}</ul>`;
 }
 
-function composerHTML() {
-  const busy = isRunning();
-  const phone = prefersSmallModel();
-  return `<div class="composer-wrap">
-    <form id="composer" class="pill" autocomplete="off">
-      <button type="button" class="icon" data-act="attach" aria-label="Attach a note">${iconClip}</button>
-      <label class="sr-only" for="input">Job</label>
-      <textarea id="input" rows="1" placeholder="Start three agents on the page, the server, and the tests"></textarea>
-      <button type="button" class="icon" data-act="toggle-model" aria-label="Choose a model" aria-expanded="false">${iconModel}</button>
-      <button type="submit" class="send" id="send" aria-label="Send" ${busy ? 'hidden' : ''}>${iconSend}</button>
-      <button type="button" class="send stop" id="stop" data-act="stop-all" aria-label="Stop" ${busy ? '' : 'hidden'}>${iconStop}</button>
-    </form>
-    <div id="model-pop" class="popover" hidden>
-      <p class="pop-title">Which helper on this computer?</p>
-      ${MODELS.map((model) => `<button type="button" class="model-opt ${model.id === state.settings.model ? 'active' : ''}" data-act="pick-model" data-model="${esc(model.id)}">${esc(model.label)}</button>`).join('')}
-      <p class="small muted">${phone ? 'On this device the small helper is the default, so it can fit.' : 'The big helper is for a desktop. If it does not fit, pick a smaller one.'}</p>
-    </div>
-    <input id="file" type="file" accept="text/plain,.txt,.md,.json,.csv,.js,.css,.html,.svg" hidden>
-  </div>`;
-}
-
-function team(agents, size = 'md') {
-  if (!agents.length) return '<p class="muted">No agents yet. Make one from a template.</p>';
-  return `<div class="team">${agents.map((agent) => figureHTML(agent, { size })).join('')}</div>`;
-}
-
-export function renderDashboard() {
-  const runs = state.trainingRuns.length;
-  const teacherNote = state.teachers.length
-    ? `${state.teachers.length} teachers on your list. Calls: ${state.usage.openrouterCalls || 0} / ${state.settings.orGlobal}.`
-    : 'No teachers on your list yet.';
-  return `<div class="home">
-    <section class="home-hero">
-      <div class="logo-lockup"><span class="mark mark-lg" aria-hidden="true">${mark()}</span><p class="brand-name">Agona</p></div>
-      <h1>What should the team do?</h1>
-      <p class="lead">Say the job in your own words. The helper runs on your computer, with no key.</p>
-      <div id="load-banner" class="banner-slot">${bannerHTML()}</div>
-      ${composerHTML()}
-      <p class="hint">Web search calls Wikipedia, DuckDuckGo quick answers, and the Jina reader. We do not send your words anywhere else.</p>
-    </section>
-    <section class="stats">
-      <article class="card"><h2>Agents</h2>${team(state.agents, 'sm')}<p class="small muted">This computer writes one answer at a time. The others wait in line. Limit: ${state.settings.maxParallel}.</p></article>
-      <article class="card"><h2>Teachers</h2><p>${esc(teacherNote)}</p><p class="small muted">A call goes out only after you save your own key.</p></article>
-      <article class="card"><h2>Student</h2><p>${esc(state.student.name)}</p><p class="small muted">Version: ${esc(state.student.version)}</p><p class="small muted">Status: ${esc(state.student.status)}</p></article>
-      <article class="card"><h2>Training runs</h2><p class="stat">${runs}</p><p class="small muted">${runs ? 'None of these ran on a server.' : 'No training run yet.'}</p></article>
-      <article class="card"><h2>Cost and limits</h2><p>OpenRouter calls: <b>${state.usage.openrouterCalls || 0}</b> / ${state.settings.orGlobal}</p><p class="small muted">We do not invent a bill. Prices come from the model list, on your key.</p><p class="small muted">Helper here: ${esc(modelLabel(state.settings.model))}</p></article>
-    </section>
-  </div>`;
-}
-
-function agentActions(agent) {
-  const pause = agent.paused
-    ? `<button type="button" data-act="resume" data-id="${esc(agent.id)}">Continue</button>`
-    : `<button type="button" class="ghost" data-act="pause" data-id="${esc(agent.id)}">Pause</button>`;
-  return `<div class="row">${pause}
-    <button type="button" class="ghost" data-act="stop-agent" data-id="${esc(agent.id)}">Stop</button>
-    <button type="button" class="ghost" data-act="ask-run" data-id="${esc(agent.id)}">Start</button>
-    <button type="button" class="ghost" data-act="rename-agent" data-id="${esc(agent.id)}">Rename</button>
-    <button type="button" class="danger" data-act="delete-agent" data-id="${esc(agent.id)}">Delete</button>
-  </div>`;
-}
-
-export function renderAgents() {
-  const sample = state.agents.find((agent) => agent.role === 'orchestrator') || state.agents[0];
-  const legend = sample ? `<div class="legend">${STATES.map((item) => figureHTML({
-    ...sample,
-    id: '',
-    name: sample.name,
-    status: item,
-    paused: item === 'paused',
-    error: item === 'error' ? 'example' : '',
-  }, { live: false, size: 'sm' })).join('')}</div>` : '';
-  return `${head('Agents', 'Make a new one from a template, and rename it. Up to five can work at once. The start number is four.')}
-    <div class="card row spread">
-      <label for="parallel">Agents at the same time<input id="parallel" type="number" min="1" max="5" value="${state.settings.maxParallel}"></label>
-      <button type="button" data-act="open-create">New agent from a template</button>
-    </div>
-    <h2>States</h2>
-    <p class="small muted">The same character in every state. The words stay even when motion is off.</p>
-    ${legend}
-    <div class="grid">${state.agents.map((agent) => `<article class="card agent-card">
-      ${figureHTML(agent)}
-      <p class="role">${esc(roleTitle(agent.role))}</p>
-      ${viewState(agent) === 'error' && agent.error ? `<p class="error-text">${esc(agent.error)}</p>` : ''}
-      ${agentActions(agent)}
-    </article>`).join('')}</div>`;
-}
-
-function taskList() {
-  if (!state.tasks.length) return '<p class="muted">No jobs yet. Write one below.</p>';
-  return `<ul class="tasks">${[...state.tasks].reverse().map((task) => {
-    const agent = agentById(task.assigneeId);
-    const dep = (task.dependsOn || []).length ? `Waits for ${task.dependsOn.length} earlier job(s).` : 'Can start alone.';
-    return `<li class="task">
-      <span class="task-state">${esc(TASK_LABEL[task.status] || task.status)}</span>
-      <div><b>${esc(task.title)}</b><div class="small muted">${esc(agent?.name || 'Nobody')} · ${esc(dep)}</div>
-      ${task.error ? `<div class="error-text">${esc(task.error)}</div>` : ''}</div>
-      <button type="button" class="ghost" data-act="delete-task" data-id="${esc(task.id)}">Delete</button>
-    </li>`;
-  }).join('')}</ul>`;
-}
-
-function messageHTML(message) {
+export function messageHTML(message) {
+  if (!message) return '';
   if (message.role === 'user') {
-    return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta" data-meta>You</div><div class="text" data-body>${rich(message.content)}</div></div></div>`;
-  }
-  if (message.role === 'handoff') {
-    return `<div class="handoff-line" data-mid="${esc(message.id)}"><span class="parcel-icon" aria-hidden="true"></span><p data-body>${esc(message.content)}</p></div>`;
-  }
-  if (message.role === 'system') {
-    return `<div class="sys-line" data-mid="${esc(message.id)}"><p data-body>${esc(message.content)}</p></div>`;
-  }
-  if (message.role === 'task') {
-    return `<div class="task-line" data-mid="${esc(message.id)}"><p data-body>${esc(message.content)}</p></div>`;
+    return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${rich(message.content)}</div></div></div>`;
   }
   if (message.role === 'tool') {
     const who = agentById(message.agentId);
-    return `<div class="tool-line" data-mid="${esc(message.id)}"><div class="meta" data-meta>${esc(who?.name || 'Helper')} ${esc(TOOL_LABEL[message.tool] || 'used a tool')}</div><pre data-body>${esc(message.content)}</pre></div>`;
+    const web = message.tool === 'web_search' || message.tool === 'read_page' || message.tool === 'fetch_wikipedia_page';
+    return `<div class="tool-line" data-mid="${esc(message.id)}"><div class="meta">${esc(who?.name || 'Agent')} ${esc(TOOL_LABEL[message.tool] || 'used a tool')}</div>${web ? sourcesHTML(message) : `<p data-body>${esc(message.content || '')}</p>`}</div>`;
+  }
+  if (message.role === 'system' || message.role === 'handoff' || message.role === 'task') {
+    return `<div class="sys-line" data-mid="${esc(message.id)}"><p data-body>${esc(message.content || '')}</p></div>`;
   }
   const agent = agentById(message.agentId);
-  const meta = message.pending ? (message.loading ? 'the helper is getting ready' : 'writing') : (message.error ? 'stuck' : 'answer');
+  const phase = message.pending
+    ? (String(message.content || '').startsWith('Looking up') ? 'looking up' : (String(message.content || '').startsWith('Getting Agora') ? 'getting ready' : 'writing'))
+    : (message.error ? 'could not finish' : 'Agora AI');
   return `<div class="bubble-row${message.pending ? ' pending' : ''}${message.error ? ' error' : ''}" data-mid="${esc(message.id)}">
     ${agent ? figureHTML(agent, { size: 'sm', caption: false }) : ''}
-    <div class="bubble"><div class="meta" data-meta>${esc(agent?.name || 'Helper')} · ${esc(meta)}</div><div class="text" data-body>${message.content ? rich(message.content) : (message.pending ? '…' : '')}</div></div>
+    <div class="bubble"><div class="meta" data-meta>${esc(agent?.name || 'Agent')} · ${esc(phase)}</div><div class="text" data-body>${message.content ? rich(message.content) : (message.pending ? '…' : '')}</div></div>
   </div>`;
 }
 
-function notesHTML() {
-  const names = Object.keys(state.files).sort();
-  const current = session.note && (session.note in state.files) ? session.note : null;
-  return `<section class="card">
-    <div class="row spread"><h2>Shared notes</h2><button type="button" class="ghost" data-act="new-note">New</button></div>
-    <p class="small muted">If a note already has an owner, another agent does not overwrite it. They get a new file.</p>
-    <div class="note-list">${names.map((name) => `<button type="button" class="note-link ${name === current ? 'active' : ''}" data-act="open-note" data-path="${esc(name)}">${esc(name)}</button>`).join('') || '<p class="muted">No notes yet.</p>'}</div>
-    ${current ? `<label class="sr-only" for="note-body">${esc(current)}</label><textarea id="note-body">${esc(state.files[current])}</textarea><div class="row"><button type="button" data-act="save-note">Save</button><button type="button" class="danger" data-act="delete-note">Delete</button></div>` : ''}
-  </section>`;
+export function agentListHTML(activeId) {
+  if (!state.agents.length) return '<p class="muted empty-note">No agents on this computer.</p>';
+  return state.agents.map((agent) => {
+    const on = agent.id === activeId;
+    return `<button type="button" class="agent-row${on ? ' active' : ''}" data-act="select-agent" data-id="${esc(agent.id)}" style="--agent:${safeColor(agent.color)}" aria-current="${on ? 'true' : 'false'}">
+      ${figureHTML(agent, { size: 'sm', caption: false })}
+      <span class="agent-name">${esc(agent.name)}</span>
+    </button>`;
+  }).join('');
 }
 
-export function renderWorkspace() {
-  const chat = workspaceChat();
-  return `<div class="workspace">
-    <div class="side-col">
-      <section class="card"><h2>Jobs</h2>${taskList()}</section>
-      ${notesHTML()}
+export function chatListHTML(agentId, activeChatId) {
+  const chats = listAgentChats(agentId);
+  if (!chats.length) return '<p class="muted empty-note">No chats yet.</p>';
+  return chats.map((chat) => {
+    const on = chat.id === activeChatId;
+    return `<div class="chat-row${on ? ' active' : ''}">
+      <button type="button" class="chat-select" data-act="select-chat" data-id="${esc(chat.id)}" aria-current="${on ? 'true' : 'false'}">${esc(chat.name || 'New chat')}</button>
+      <button type="button" class="quiet" data-act="rename-chat" data-id="${esc(chat.id)}" aria-label="Rename chat">Rename</button>
+      <button type="button" class="quiet" data-act="delete-chat" data-id="${esc(chat.id)}" aria-label="Delete chat">Delete</button>
+    </div>`;
+  }).join('');
+}
+
+export function chatHeadHTML(agent) {
+  if (!agent) return '<div class="who"><h1>Agona</h1><p class="model-pill">Agora AI</p></div>';
+  return `<div class="who">
+    ${figureHTML(agent, { size: 'sm', caption: false })}
+    <div>
+      <h1>${esc(agent.name)}</h1>
+      <p class="model-pill">Agora AI</p>
     </div>
-    <section class="thread-card">
-      <header class="row spread"><div><h2>Talk</h2><p class="small muted">The characters talk in bubbles. A handoff stays as a sentence too.</p></div><button type="button" class="ghost" data-act="stop-all" ${isRunning() ? '' : 'disabled'}>Stop everyone</button></header>
-      <div id="load-banner">${bannerHTML()}</div>
-      <div id="thread" class="thread">${chat.messages.map(messageHTML).join('') || '<div class="welcome"><h2>The shared table is empty</h2><p>Write a job. The project lead splits it. The others start together, up to the limit.</p></div>'}</div>
-      <div class="dock">${composerHTML()}</div>
-    </section>
   </div>`;
 }
 
-export function keyPanelHTML() {
+export function threadHTML(chat, agent) {
+  const messages = chat?.messages || [];
+  if (!messages.length) {
+    return `<div class="welcome">
+      ${agent ? figureHTML(agent, { size: 'md', caption: false }) : ''}
+      <h2>${esc(agent?.name || 'Agona')}</h2>
+      <p>Ask anything. Agora AI answers in your language, and questions can include links from the web.</p>
+    </div>`;
+  }
+  return messages.map(messageHTML).join('');
+}
+
+export function settingsHTML() {
   const saved = !!readOpenRouterKey();
-  return `<section class="card">
-    <h2>OpenRouter key</h2>
-    <p class="warn-note">The key stays only in this browser, and it goes only to openrouter.ai. A server would be safer, but this site has no server. Do not type it on a shared computer. The log and the saved copy do not include it.</p>
-    <p>${saved ? 'A key is saved on this computer.' : 'No key yet.'}</p>
-    <form id="key-form" autocomplete="off">
-      <label for="or-key">Paste your key</label>
-      <input id="or-key" type="password" name="or-key" autocomplete="off" spellcheck="false" placeholder="paste it here, it is not saved in the code">
-      <div class="row"><button type="submit">Save key here</button><button type="button" class="danger" data-act="forget-key">Forget key</button></div>
-    </form>
-  </section>`;
-}
-
-function teacherCard(teacher) {
-  return `<article class="card">
-    <h2>${esc(teacher.label || teacher.model)}</h2>
-    <p class="small muted">${esc(teacher.model)}</p>
-    <p class="small">Price and limit from the list: ${esc(teacher.price || 'not listed')}</p>
-    <p class="small muted">License: ${esc(teacher.license || 'not listed')}</p>
-    <div class="row"><button type="button" class="ghost" data-act="test-teacher" data-id="${esc(teacher.id)}">Test connection</button><button type="button" class="danger" data-act="delete-teacher" data-id="${esc(teacher.id)}">Remove</button></div>
-  </article>`;
-}
-
-function catalogHTML() {
-  const q = session.catalogQuery || '';
-  const added = new Set(state.teachers.map((item) => item.model));
-  const rows = (session.catalog || []).filter((model) => {
-    if (!q) return isFreeModelId(model.id);
-    const hay = `${model.id} ${model.name}`.toLowerCase();
-    return hay.includes(q.toLowerCase());
-  }).slice(0, 40);
-  return `<section class="card">
-    <div class="row spread"><h2>Public model list</h2><button type="button" class="ghost" data-act="refresh-models">Refresh list</button></div>
-    <p class="small muted">The list comes from openrouter.ai with no key. Free models (the ones ending in :free) show first. We do not invent prices.</p>
-    ${session.catalogError ? `<p class="error-text">${esc(session.catalogError)}</p>` : ''}
-    <label for="model-query">Search</label>
-    <input id="model-query" value="${esc(q)}" placeholder="qwen, deepseek, or :free">
-    <div class="catalog">${rows.map((model) => `<div class="catalog-row">
-      <div><b>${esc(model.name)}</b><div class="small muted">${esc(model.id)}</div><div class="small">${esc(formatPrice(model))}</div></div>
-      <button type="button" data-act="add-teacher" data-model="${esc(model.id)}" ${added.has(model.id) ? 'disabled' : ''}>${added.has(model.id) ? 'On your list' : 'Add'}</button>
-    </div>`).join('') || '<p class="muted">Nothing matched. Refresh the list.</p>'}</div>
-  </section>`;
-}
-
-function exampleCard(example) {
-  const reasons = (example.cleanReasons || []).join(' ');
-  return `<article class="card example">
-    <p class="badge">Teacher answer, not a command</p>
-    <p><b>${esc(example.modelName || example.model)}</b> · ${esc(example.status || '')}</p>
-    <p class="small muted">${esc(new Date(example.created || Date.now()).toLocaleString('en'))} · ${esc(example.priceNote || '')}</p>
-    <p class="small muted">License: ${esc(example.license || 'not listed')} · Source: ${esc(example.source || 'teacher')}</p>
-    <pre>${esc(example.text || example.error || '')}</pre>
-    ${example.textSource === 'reasoning' ? '<p class="small muted">These words came from the reasoning field. The answer field was empty.</p>' : ''}
-    ${example.fallbackNote ? `<p class="small">${esc(example.fallbackNote)}</p>` : ''}
-    <p class="small">${esc(example.judgeNote || '')}</p>
-    ${reasons ? `<p class="error-text">${esc(reasons)}</p>` : ''}
-    <div class="row">
-      <button type="button" data-act="approve-example" data-id="${esc(example.id)}" ${example.dropped ? 'disabled' : ''}>Approve</button>
-      <button type="button" class="ghost" data-act="reject-example" data-id="${esc(example.id)}">Reject</button>
-    </div>
-  </article>`;
-}
-
-export function renderTeachers() {
-  const busy = session.pipelineRunning;
-  const chatOptions = state.teachers.map((teacher) => `<option value="${esc(teacher.model)}" ${teacher.model === state.settings.openrouterChatModel ? 'selected' : ''}>${esc(teacher.label || teacher.model)}</option>`).join('');
-  return `${head('Teachers', 'Teachers run on OpenRouter with your key. Their answers are notes, not orders. Nothing goes into the training file until you say yes.')}
-    ${keyPanelHTML()}
-    <section class="card">
-      <h2>Call limit</h2>
-      <p>So far <b>${state.usage.openrouterCalls || 0}</b> calls went out. The cap is ${state.settings.orGlobal}. One run can use at most ${state.settings.orPerRun}.</p>
-      <form id="limit-form" class="row">
-        <label>In one run<input id="or-per-run" type="number" min="1" max="30" value="${state.settings.orPerRun}"></label>
-        <label>In total<input id="or-global" type="number" min="1" max="500" value="${state.settings.orGlobal}"></label>
-        <button type="submit">Save limits</button>
-      </form>
-      <p class="small muted">Raising a limit asks you first. When a limit is hit, the page stops by itself.</p>
-    </section>
-    ${catalogHTML()}
-    <h2>Your teachers</h2>
-    <div class="grid">${state.teachers.map(teacherCard).join('') || '<p class="muted">No teachers yet. Refresh the list, then add at least two.</p>'}</div>
-    <form id="ask-teachers" class="card">
-      <h2>A job for the teachers</h2>
-      <p class="small muted">Tünde asks at least two teachers at once. Lilla compares them. Dóri leaves out weak examples. You say yes or no.</p>
-      <label for="teacher-task">Job</label>
-      <textarea id="teacher-task" rows="4" placeholder="Explain in a few sentences how bees make honey."></textarea>
-      <label class="checkline"><input id="use-judge-model" type="checkbox"> Also ask a teacher model to judge (one extra call)</label>
-      <label for="judge-model">Judge model</label>
-      <select id="judge-model"><option value="">The check on this page is enough</option>${chatOptions}</select>
+  const theme = state.settings.theme || 'dark';
+  const option = (id, label) => `<option value="${id}" ${theme === id ? 'selected' : ''}>${label}</option>`;
+  return `<h2 id="modal-title">Settings</h2>
+    <p class="small muted">Chats stay in this browser. Agora AI is the only model here.</p>
+    <form id="settings-form" autocomplete="off">
+      <label for="theme">Theme</label>
+      <select id="theme">${option('dark', 'Dark')}${option('light', 'Light')}${option('system', 'Match this device')}</select>
+      <h2>Online connection</h2>
+      <p class="warn-note">A key is optional. It stays only in this browser and is sent only to openrouter.ai. Do not type it on a shared computer.</p>
+      <p>${saved ? 'A key is saved on this computer.' : 'No key yet. Agora AI can still search the web.'}</p>
+      <label for="or-key">Paste a key</label>
+      <input id="or-key" type="password" name="or-key" autocomplete="off" spellcheck="false" placeholder="Stays on this computer">
       <div class="row">
-        <button type="submit" ${busy ? 'disabled' : ''}>Ask the teachers</button>
-        <button type="button" class="ghost" data-act="stop-pipeline" ${busy ? '' : 'disabled'}>Stop</button>
+        <button type="submit">Save</button>
+        <button type="button" class="ghost" data-act="close-modal">Close</button>
+        <button type="button" class="danger" data-act="forget-key">Forget key</button>
       </div>
     </form>
-    <section>
-      <div class="row spread"><h2>Examples</h2><button type="button" class="ghost" data-act="export-jsonl">Download approved set</button></div>
-      ${(state.examples || []).length ? state.examples.map(exampleCard).join('') : '<p class="muted">No teacher answers yet.</p>'}
-    </section>`;
-}
-
-export function renderTraining() {
-  const trainer = state.agents.find((agent) => agent.role === 'trainer');
-  const runs = state.trainingRuns.length
-    ? `<ul class="log">${state.trainingRuns.map((run) => `<li><time>${esc(new Date(run.ts).toLocaleString('en'))}</time><b>${esc(run.status)}</b><p>${esc(run.message)}</p></li>`).join('')}</ul>`
-    : '<p class="muted">No tries yet.</p>';
-  const approved = (state.examples || []).filter((item) => item.approval === 'approved' && !item.dropped).length;
-  const jsonl = toJSONL(state.examples || []);
-  return `${head('Training', 'Training runs on Kaggle, not in this browser. Download the approved examples, run the notebook on a GPU, then import the metrics file on the Scores page.')}
-    <p class="badge">Student: ${esc(STUDENT_CHECKPOINT)} · license ${esc(STUDENT_LICENSE)}</p>
-    ${trainer ? `<div class="card row">${figureHTML(trainer)}<p>Sári does not start training from this page. A person runs the notebook after saying yes to the examples.</p></div>` : ''}
-    <section class="card"><h2>Approved set</h2><p>${approved} example(s) can go into the file. Left-out and rejected ones cannot.</p><button type="button" class="ghost" data-act="export-jsonl" ${jsonl ? '' : 'disabled'}>Download JSONL</button></section>
-    <section class="card">
-      <h2>Run it on Kaggle</h2>
-      <ol class="steps">
-        <li>Download the approved JSONL from this page.</li>
-        <li>On Kaggle, make a dataset and upload that file. Name the dataset <b>agona-approved</b> so the notebook can find <b>agona-approved.jsonl</b>.</li>
-        <li>On your computer, set <b>KAGGLE_API_TOKEN</b> (your KGAT_ token) and <b>KAGGLE_USERNAME</b>, then run <b>scripts/kaggle-push.sh</b>. The token stays in the environment. It is not saved in this repo.</li>
-        <li>Open the kernel, turn on a GPU, and run all cells. The notebook trains a small LoRA on ${esc(STUDENT_CHECKPOINT)} and writes <b>agona-metrics.json</b>.</li>
-        <li>Download that metrics file and import it on the Scores page. Only numbers from the file are shown.</li>
-      </ol>
-      <p class="small muted">The notebook keeps a fixed holdout out of training and scores the student before and after. You need at least 8 approved examples.</p>
-    </section>
-    <section class="card"><h2>Earlier notes on this computer</h2>${runs}</section>`;
-}
-
-function formatScore(value) {
-  if (value == null) return 'not in the file';
-  return String(Math.round(value * 1000) / 1000);
-}
-
-export function renderEval() {
-  const parsed = state.metrics ? parseMetrics(state.metrics) : null;
-  const metrics = parsed?.ok ? parsed.metrics : null;
-  const rows = metrics ? metricRows(metrics) : [];
-  const worse = metrics ? worseKeys(metrics) : [];
-  const table = metrics ? `<table class="scores"><tr><th>Check</th><th>Before</th><th>After</th><th>Change</th></tr>
-    ${rows.map((row) => `<tr><td>${esc(row.label)}</td><td>${esc(formatScore(row.before))}</td><td>${esc(formatScore(row.after))}</td><td>${row.change == null ? 'not in the file' : esc(formatScore(row.change))}</td></tr>`).join('')}</table>` : '';
-  return `${head('Scores', 'Before and after numbers come only from a metrics file the notebook wrote. This page does not invent scores.')}
-    <section class="card">
-      <h2>Import a metrics file</h2>
-      <p class="small muted">Download agona-metrics.json from the Kaggle notebook output, then choose it here.</p>
-      <label class="btn ghost">Choose metrics JSON<input id="metrics-file" type="file" accept="application/json,.json" hidden></label>
-      ${parsed && !parsed.ok ? `<p class="error-text">${esc(parsed.error)}</p>` : ''}
-    </section>
-    ${metrics ? `<section class="card">
-      <h2>Before / after</h2>
-      <p class="small muted">${esc(metrics.student || 'Student not named')} · license ${esc(metrics.license || 'not in the file')} · ${esc(metrics.method || 'method not in the file')}</p>
-      <p class="small muted">Holdout: ${metrics.holdout_size == null ? 'not in the file' : esc(String(metrics.holdout_size))} · Trained on: ${metrics.train_size == null ? 'not in the file' : esc(String(metrics.train_size))}</p>
-      ${table}
-      ${worse.length ? `<p class="error-text">Worse after training: ${esc(worse.join(', '))}.</p>` : '<p class="small muted">A higher exact match or token overlap is better. A lower loss is better.</p>'}
-      ${(metrics.notes || []).length ? `<h2>Notes from the file</h2><ul>${metrics.notes.map((note) => `<li>${esc(note)}</li>`).join('')}</ul>` : ''}
-    </section>` : `<section class="card"><h2>Before / after</h2><p class="muted">No measurement yet. Import the metrics file when the notebook finishes.</p></section>`}`;
-}
-
-export function renderLog() {
-  const rows = state.audit.length
-    ? `<ul class="log">${state.audit.map((item) => `<li><time datetime="${esc(new Date(item.ts).toISOString())}">${esc(new Date(item.ts).toLocaleString('en'))}</time><b>${esc(item.actor)}</b><span>${esc(item.action)}</span><p>${esc(item.detail)}</p></li>`).join('')}</ul>`
-    : '<p class="muted">Nothing here yet. Starts, stops, yeses, and deletes will show up.</p>';
-  return `${head('Log', 'A log on this computer: who did what, and when. It stays in this browser.')}
-    <label for="log-filter">Search the log</label><input id="log-filter" placeholder="name or action">
-    <div id="log-list">${rows}</div>`;
-}
-
-export function renderSettings() {
-  const chatOptions = state.teachers.map((teacher) => `<option value="${esc(teacher.model)}" ${teacher.model === state.settings.openrouterChatModel ? 'selected' : ''}>${esc(teacher.label || teacher.model)}</option>`).join('');
-  return `${head('Settings', 'Notes stay on this computer. The OpenRouter key is kept apart, and it can go only to openrouter.ai.')}
-    ${keyPanelHTML()}
-    <form id="settings-form" class="card">
-      <label for="theme">Theme<select id="theme">${[['system', 'Match this device'], ['dark', 'Dark'], ['light', 'Light']].map(([id, label]) => `<option value="${id}" ${state.settings.theme === id ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
-      <label for="set-model">Helper on this computer<select id="set-model">${MODELS.map((model) => `<option value="${esc(model.id)}" ${model.id === state.settings.model ? 'selected' : ''}>${esc(model.label)}</option>`).join('')}</select></label>
-      <div class="row">
-        <label>Playfulness<input id="temperature" type="number" min="0" max="2" step="0.1" value="${state.settings.temperature}"></label>
-        <label>Longest answer<input id="tokens" type="number" min="64" max="1024" value="${state.settings.maxTokens}"></label>
-      </div>
-      <div class="row">
-        <label>Agents at once<input id="parallel" type="number" min="1" max="5" value="${state.settings.maxParallel}"></label>
-        <label>Time limit per agent, seconds<input id="runtime" type="number" min="30" max="300" value="${state.settings.maxRuntimeSec}"></label>
-      </div>
-      <label for="reply-source">Where should chat answers come from?</label>
-      <select id="reply-source">
-        <option value="auto" ${state.settings.replySource === 'auto' ? 'selected' : ''}>Automatic: OpenRouter when this browser has no WebGPU, otherwise the helper here</option>
-        <option value="local" ${state.settings.replySource === 'local' ? 'selected' : ''}>Always the helper on this computer</option>
-        <option value="openrouter" ${state.settings.replySource === 'openrouter' ? 'selected' : ''}>OpenRouter teacher, if a key is saved</option>
-      </select>
-      <label for="chat-teacher">Teacher for chat</label>
-      <select id="chat-teacher"><option value="">None picked</option>${chatOptions}</select>
-      <p class="small muted">Raising how many agents, how long they run, or how long an answer can be will ask you first. Phones start with the small helper. With a key, OpenRouter can answer too.</p>
-      <button type="submit">Save</button>
-    </form>
-    <section class="card">
-      <h2>A copy on this computer</h2>
+    <section class="settings-extra">
+      <h2>This browser</h2>
       <div class="row">
         <button type="button" class="ghost" data-act="export-data">Download a copy</button>
-        <label class="btn ghost">Load a copy<input id="import-file" type="file" accept="application/json" hidden></label>
         <button type="button" class="danger" data-act="erase">Erase everything</button>
       </div>
-      <p class="small muted">The copy is a JSON file on your computer. It is not uploaded. The OpenRouter key is not inside it.</p>
+      <p class="small muted">The copy is a file on your computer. The key is not inside it.</p>
     </section>`;
 }
 
-const PAGES = {
-  dashboard: renderDashboard,
-  agents: renderAgents,
-  workspace: renderWorkspace,
-  teachers: renderTeachers,
-  training: renderTraining,
-  eval: renderEval,
-  log: renderLog,
-  settings: renderSettings,
-};
-
-export function renderPage(name) {
-  const body = (PAGES[name] || renderDashboard)();
-  const wide = name === 'dashboard' || name === 'workspace' ? ' wide' : '';
-  return `<div class="wrap${wide}">${body}</div>`;
+export function renameChatHTML(chat) {
+  return `<h2 id="modal-title">Rename chat</h2>
+    <label for="chat-name">Name</label>
+    <input id="chat-name" maxlength="80" value="${esc(chat?.name || '')}">
+    <div class="row"><button type="button" data-act="save-chat-name" data-id="${esc(chat?.id || '')}">Save</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
 }
 
-export function createModalHTML() {
-  const first = TEMPLATES[0];
-  return `<h2 id="modal-title">New agent from a template</h2>
-    <label for="tmpl">Template</label>
-    <select id="tmpl">${TEMPLATES.map((role) => `<option value="${esc(role.id)}">${esc(role.title)}</option>`).join('')}</select>
-    <label for="an">Name</label><input id="an" value="${esc(first.name)}" maxlength="40">
-    <label for="ap">How they behave</label><textarea id="ap" rows="5">${esc(first.prompt)}</textarea>
-    <div class="row"><button type="button" data-act="save-create">Create</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
-}
-
-export function renameModalHTML(agent) {
-  return `<h2 id="modal-title">Rename</h2>
-    <label for="an">New name</label><input id="an" value="${esc(agent.name)}" maxlength="40">
-    <p class="small muted">The role stays: ${esc(roleTitle(agent.role))}.</p>
-    <div class="row"><button type="button" data-act="save-rename" data-id="${esc(agent.id)}">Save</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
-}
-
-export function runModalHTML(agent) {
-  return `<h2 id="modal-title">Start ${esc(agent.name)}</h2>
-    <label for="one-task">What should they do?</label>
-    <textarea id="one-task" rows="3" placeholder="A short job just for them"></textarea>
-    <div class="row"><button type="button" data-act="save-run" data-id="${esc(agent.id)}">Start</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
+export function welcomeHTML() {
+  return `<h2 id="modal-title">Hi, this is Agona</h2>
+    <p>Pick an agent on the left and start a chat. Agora AI answers in the language you write.</p>
+    <p>Your chats stay on this computer. When a question needs the web, the reply includes links to the pages that were found.</p>
+    <div class="row"><button type="button" data-act="welcome-ok">OK</button></div>`;
 }
 
 function plainBody(node) {
   return node?.textContent ?? '';
 }
 
-export function patchThread() {
+export function patchThread(chat) {
   const box = document.querySelector('#thread');
-  if (!box) return false;
-  const chat = workspaceChat();
+  if (!box || !chat) return false;
   const nodes = [...box.querySelectorAll('[data-mid]')];
   if (nodes.length !== chat.messages.length) return false;
   for (let i = 0; i < chat.messages.length; i++) {
@@ -468,11 +157,19 @@ export function patchThread() {
     if (nodes[i].dataset.mid !== message.id) return false;
     const body = nodes[i].querySelector('[data-body]');
     const next = message.content || (message.pending ? '…' : '');
-    if (body && plainBody(body) !== next) body.textContent = next;
+    if (body && plainBody(body) !== next && message.role !== 'tool') body.textContent = next;
+    const meta = nodes[i].querySelector('[data-meta]');
+    if (meta && message.role === 'agent') {
+      const phase = message.pending
+        ? (String(message.content || '').startsWith('Looking up') ? 'looking up' : (String(message.content || '').startsWith('Getting Agora') ? 'getting ready' : 'writing'))
+        : (message.error ? 'could not finish' : 'Agora AI');
+      const agent = agentById(message.agentId);
+      meta.textContent = `${agent?.name || 'Agent'} · ${phase}`;
+    }
     nodes[i].classList.toggle('pending', !!message.pending);
     nodes[i].classList.toggle('error', !!message.error);
   }
-  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 90;
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
   if (near) box.scrollTop = box.scrollHeight;
   return true;
 }
@@ -482,8 +179,7 @@ export function syncAgents() {
   for (const agent of state.agents) {
     const name = viewState(agent);
     const label = STATE_LABEL[name] || 'Waiting';
-    const nodes = document.querySelectorAll(`[data-live-agent="${agent.id}"]`);
-    nodes.forEach((el) => {
+    document.querySelectorAll(`[data-live-agent="${agent.id}"]`).forEach((el) => {
       el.dataset.state = name;
       el.style.setProperty('--agent', safeColor(agent.color));
       el.setAttribute('aria-label', altText(agent));
@@ -493,18 +189,4 @@ export function syncAgents() {
       if (title) title.textContent = agent.name;
     });
   }
-}
-
-export function filterLog(query) {
-  const q = String(query || '').trim().toLowerCase();
-  const items = state.audit.filter((item) => !q || `${item.actor} ${item.action} ${item.detail}`.toLowerCase().includes(q));
-  const list = document.querySelector('#log-list');
-  if (!list) return;
-  list.innerHTML = items.length
-    ? `<ul class="log">${items.map((item) => `<li><time>${esc(new Date(item.ts).toLocaleString('en'))}</time><b>${esc(item.actor)}</b><span>${esc(item.action)}</span><p>${esc(item.detail)}</p></li>`).join('')}</ul>`
-    : '<p class="muted">No matching entry.</p>';
-}
-
-export function mark() {
-  return `<svg viewBox="0 0 32 32" aria-hidden="true"><rect x="2" y="2" width="28" height="28" rx="10" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="14" r="1.8"/><circle cx="20" cy="14" r="1.8"/><path d="M12 20c1.5 1.7 6.5 1.7 8 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
 }

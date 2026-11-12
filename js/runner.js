@@ -1,5 +1,6 @@
 // Runs planned tasks on the shared workspace thread.
 import { state, save, audit, agentById, uid, workspaceChat } from './store.js';
+import { maybeTitle, touchChat } from './chats.js';
 import { agentTurn, isSmallTalk, settlePending } from './orchestrator.js';
 import { usingOpenRouter } from './generate.js';
 import { session } from './session.js';
@@ -175,8 +176,49 @@ async function drain(chat, signal, onUpdate) {
   }
 }
 
-export async function runUserTask(text, { signal = new AbortController().signal, onUpdate, gpu, onlyAgentId, planned } = {}) {
-  const chat = workspaceChat();
+async function runDirect(agent, chat, parentSignal, onUpdate) {
+  if (agent.paused) {
+    agent.paused = false;
+    agent.status = 'idle';
+  }
+  const ctl = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, runtimeMs());
+  const onParent = () => ctl.abort();
+  parentSignal.addEventListener('abort', onParent, { once: true });
+  runs.set(agent.id, ctl);
+  agent.status = 'thinking';
+  agent.error = '';
+  save();
+  onUpdate?.();
+  try {
+    await agentTurn(agent, chat, {
+      onUpdate,
+      signal: ctl.signal,
+      timedOut: () => timedOut,
+      onPhase: (phase) => {
+        if (agent.paused) return;
+        agent.status = phase === 'done' ? 'working' : phase;
+        onUpdate?.(true);
+      },
+    });
+  } finally {
+    clearTimeout(timer);
+    parentSignal.removeEventListener('abort', onParent);
+    runs.delete(agent.id);
+    if (!agent.paused) {
+      agent.status = 'idle';
+      agent.taskId = null;
+      agent.error = '';
+    }
+    settlePending(chat.messages, { aborted: parentSignal.aborted || timedOut });
+    save();
+    onUpdate?.();
+  }
+}
+
+export async function runUserTask(text, { signal = new AbortController().signal, onUpdate, gpu, onlyAgentId, planned, chat: givenChat } = {}) {
+  const chat = givenChat || workspaceChat();
   const clean = String(text || '').trim();
   if (!clean) return;
   active += 1;
@@ -184,7 +226,14 @@ export async function runUserTask(text, { signal = new AbortController().signal,
   try {
     chat.messages.push({ id: uid('m_'), role: 'user', content: clean, ts: Date.now() });
     state.usage.userMessages++;
+    maybeTitle(chat, clean);
+    touchChat(chat);
     audit('message', clean.slice(0, 400));
+    const direct = onlyAgentId ? agentById(onlyAgentId) : null;
+    if (direct) {
+      await runDirect(direct, chat, signal, onUpdate);
+      return;
+    }
     if (gpu && gpu.ok === false && !usingOpenRouter()) {
       chat.messages.push({ id: uid('m_'), role: 'system', content: gpu.reason || 'This browser has no WebGPU.', ts: Date.now() });
       save();

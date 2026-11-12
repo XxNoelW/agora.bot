@@ -6,11 +6,12 @@ The site stays at `https://xxnoelw.github.io/agora.bot/`.
 
 ## What it does
 
-- Home page with a big input, dark or light theme.
-- Nine roles with their own characters: Panna, Kata, Bence, Tünde, Lilla, Dóri, Sári, Enci, and Dani. You can rename them.
-- A shared workspace with jobs, speech bubbles, and notes.
-- Phones and low-memory computers start on the small local helper.
-- Teachers on OpenRouter, if you paste your own key. The key stays in this browser and is sent only to openrouter.ai.
+- A dark chat workspace. The left side lists the agents, and each agent has its own chats.
+- Nine characters: Panna, Kata, Bence, Tünde, Lilla, Dóri, Sári, Enci, and Dani. Chats stay in this browser.
+- One model in the interface, Agora AI. On a computer with WebGPU it runs locally. A key in Settings can connect online. The key stays in this browser.
+- Web search from the page itself, with links in the reply. Sources are Wikipedia, DuckDuckGo quick answers, and public pages read through the Jina reader. No search key is required.
+
+The Kaggle notebook and `scripts/kaggle-push.sh` stay in the repo for the owner. They are not part of the page.
 
 ## Try it
 
@@ -20,10 +21,9 @@ python3 -m http.server 8000
 
 Open `http://localhost:8000`. Modules do not load from `file://`.
 
-1. Write a job on the home page, for example: "Start three agents on the page, the server, and the tests."
-2. The first time, this computer downloads a helper. A bar shows the progress. Without WebGPU the page explains that, and you can use an OpenRouter teacher instead.
-3. On Teachers, paste your key, refresh the model list, and add at least two teachers. Ask them a question, then approve or reject each answer.
-4. Download the approved examples as JSONL. Upload that file to Kaggle and run `training/agona_student_lora.ipynb`, or push it with `scripts/kaggle-push.sh` after setting `KAGGLE_API_TOKEN` and `KAGGLE_USERNAME` in the environment. Import `agona-metrics.json` on the Scores page.
+1. Pick an agent and start a chat.
+2. Ask a question, for example: "How do bees make honey?"
+3. The reply should include links. If this browser cannot run Agora AI locally, the links still come back. A key in Settings is optional.
 
 ## Tests
 
