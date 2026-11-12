@@ -45,9 +45,9 @@ export function friendlyMessage(e) {
   if (e.name === 'AbortError' || e.code === 'abort') return 'Stopped.';
   const m = String(e.message || e);
   if (/webgpu/i.test(m)) return 'This browser cannot run the helpers. Use Chrome or Edge where WebGPU works. You can still look around.';
-  if (/timeout|timed out|stall|too long|went quiet/i.test(m)) return 'This took too long, so I stopped. Try again, or pick a smaller helper in Settings.';
-  if (/failed to fetch|network|import|load failed/i.test(m)) return 'I could not download the helper. Check your internet and try again.';
-  if (/not found|unknown model|cannot find model|model_id/i.test(m)) return 'That helper is not available. Pick another one in Settings.';
+  if (/timeout|timed out|stall|too long|went quiet/i.test(m)) return 'This took too long, so I stopped. Please try again.';
+  if (/failed to fetch|network|import|load failed/i.test(m)) return 'I could not download Agora AI. Check your internet and try again.';
+  if (/not found|unknown model|cannot find model|model_id/i.test(m)) return 'Agora AI could not start. Please try again.';
   return 'Something went wrong while writing. Please try again.';
 }
 

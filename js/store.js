@@ -78,7 +78,7 @@ function blank(nav) {
       maxTokens: 384,
       maxParallel: DEFAULT_PARALLEL,
       maxRuntimeSec: 120,
-      theme: 'system',
+      theme: 'dark',
       sidebarCollapsed: false,
       welcomed: false,
       replySource: 'auto',
@@ -106,6 +106,13 @@ function knownModel(id) {
   return MODELS.some((model) => model.id === id);
 }
 
+function withSearch(tools) {
+  const list = Array.isArray(tools) ? tools.slice() : [];
+  if (!list.includes('web_search')) list.unshift('web_search');
+  if (!list.includes('read_page')) list.splice(Math.min(1, list.length), 0, 'read_page');
+  return list;
+}
+
 function normalizeAgent(agent) {
   const role = ROLE_DEFS.find((item) => item.id === agent.role);
   const prompt = agent.prompt === OLD_ADA ? NEW_ADA : (agent.prompt || role?.prompt || 'Reply in simple English. If the user writes in another language, answer in that language.');
@@ -116,7 +123,7 @@ function normalizeAgent(agent) {
     color: role?.color || agent.color || '#E8B4B8',
     accessory: role?.accessory || agent.accessory || 'spark',
     prompt,
-    tools: Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['read_file', 'list_files', 'write_file']),
+    tools: withSearch(Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['read_file', 'list_files', 'write_file'])),
     status: agent.paused ? 'paused' : (agent.status || 'idle'),
     paused: !!agent.paused,
     error: agent.error || '',

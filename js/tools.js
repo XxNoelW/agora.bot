@@ -47,7 +47,7 @@ function anySignal(parent, ms) {
 async function fetchText(url, opts = {}, ms = 15000) {
   const gate = anySignal(opts.signal, ms);
   try {
-    const response = await fetch(url, {
+    const response = await (opts.fetch || fetch)(url, {
       signal: gate.signal,
       headers: { Accept: 'application/json, text/plain, */*' },
     });
@@ -133,6 +133,66 @@ export function formatSources(results, note = '') {
   return (note ? note + '\n\n' : '') + body;
 }
 
+export function needsWebSearch(text) {
+  const s = String(text || '').trim();
+  if (s.length < 8) return false;
+  if (/^(hi|hello|hey|hiya|yo|howdy|sup|thanks|thank you|thx|ok|okay|bye|good morning|good afternoon|good night|how are you|what's up|whats up|hola)[!.?\s]*$/i.test(s)) return false;
+  if (/\b(search|look up|lookup|find out|who is|who was|what is|what are|what was|when did|when was|where is|where are|why do|why is|why are|how do|how does|how did|how can|latest|news|wikipedia|source|according to)\b/i.test(s)) return true;
+  return /\?\s*$/.test(s) && s.split(/\s+/).length >= 3;
+}
+
+export function extractSources(text) {
+  const results = [];
+  const re = /(?:^|\n)\d+\.\s+(.+?)\s+[—-]\s+(.+)\n(https?:\/\/\S+)/g;
+  let match;
+  const body = String(text || '');
+  while ((match = re.exec(body))) {
+    results.push({ title: match[1].trim(), source: match[2].trim(), url: match[3].trim(), snippet: '' });
+  }
+  return results;
+}
+
+function tidySnippet(text) {
+  let s = String(text || '').replace(/\s+/g, ' ').trim();
+  if (/^[a-z(“]/.test(s)) {
+    const dot = s.search(/\.\s+[A-Z]/);
+    if (dot >= 0 && dot < 100) s = s.slice(dot + 2).trim();
+  }
+  return s;
+}
+
+export function answerFromSources(results) {
+  const rows = (results || []).filter((item) => item && item.url && item.title).slice(0, 3);
+  if (!rows.length) return '';
+  const parts = rows.map((item) => {
+    const snippet = tidySnippet(item.snippet);
+    return `${snippet || item.title}\n[${item.title}](${item.url})`;
+  });
+  return `Here is what I found.\n\n${parts.join('\n\n')}`;
+}
+
+export function ensureCited(text, results) {
+  const body = String(text || '').trim();
+  const rows = (results || []).filter((item) => item && item.url && item.title);
+  if (!body || !rows.length) return body;
+  const missing = rows.filter((item) => !body.includes(item.url)).slice(0, 4);
+  if (!missing.length) return body;
+  const links = missing.map((item) => `[${item.title}](${item.url})`).join(' · ');
+  return `${body}\n\nSources: ${links}`;
+}
+
+async function wikiRestSearch(query, opts) {
+  const url = 'https://en.wikipedia.org/w/rest.php/v1/search/page?q='
+    + encodeURIComponent(query) + '&limit=4';
+  const data = JSON.parse(await fetchText(url, opts));
+  return (data.pages || []).map((page) => ({
+    title: page.title,
+    url: 'https://en.wikipedia.org/wiki/' + encodeURIComponent(String(page.key || page.title || '').replace(/ /g, '_')),
+    snippet: stripHtml(page.excerpt || '').replace(/\s+/g, ' ').slice(0, 320),
+    source: 'Wikipedia',
+  })).filter((page) => page.title && page.url);
+}
+
 async function wikiSearch(query, opts) {
   const url = 'https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch='
     + encodeURIComponent(query)
@@ -177,7 +237,7 @@ async function ddgInstant(query, opts) {
 async function ddgWeb(query, opts) {
   const url = 'https://r.jina.ai/https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(query);
   try {
-    const text = await fetchText(url, opts, 20000);
+    const text = await fetchText(url, opts, 8000);
     if (/bots use DuckDuckGo|complete the following challenge|select all squares/i.test(text)) {
       return { results: [], note: 'Live web search was busy, so these sources are from Wikipedia and quick answers.' };
     }
@@ -188,10 +248,10 @@ async function ddgWeb(query, opts) {
   }
 }
 
-export async function webSearch(query, opts = {}) {
+async function collectSources(query, opts) {
   const q = String(query || '').trim();
-  if (!q) throw new Error('Tell me what to look up.');
-  const [wiki, instant, web] = await Promise.all([
+  const [rest, wiki, instant, web] = await Promise.all([
+    wikiRestSearch(q, opts).catch((e) => (opts.signal?.aborted || e.name === 'AbortError' ? Promise.reject(e) : [])),
     wikiSearch(q, opts).catch((e) => (opts.signal?.aborted || e.name === 'AbortError' ? Promise.reject(e) : [])),
     ddgInstant(q, opts).catch((e) => (opts.signal?.aborted || e.name === 'AbortError' ? Promise.reject(e) : [])),
     ddgWeb(q, opts).catch((e) => (opts.signal?.aborted || e.name === 'AbortError' ? Promise.reject(e) : { results: [], note: '' })),
@@ -206,13 +266,30 @@ export async function webSearch(query, opts = {}) {
     seen.add(key);
     results.push(item);
   };
-  for (const item of web.results || []) add(item);
+  for (const item of rest) add(item);
   for (const item of wiki) add(item);
+  for (const item of web.results || []) add(item);
   for (const item of instant) add(item);
-  const top = results.slice(0, 5);
-  if (!top.length) return 'No pages found. Try a simpler question.';
   const note = !(web.results || []).length && web.note ? web.note : '';
-  return formatSources(top, note);
+  return { results: results.slice(0, 5), note };
+}
+
+export async function gatherSources(query, opts = {}) {
+  const q = String(query || '').trim();
+  if (!q) throw new Error('Tell me what to look up.');
+  let found = { results: [], note: '' };
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (opts.signal?.aborted) break;
+    found = await collectSources(q, opts);
+    if (found.results.length || opts.signal?.aborted) break;
+  }
+  return found;
+}
+
+export async function webSearch(query, opts = {}) {
+  const found = await gatherSources(query, opts);
+  if (!found.results.length) return 'No pages found. Try a simpler question.';
+  return formatSources(found.results, found.note);
 }
 
 export async function readPage(args = {}, opts = {}) {

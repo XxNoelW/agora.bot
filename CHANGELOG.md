@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12, workspace
+
+- The page is a dark chat workspace: agents on the left, separate chats for each agent, and one composer.
+- Visitors see one model, Agora AI. Training, teacher lists, model picking, and export screens are not in the interface.
+- Replies can search the web and show the links. A reply that cannot be finished shows an error instead of staying on "writing".
+
 ## 2026-11-12, teacher replies
 
 - Default free teachers prefer non-reasoning instruct models, and Qwen, DeepSeek, Llama, or Mistral when the public list has them.

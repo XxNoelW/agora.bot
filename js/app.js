@@ -1,40 +1,22 @@
-import { state, save, audit, uid, agentById, resetAll, replaceAll, workspaceChat, MODELS, prefersSmallModel, exportState } from './store.js';
+import { state, save, agentById, resetAll, exportState, uid } from './store.js';
 import { onStatus, status, loadModel, checkWebGPU } from './llm.js';
-import { normPath } from './tools.js';
-import { TEMPLATES, roleById } from './roles.js';
-import { clampParallel } from './scheduler.js';
-import { teachers, requestTraining } from './teachers.js';
-import {
-  createOpenRouterAdapter, listModels, pickDefaultTeacherIds, pickTeacherCandidates, formatPrice,
-  writeOpenRouterKey, forgetOpenRouterKey, readOpenRouterKey, redactSecrets, reserveCall,
-  completeWithFallback,
-} from './openrouter.js';
-import { runTeacherPipeline, setApproval, toJSONL } from './pipeline.js';
-import { parseMetrics } from './metrics.js';
+import { readOpenRouterKey, writeOpenRouterKey, forgetOpenRouterKey, redactSecrets, listModels, pickTeacherCandidates, pickDefaultTeacherIds } from './openrouter.js';
+import { createOpenRouterAdapter } from './openrouter.js';
+import { teachers } from './teachers.js';
 import { usingOpenRouter } from './generate.js';
-import { runUserTask, pauseAgent, resumeAgent, stopAgent, isRunning } from './runner.js';
-import { watchFigures, playHandoff, figureHTML } from './characters.js';
+import { runUserTask, isRunning } from './runner.js';
+import { settlePending } from './orchestrator.js';
+import { watchFigures } from './characters.js';
 import { session } from './session.js';
 import { $, closeModal, openModal, confirm, toast, announce } from './dom.js';
 import {
-  renderPage, bannerHTML, patchThread, syncAgents, filterLog,
-  createModalHTML, renameModalHTML, runModalHTML, mark,
+  agentListHTML, chatListHTML, chatHeadHTML, threadHTML, settingsHTML, renameChatHTML, welcomeHTML,
+  patchThread, syncAgents,
 } from './pages.js';
+import { ensureAgentChats, listAgentChats, createAgentChat, renameAgentChat, deleteAgentChat } from './chats.js';
 
-const view = $('#view');
-const TITLES = {
-  dashboard: 'Home',
-  agents: 'Agents',
-  workspace: 'Workspace',
-  teachers: 'Teachers',
-  training: 'Training',
-  eval: 'Scores',
-  log: 'Log',
-  settings: 'Settings',
-};
-
+const thread = $('#thread');
 let runCtl = null;
-let seenHandoff = state.handoff?.id || null;
 let gpuPromise = null;
 
 function resolvedTheme() {
@@ -45,79 +27,96 @@ function resolvedTheme() {
 
 function applyChrome() {
   document.documentElement.dataset.theme = resolvedTheme();
-  document.documentElement.dataset.sidebar = state.settings.sidebarCollapsed ? 'collapsed' : 'open';
-  const themeBtn = $('#theme-btn');
-  if (themeBtn) {
-    const label = state.settings.theme === 'light' ? 'Light theme' : state.settings.theme === 'dark' ? 'Dark theme' : 'Device theme';
-    themeBtn.textContent = label;
-    themeBtn.setAttribute('aria-label', `Theme: ${label}. Click to change.`);
+  const menu = $('#menu-btn');
+  if (menu) menu.setAttribute('aria-expanded', document.body.classList.contains('nav-open') ? 'true' : 'false');
+}
+
+function currentAgent() {
+  return agentById(session.agentId) || state.agents[0] || null;
+}
+
+function currentChat() {
+  const agent = currentAgent();
+  if (!agent) return null;
+  return listAgentChats(agent.id).find((chat) => chat.id === session.chatId) || listAgentChats(agent.id)[0] || null;
+}
+
+function statusLine() {
+  if (usingOpenRouter() && !status.busy) return 'Agora AI is ready';
+  if (status.error) return 'Agora AI could not start here. Questions can still search the web.';
+  if (status.ready) return 'Agora AI is ready on this device';
+  if (status.busy) {
+    const pct = status.progress > 0 && status.progress < 1 ? ` ${Math.round(status.progress * 100)}%` : '';
+    return `Getting Agora AI ready${pct}`;
   }
-  const collapse = $('#collapse-btn');
-  if (collapse) {
-    const collapsed = state.settings.sidebarCollapsed;
-    collapse.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-    collapse.setAttribute('aria-label', collapsed ? 'Show the sidebar' : 'Hide the sidebar');
-  }
+  if (session.gpu && session.gpu.ok === false && !session.gpu.pending) return 'Agora AI will search the web on this device';
+  return 'Agora AI';
 }
 
 function paintStatus() {
   const el = $('#model-status');
-  if (!el) return;
-  const pct = status.progress > 0 && status.progress < 1 ? Math.round(status.progress * 100) : 0;
-  el.innerHTML = `${status.text}${pct ? `<div class="progress"><div style="width:${pct}%"></div></div>` : ''}`;
+  if (el) el.textContent = statusLine();
 }
 
 function setBusy(on) {
   const send = $('#send');
   const stop = $('#stop');
-  if (send) send.hidden = on;
+  if (send) send.hidden = !!on;
   if (stop) stop.hidden = !on;
 }
 
-function draw({ keepDraft = true } = {}) {
-  const draft = keepDraft ? ($('#input')?.value ?? '') : '';
-  const focused = document.activeElement?.id === 'input';
-  session.route = routeName();
-  document.title = `${TITLES[session.route] || 'Agona'} · Agona`;
-  document.querySelectorAll('#nav a').forEach((link) => link.classList.toggle('active', link.dataset.route === session.route));
-  document.body.classList.remove('nav-open');
-  view.innerHTML = renderPage(session.route);
-  const input = $('#input');
-  if (input && draft) input.value = draft;
-  if (focused && input) input.focus();
-  const brand = $('.brand-mark');
-  if (brand && !brand.innerHTML) brand.innerHTML = mark();
-  paintStatus();
-  watchFigures(document);
-  syncAgents();
-  setBusy(isRunning());
-  const hop = state.handoff;
-  if (hop && hop.id !== seenHandoff) {
-    seenHandoff = hop.id;
-    playHandoff(hop.fromId, hop.toId);
-    const from = agentById(hop.fromId);
-    const to = agentById(hop.toId);
-    if (from && to) announce(`${from.name} handed the job to ${to.name}.`);
-  }
-}
-
-function routeName() {
-  const name = (location.hash.replace(/^#\/?/, '') || 'dashboard').split('/')[0];
-  return TITLES[name] ? name : 'dashboard';
-}
-
-function refresh(patch) {
-  syncAgents();
-  if (patch && patchThread()) {
-    setBusy(isRunning());
-    const hop = state.handoff;
-    if (hop && hop.id !== seenHandoff) {
-      seenHandoff = hop.id;
-      playHandoff(hop.fromId, hop.toId);
+function paint(patch) {
+  const agent = currentAgent();
+  const chat = currentChat();
+  if (agent) session.agentId = agent.id;
+  if (chat) session.chatId = chat.id;
+  const patched = !!(patch && chat && patchThread(chat));
+  if (!patched) {
+    const agents = $('#agent-list');
+    const chats = $('#chat-list');
+    const head = $('#chat-head');
+    if (agents) agents.innerHTML = agentListHTML(agent?.id);
+    if (chats) chats.innerHTML = chatListHTML(agent?.id, chat?.id);
+    if (head) head.innerHTML = chatHeadHTML(agent);
+    if (thread) {
+      thread.innerHTML = threadHTML(chat, agent);
+      const start = thread.querySelector('.bubble-row.user:last-of-type') || thread.querySelector('.bubble-row, .tool-line, .sys-line');
+      if (start) start.scrollIntoView({ block: 'start' });
     }
-    return;
+    const input = $('#input');
+    if (input) input.placeholder = agent ? `Message ${agent.name}` : 'Message';
+    const label = $('#chats-label');
+    if (label) label.textContent = agent ? `Chats with ${agent.name}` : 'Chats';
+    document.title = `${agent?.name || 'Agona'} · Agona`;
   }
-  if (session.route === 'workspace' || session.route === 'dashboard' || session.route === 'agents') draw();
+  paintStatus();
+  setBusy(isRunning());
+  syncAgents();
+  watchFigures(document);
+  applyChrome();
+}
+
+function activate(agentId, chatId, { closeDrawer = false } = {}) {
+  ensureAgentChats(state.agents);
+  const agent = agentById(agentId) || state.agents[0];
+  if (!agent) return;
+  const chats = listAgentChats(agent.id);
+  const chat = chats.find((item) => item.id === chatId) || chats[0];
+  session.agentId = agent.id;
+  session.chatId = chat?.id || '';
+  state.settings.activeAgentId = agent.id;
+  state.settings.activeChatId = session.chatId;
+  save();
+  if (closeDrawer) document.body.classList.remove('nav-open');
+  paint(false);
+}
+
+function nextChatName(agentId) {
+  const names = new Set(listAgentChats(agentId).map((chat) => chat.name));
+  if (!names.has('New chat')) return 'New chat';
+  let n = 2;
+  while (names.has(`New chat ${n}`)) n += 1;
+  return `New chat ${n}`;
 }
 
 async function ensureGpu() {
@@ -126,750 +125,222 @@ async function ensureGpu() {
   return session.gpu;
 }
 
-async function submitText(text, extra = {}) {
+async function ensureOnline() {
+  if (!readOpenRouterKey() || state.settings.openrouterChatModel) return;
+  try {
+    const models = await listModels();
+    session.catalog = models;
+    const id = pickTeacherCandidates(models, 1)[0] || pickDefaultTeacherIds(models)[0] || '';
+    if (!id) return;
+    state.settings.openrouterChatModel = id;
+    save();
+    paintStatus();
+  } catch { /* a later reply explains if Agora AI cannot answer */ }
+}
+
+async function submitText(text) {
   const clean = String(text || '').trim();
   if (!clean || runCtl) return;
+  const agent = currentAgent();
+  const chat = currentChat();
+  if (!agent || !chat) return;
   const input = $('#input');
-  if (input) input.value = '';
+  if (input) {
+    input.value = '';
+    input.style.height = 'auto';
+  }
   await ensureGpu();
-  if (session.route !== 'workspace') location.hash = '#/workspace';
   runCtl = new AbortController();
   setBusy(true);
-  const onUpdate = (patch) => refresh(!!patch);
   try {
-    await runUserTask(clean, { signal: runCtl.signal, onUpdate, gpu: session.gpu, ...extra });
+    await runUserTask(clean, {
+      signal: runCtl.signal,
+      onUpdate: (patch) => paint(!!patch),
+      gpu: session.gpu,
+      onlyAgentId: agent.id,
+      chat,
+    });
   } catch (err) {
     console.error(err);
-    const chat = workspaceChat();
-    chat.messages.push({ id: uid('m_'), role: 'system', content: redactSecrets(err.friendly || err.message || 'Something went wrong.'), ts: Date.now() });
+    chat.messages.push({
+      id: uid('m_'),
+      role: 'system',
+      content: redactSecrets(err.friendly || err.message || 'Agora AI could not answer. Please try again.'),
+      ts: Date.now(),
+    });
     save();
   } finally {
     runCtl = null;
-    draw({ keepDraft: true });
+    settlePending(chat.messages, { aborted: false });
+    for (const message of chat.messages) {
+      if (message.pending) {
+        message.pending = false;
+        message.loading = false;
+        message.error = true;
+        message.content = message.content || 'Agora AI could not finish that reply. Please try again.';
+      }
+    }
+    save();
+    announce(`${agent.name} replied.`);
+    paint(false);
   }
 }
 
-function readNumber(id, fallback) {
-  const value = +$(id)?.value;
-  return Number.isFinite(value) ? value : fallback;
-}
-
-async function saveSettings(fromForm) {
-  const prev = { ...state.settings };
-  const nextParallel = clampParallel(readNumber('#parallel', prev.maxParallel));
-  const nextRuntime = Math.max(30, Math.min(300, Math.round(readNumber('#runtime', prev.maxRuntimeSec))));
-  const nextTokens = Math.max(64, Math.min(1024, Math.round(readNumber('#tokens', prev.maxTokens))));
-  const bumps = [];
-  if (fromForm) {
-    if (nextParallel > prev.maxParallel) bumps.push(`agents at once ${prev.maxParallel} to ${nextParallel}`);
-    if (nextRuntime > prev.maxRuntimeSec) bumps.push(`time limit ${prev.maxRuntimeSec}s to ${nextRuntime}s`);
-    if (nextTokens > prev.maxTokens) bumps.push(`answer length ${prev.maxTokens} to ${nextTokens}`);
-  }
-  if (bumps.length) {
-    const ok = await confirm({
-      title: 'Raise a limit',
-      text: `These will go up: ${bumps.join(', ')}. That can use more memory or time on your computer.`,
-      ok: 'Raise',
-    });
-    if (!ok) { draw(); return; }
-    audit('limit', bumps.join(', '));
-  }
-  const model = fromForm ? ($('#set-model')?.value || prev.model) : prev.model;
-  if (prefersHeavy(model) && model !== prev.model) {
-    const ok = await confirm({
-      title: 'Nagy modell',
-      text: 'This helper may be too big for this device. If there is not enough memory, loading will fail. The small helper is the safe pick.',
-      ok: 'Use it anyway',
-    });
-    if (!ok) { draw(); return; }
-  }
-  state.settings.theme = fromForm ? ($('#theme')?.value || prev.theme) : prev.theme;
-  state.settings.model = MODELS.some((item) => item.id === model) ? model : prev.model;
-  state.settings.temperature = fromForm ? Math.max(0, Math.min(2, readNumber('#temperature', prev.temperature))) : prev.temperature;
-  state.settings.maxTokens = fromForm ? nextTokens : prev.maxTokens;
-  state.settings.maxParallel = nextParallel;
-  state.settings.maxRuntimeSec = fromForm ? nextRuntime : prev.maxRuntimeSec;
-  if (fromForm) {
-    const source = $('#reply-source')?.value;
-    if (source === 'auto' || source === 'local' || source === 'openrouter') state.settings.replySource = source;
-    const chatModel = $('#chat-teacher')?.value || '';
-    state.settings.openrouterChatModel = state.teachers.some((item) => item.model === chatModel) ? chatModel : '';
-  }
-  state.settings.modelMigrated = true;
+async function saveSettings() {
+  const theme = $('#theme')?.value;
+  if (theme === 'dark' || theme === 'light' || theme === 'system') state.settings.theme = theme;
+  const key = $('#or-key')?.value || '';
+  if (key.trim()) writeOpenRouterKey(key);
+  const field = $('#or-key');
+  if (field) field.value = '';
   save();
   applyChrome();
-  draw();
-  toast('Settings saved on this computer only.');
-}
-
-function prefersHeavy(id) {
-  return prefersSmallModel() && (id === MODELS[0].id || id === MODELS[1].id);
-}
-
-async function onFile(input) {
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-  if (file.size > 200000) { toast('That file is too big for a note.'); return; }
-  const text = await file.text();
-  if (text.includes('\u0000')) { toast('Only text files can become notes.'); return; }
-  const path = normPath('/attachments/' + file.name.replace(/[^\w.\- ]/gi, '_'));
-  state.files[path] = text.slice(0, 100000);
-  state.fileOwners[path] = 'user';
-  save();
-  const box = $('#input');
-  if (box) box.value = `${box.value ? box.value + ' ' : ''}Attached note: ${path}`;
-  toast('The file is in the shared notes. It was not uploaded.');
-  if (session.route === 'workspace') draw();
+  closeModal();
+  toast(key.trim() ? 'Saved on this computer. The key stays in this browser.' : 'Saved on this computer.');
+  paint(false);
+  await ensureOnline();
+  paintStatus();
 }
 
 const actions = {
-  async 'load-model'() {
-    await ensureGpu();
-    if (!session.gpu.ok) { toast(session.gpu.reason); return; }
-    loadModel(state.settings.model).catch(() => {});
+  menu() {
+    document.body.classList.toggle('nav-open');
+    applyChrome();
   },
-  'toggle-model'(btn) {
-    const pop = $('#model-pop');
-    if (!pop) return;
-    pop.hidden = !pop.hidden;
-    btn.setAttribute('aria-expanded', pop.hidden ? 'false' : 'true');
-  },
-  async 'pick-model'(btn) {
-    const id = btn.dataset.model;
-    if (!MODELS.some((model) => model.id === id)) return;
-    if (prefersHeavy(id) && id !== state.settings.model) {
-      const ok = await confirm({
-        title: 'Nagy modell',
-        text: 'This helper may be too big for this device. If there is not enough memory, loading will fail.',
-        ok: 'Use it anyway',
-      });
-      if (!ok) return;
-    }
-    state.settings.model = id;
-    state.settings.modelMigrated = true;
-    audit('model', id);
-    save();
-    $('#model-pop')?.setAttribute('hidden', '');
-    draw();
-  },
-  attach() { $('#file')?.click(); },
-  'stop-all'() {
-    runCtl?.abort();
-    if (session.runBucket) session.runBucket.stopped = true;
-    for (const agent of state.agents) {
-      if (agent.status === 'working' || agent.status === 'thinking') stopAgent(agent.id);
-    }
-    toast('Stopped what was running.');
-    draw();
-  },
-  'open-create'() { openModal(createModalHTML(), null, closeModal); },
+  'close-menu'() { document.body.classList.remove('nav-open'); applyChrome(); },
   'close-modal': closeModal,
-  'save-create'() {
-    const role = roleById($('#tmpl')?.value) || TEMPLATES[0];
-    const name = $('#an')?.value.trim();
-    if (!name) { toast('Please add a name.'); return; }
-    state.agents.push({
-      id: uid('a_'),
-      name,
-      role: role.id,
-      color: role.color,
-      accessory: role.accessory,
-      prompt: $('#ap')?.value.trim() || role.prompt,
-      tools: role.tools.slice(),
-      status: 'idle',
-      paused: false,
-      error: '',
-      taskId: null,
-    });
-    audit('create', `${name} · ${role.title}`);
-    save();
-    closeModal();
-    draw();
+  'select-agent'(btn) {
+    activate(btn.dataset.id, '', { closeDrawer: false });
   },
-  'rename-agent'(btn) {
-    const agent = agentById(btn.dataset.id);
+  'select-chat'(btn) {
+    activate(session.agentId, btn.dataset.id, { closeDrawer: true });
+    $('#input')?.focus();
+  },
+  'new-chat'() {
+    const agent = currentAgent();
     if (!agent) return;
-    openModal(renameModalHTML(agent), null, closeModal);
+    const chat = createAgentChat(agent.id, { name: nextChatName(agent.id) });
+    activate(agent.id, chat.id, { closeDrawer: true });
+    $('#input')?.focus();
   },
-  'save-rename'(btn) {
-    const agent = agentById(btn.dataset.id);
-    const name = $('#an')?.value.trim();
-    if (!agent || !name) return;
-    const prev = agent.name;
-    agent.name = name;
-    audit('rename', `${prev} to ${name}`);
-    save();
+  'rename-chat'(btn) {
+    const chat = state.chats.find((item) => item.id === btn.dataset.id);
+    if (!chat) return;
+    openModal(renameChatHTML(chat), null, closeModal);
+  },
+  'save-chat-name'(btn) {
+    const name = $('#chat-name')?.value || '';
+    const chat = renameAgentChat(btn.dataset.id, name);
+    if (!chat || !String(name).trim()) { toast('Add a name.'); return; }
     closeModal();
-    draw();
+    paint(false);
   },
-  pause(btn) { pauseAgent(btn.dataset.id); draw(); },
-  resume(btn) { resumeAgent(btn.dataset.id); draw(); },
-  'stop-agent'(btn) { stopAgent(btn.dataset.id); draw(); },
-  'ask-run'(btn) {
-    const agent = agentById(btn.dataset.id);
-    if (!agent) return;
-    if (agent.paused) { toast('Continue the agent first.'); return; }
-    openModal(runModalHTML(agent), null, closeModal);
-  },
-  'save-run'(btn) {
-    const text = $('#one-task')?.value.trim();
-    const id = btn.dataset.id;
-    if (!text) { toast('Write the job first.'); return; }
-    closeModal();
-    submitText(text, { onlyAgentId: id });
-  },
-  async 'delete-agent'(btn) {
-    const agent = agentById(btn.dataset.id);
-    if (!agent) return;
+  async 'delete-chat'(btn) {
+    const chat = state.chats.find((item) => item.id === btn.dataset.id);
+    if (!chat) return;
     const ok = await confirm({
-      title: 'Delete agent',
-      text: `${agent.name} will be removed from this computer. Their notes stay. This cannot be undone.`,
+      title: 'Delete chat',
+      text: `Delete "${chat.name}"? The messages on this computer will be removed.`,
       ok: 'Delete',
       danger: true,
     });
     if (!ok) return;
-    stopAgent(agent.id);
-    state.agents = state.agents.filter((item) => item.id !== agent.id);
-    for (const task of state.tasks) {
-      if (task.assigneeId === agent.id && ['queued', 'running', 'paused'].includes(task.status)) task.status = 'skipped';
-    }
-    audit('delete', agent.name);
-    save();
-    draw();
+    const result = deleteAgentChat(chat.id);
+    const agentId = chat.agentId || session.agentId;
+    const next = result?.replacement?.id || listAgentChats(agentId)[0]?.id;
+    activate(agentId, next);
   },
-  async 'delete-task'(btn) {
-    const task = state.tasks.find((item) => item.id === btn.dataset.id);
-    if (!task) return;
-    const ok = await confirm({
-      title: 'Delete job',
-      text: `Remove this from the list: ${task.title}`,
-      ok: 'Delete',
-      danger: true,
-    });
-    if (!ok) return;
-    state.tasks = state.tasks.filter((item) => item.id !== task.id);
-    audit('delete', task.title);
-    save();
-    draw();
+  'open-settings'() {
+    openModal(settingsHTML(), null, closeModal);
   },
-  'new-note'() {
-    openModal(`<h2 id="modal-title">New note</h2><label for="note-name">File name</label><input id="note-name" value="/notes.txt"><div class="row"><button type="button" data-ok data-act="save-new-note">Create</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`, null, closeModal);
+  stop() {
+    runCtl?.abort();
+    toast('Stopped.');
   },
-  'save-new-note'() {
-    const path = normPath($('#note-name')?.value || '');
-    if (path === '/') { toast('Add a file name, like /notes.txt'); return; }
-    state.files[path] ??= '';
-    state.fileOwners[path] = 'user';
-    session.note = path;
-    audit('note', path);
+  'forget-key'() {
+    forgetOpenRouterKey();
+    state.settings.openrouterChatModel = '';
     save();
+    toast('The key is forgotten on this computer.');
     closeModal();
-    draw();
-  },
-  'open-note'(btn) { session.note = btn.dataset.path; draw(); },
-  'save-note'() {
-    if (!session.note) return;
-    state.files[session.note] = $('#note-body')?.value ?? '';
-    state.fileOwners[session.note] = state.fileOwners[session.note] || 'user';
-    save();
-    toast('Note saved on this computer.');
-  },
-  async 'delete-note'() {
-    if (!session.note) return;
-    const ok = await confirm({ title: 'Delete note', text: `Delete ${session.note}?`, ok: 'Delete', danger: true });
-    if (!ok) return;
-    delete state.files[session.note];
-    delete state.fileOwners[session.note];
-    audit('delete', session.note);
-    session.note = null;
-    save();
-    draw();
-  },
-  async 'test-teacher'(btn) {
-    const teacher = state.teachers.find((item) => item.id === btn.dataset.id);
-    if (!teacher) return;
-    if (!readOpenRouterKey()) { toast('Save a key on this computer first.'); return; }
-    session.runBucket = { run: 0, global: state.usage.openrouterCalls || 0, stopped: false };
-    try { reserveCall(session.runBucket, { perRun: state.settings.orPerRun, global: state.settings.orGlobal }); }
-    catch (err) { toast(redactSecrets(err.message)); return; }
-    state.usage.openrouterCalls = session.runBucket.global;
-    save();
-    const result = await teachers.testConnection('openrouter', { model: teacher.model });
-    teacher.connected = !!result.ok;
-    audit('connection test', result.message, teacher.label || 'teacher');
-    save();
-    toast(redactSecrets(result.message));
-    draw();
-  },
-  async 'delete-teacher'(btn) {
-    const teacher = state.teachers.find((item) => item.id === btn.dataset.id);
-    if (!teacher) return;
-    const ok = await confirm({
-      title: 'Remove teacher',
-      text: `${teacher.label || teacher.model} will leave your list. The key stays until you forget it.`,
-      ok: 'Remove',
-      danger: true,
-    });
-    if (!ok) return;
-    state.teachers = state.teachers.filter((item) => item.id !== teacher.id);
-    audit('delete', teacher.label);
-    save();
-    draw();
+    paint(false);
   },
   'export-data'() {
     const blob = new Blob([JSON.stringify(exportState(), null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'agona-masolat.json';
+    link.download = 'agona-copy.json';
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-    audit('save', 'downloaded a local copy');
   },
   async erase() {
     const ok = await confirm({
       title: 'Erase everything',
-      text: 'Every agent, job, note, and log entry on this browser will be deleted. The OpenRouter key goes too. This cannot be undone.',
+      text: 'Every chat on this browser will be deleted. The key goes too. This cannot be undone.',
       ok: 'Erase',
       danger: true,
     });
     if (!ok) return;
     resetAll();
-    session.note = null;
+    ensureAgentChats(state.agents);
+    closeModal();
     toast('Erased on this browser.');
-    draw();
+    activate(state.agents[0]?.id);
   },
-  menu() { document.body.classList.toggle('nav-open'); },
-  collapse() {
-    state.settings.sidebarCollapsed = !state.settings.sidebarCollapsed;
+  'welcome-ok'() {
+    state.settings.welcomed = true;
     save();
-    applyChrome();
-  },
-  'forget-key'() {
-    forgetOpenRouterKey();
-    audit('key', 'OpenRouter key forgotten on this computer');
-    toast('The key is forgotten on this computer.');
-    draw();
-  },
-  async 'refresh-models'() { await refreshModels(); },
-  'add-teacher'(btn) {
-    const id = btn.dataset.model;
-    if (!id) return;
-    addTeacherRecord(id);
-    audit('teacher', `added ${id}`);
-    save();
-    draw();
-  },
-  'approve-example'(btn) {
-    const example = (state.examples || []).find((item) => item.id === btn.dataset.id);
-    if (!example) return;
-    try {
-      setApproval(example, 'approved');
-      audit('approved', `${example.model}: ${String(example.prompt || '').slice(0, 80)}`);
-      save();
-      draw();
-    } catch (err) { toast(err.message); }
-  },
-  'reject-example'(btn) {
-    const example = (state.examples || []).find((item) => item.id === btn.dataset.id);
-    if (!example) return;
-    setApproval(example, 'rejected');
-    audit('rejected', `${example.model}: ${String(example.prompt || '').slice(0, 80)}`);
-    save();
-    draw();
-  },
-  'export-jsonl'() {
-    const text = toJSONL(state.examples || []);
-    if (!text) { toast('No approved examples to download.'); return; }
-    downloadText('agona-approved.jsonl', text, 'application/jsonl');
-    audit('export', 'downloaded approved examples');
-  },
-  'stop-pipeline'() {
-    if (session.runBucket) session.runBucket.stopped = true;
-    pipelineCtl?.abort();
-    toast('Stopping the teacher run.');
-  },
-  'cycle-theme'() {
-    const order = ['system', 'dark', 'light'];
-    const next = order[(order.indexOf(state.settings.theme) + 1) % order.length];
-    state.settings.theme = next;
-    save();
-    applyChrome();
+    closeModal();
   },
 };
 
 async function onClick(event) {
   const btn = event.target.closest('[data-act]');
   if (!btn || btn.disabled) return;
-  if (btn.dataset.act === 'pick-model') event.preventDefault();
   const fn = actions[btn.dataset.act];
   if (!fn) return;
   try { await fn(btn); }
   catch (err) { console.error(err); toast(redactSecrets(err.friendly || err.message || 'That did not work.')); }
 }
 
-function onSubmit(event) {
+function showWelcome() {
+  if (state.settings.welcomed) return;
+  openModal(welcomeHTML(), null, () => actions['welcome-ok']());
+}
+
+teachers.register(createOpenRouterAdapter());
+ensureAgentChats(state.agents);
+applyChrome();
+activate(state.settings.activeAgentId || state.agents[0]?.id, state.settings.activeChatId);
+
+document.addEventListener('click', onClick);
+document.addEventListener('submit', (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
   event.preventDefault();
   if (form.id === 'composer') submitText($('#input')?.value);
-  else if (form.id === 'settings-form') saveSettings(true);
-  else if (form.id === 'train-form') startTraining();
-  else if (form.id === 'key-form') saveKey();
-  else if (form.id === 'limit-form') saveLimits();
-  else if (form.id === 'ask-teachers') askTeachers();
-}
-
-function limitsNow() {
-  return { perRun: state.settings.orPerRun, global: state.settings.orGlobal };
-}
-
-function freshBucket() {
-  session.runBucket = { run: 0, global: state.usage.openrouterCalls || 0, stopped: false };
-  return session.runBucket;
-}
-
-function rememberCalls(bucket) {
-  state.usage.openrouterCalls = bucket.global;
-  save();
-}
-
-async function refreshModels() {
-  session.catalogError = '';
-  try {
-    const models = await listModels();
-    session.catalog = models;
-    if (!state.teachers.length) {
-      const ids = pickDefaultTeacherIds(models);
-      for (const id of ids) addTeacherRecord(id, models);
-      if (ids.length) audit('teachers', `default teachers: ${ids.join(', ')}`);
-    }
-  } catch (err) {
-    session.catalogError = redactSecrets(err.message || 'The model list did not load.');
-  }
-  save();
-  draw();
-}
-
-function addTeacherRecord(modelId, catalog = session.catalog) {
-  if (state.teachers.some((item) => item.model === modelId)) return;
-  const found = catalog.find((item) => item.id === modelId);
-  if (!found) return;
-  state.teachers.push({
-    id: uid('t_'),
-    model: found.id,
-    label: found.name,
-    provider: 'OpenRouter',
-    price: formatPrice(found),
-    license: found.license || 'not listed',
-    contextLength: found.contextLength,
-    connected: false,
-  });
-  if (!state.settings.openrouterChatModel) state.settings.openrouterChatModel = found.id;
-}
-
-async function saveLimits() {
-  const prev = { per: state.settings.orPerRun, global: state.settings.orGlobal };
-  const nextPer = Math.max(1, Math.min(30, Math.round(readNumber('#or-per-run', prev.per))));
-  const nextGlobal = Math.max(1, Math.min(500, Math.round(readNumber('#or-global', prev.global))));
-  const bumps = [];
-  if (nextPer > prev.per) bumps.push(`calls in one run ${prev.per} to ${nextPer}`);
-  if (nextGlobal > prev.global) bumps.push(`total calls ${prev.global} to ${nextGlobal}`);
-  if (bumps.length) {
-    const ok = await confirm({
-      title: 'Raise a limit',
-      text: `These will go up: ${bumps.join(', ')}. More calls can go to openrouter.ai.`,
-      ok: 'Raise',
-    });
-    if (!ok) { draw(); return; }
-    audit('limit', bumps.join(', '));
-  }
-  state.settings.orPerRun = nextPer;
-  state.settings.orGlobal = nextGlobal;
-  save();
-  toast('Call limits saved on this computer.');
-  draw();
-}
-
-function setRoleStatus(role, status) {
-  const agent = state.agents.find((item) => item.role === role);
-  if (!agent || agent.paused) return;
-  agent.status = status;
-}
-
-let pipelineCtl = null;
-
-async function askTeachers() {
-  if (pipelineCtl) return;
-  const task = $('#teacher-task')?.value.trim();
-  if (!task) { toast('Write a job for the teachers.'); return; }
-  if (!readOpenRouterKey()) { toast('Save a key on this computer first.'); return; }
-  if (state.teachers.length < 2) { toast('Add at least two teachers.'); return; }
-  pipelineCtl = new AbortController();
-  session.pipelineRunning = true;
-  const bucket = freshBucket();
-  setRoleStatus('teacher', 'working');
-  setRoleStatus('judge', 'thinking');
-  setRoleStatus('cleaner', 'working');
-  draw();
-  const useJudge = !!$('#use-judge-model')?.checked;
-  const judgeId = $('#judge-model')?.value || state.teachers[0]?.model;
-  try {
-    const claimed = new Set(state.teachers.map((item) => item.model));
-    const askModel = (model, prompt, opts) => {
-      const chain = [model];
-      for (const id of pickTeacherCandidates(session.catalog, 8)) {
-        if (claimed.has(id)) continue;
-        claimed.add(id);
-        chain.push(id);
-        if (chain.length >= 3) break;
-      }
-      return completeWithFallback(prompt, {
-        models: chain,
-        catalog: session.catalog,
-        ...opts,
-        beforeExtraCall: () => {
-          reserveCall(bucket, limitsNow());
-          state.usage.openrouterCalls = bucket.global;
-          save();
-        },
-      });
-    };
-    const examples = await runTeacherPipeline({
-      models: state.teachers.map((item) => ({
-        id: item.model,
-        name: item.label,
-        license: item.license,
-        priceNote: item.price,
-        contextLength: item.contextLength,
-      })),
-      prompt: task,
-      complete: (model, prompt, opts) => askModel(model, prompt, opts),
-      judgeComplete: useJudge && judgeId
-        ? (prompt, opts) => askModel(judgeId, prompt, opts)
-        : null,
-      limits: limitsNow(),
-      bucket,
-      signal: pipelineCtl.signal,
-      id: () => uid('ex_'),
-      onReserved: (global) => { state.usage.openrouterCalls = global; save(); },
-    });
-    state.examples = [...examples, ...(state.examples || [])].slice(0, 200);
-    setRoleStatus('teacher', 'done');
-    setRoleStatus('judge', 'done');
-    setRoleStatus('cleaner', 'done');
-    audit('teachers', `${examples.length} answers saved. Nothing is approved yet.`);
-    toast('Answers are in. Say yes or no before any of them can be used for training.');
-  } catch (err) {
-    setRoleStatus('teacher', err.code === 'limit' ? 'error' : 'idle');
-    setRoleStatus('judge', 'idle');
-    setRoleStatus('cleaner', 'idle');
-    const note = redactSecrets(err.message || 'The teacher run stopped.');
-    audit('teachers', note);
-    toast(note);
-  } finally {
-    rememberCalls(bucket);
-    pipelineCtl = null;
-    session.pipelineRunning = false;
-    if (session.runBucket) session.runBucket.stopped = false;
-    draw();
-  }
-}
-
-function downloadText(name, text, type) {
-  const blob = new Blob([text], { type });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-}
-
-function saveKey() {
-  const value = $('#or-key')?.value || '';
-  writeOpenRouterKey(value);
-  const input = $('#or-key');
-  if (input) input.value = '';
-  audit('key', value.trim() ? 'OpenRouter key saved on this computer' : 'empty key, the old one was forgotten');
-  toast(value.trim() ? 'The key stays only in this browser.' : 'No key saved.');
-  draw();
-}
-
-async function startTraining() {
-  const trainer = state.agents.find((agent) => agent.role === 'trainer');
-  state.trainingConfig = {
-    rank: Math.max(1, Math.min(64, Math.round(readNumber('#rank', 8)))),
-    epochs: Math.max(1, Math.min(3, Math.round(readNumber('#epochs', 1)))),
-  };
-  if (trainer) {
-    trainer.status = 'approval';
-    trainer.paused = false;
-  }
-  save();
-  syncAgents();
-  const ok = await confirm({
-    title: 'Start training',
-    text: 'You want to start training. That connection is not ready, so no run starts and nothing is sent. Continue?',
-    ok: 'Yes',
-    extra: trainer ? `<div class="confirm-fig">${figureHTML({ ...trainer, status: 'approval', paused: false }, { live: false, size: 'sm' })}</div>` : '',
-  });
-  if (trainer) trainer.status = 'idle';
-  if (!ok) {
-    audit('rejected', 'start training', 'you');
-    save();
-    draw();
-    return;
-  }
-  let result;
-  try { result = requestTraining(state.trainingConfig, { approved: true }); }
-  catch (err) { result = { ok: false, message: err.message, code: err.code }; }
-  state.trainingRuns.unshift({ id: uid('run_'), ts: Date.now(), status: 'did not start', message: result.message });
-  audit('training', result.message, trainer?.name || 'Sári');
-  save();
-  toast(result.message);
-  draw();
-}
-
-function showWelcome() {
-  if (state.settings.welcomed) return;
-  openModal(`<h2 id="modal-title">Hi, this is Agona</h2>
-    <p>A small team of helpers works in your browser, on your computer. You do not need an account, and your job is not sent to a hidden server.</p>
-    <p><b>1.</b> Write the job in the big box.</p>
-    <p><b>2.</b> The first time, this computer downloads a helper. A bar shows how far it is.</p>
-    <p><b>3.</b> The team talks in bubbles on the workspace.</p>
-    <div class="row"><button type="button" data-act="welcome-ok">OK</button></div>`, null, () => actions['welcome-ok']());
-}
-
-actions['welcome-ok'] = () => {
-  state.settings.welcomed = true;
-  save();
-  closeModal();
-};
-
-document.addEventListener('click', onClick);
-document.addEventListener('submit', onSubmit);
-document.addEventListener('change', async (event) => {
-  const target = event.target;
-  if (target?.id === 'file') onFile(target);
-  if (target?.id === 'import-file') importFile(target);
-  if (target?.id === 'metrics-file') importMetrics(target);
-  if (target?.id === 'tmpl') {
-    const role = roleById(target.value);
-    if (!role) return;
-    const name = $('#an');
-    const prompt = $('#ap');
-    if (name) name.value = role.name;
-    if (prompt) prompt.value = role.prompt;
-  }
-  if (target?.id === 'log-filter') filterLog(target.value);
+  else if (form.id === 'settings-form') saveSettings();
 });
-
-document.addEventListener('input', (event) => {
-  if (event.target?.id === 'input') {
-    event.target.style.height = 'auto';
-    event.target.style.height = Math.min(160, event.target.scrollHeight) + 'px';
-  }
-  if (event.target?.id === 'log-filter') filterLog(event.target.value);
-  if (event.target?.id === 'model-query') {
-    session.catalogQuery = event.target.value;
-    draw();
-    const box = $('#model-query');
-    if (box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
-  }
-});
-
 document.addEventListener('keydown', (event) => {
   if (event.target?.id === 'input' && event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
     submitText(event.target.value);
   }
 });
-
-$('#scrim')?.addEventListener('click', () => document.body.classList.remove('nav-open'));
-
-window.addEventListener('hashchange', () => draw());
+document.addEventListener('input', (event) => {
+  if (event.target?.id !== 'input') return;
+  event.target.style.height = 'auto';
+  event.target.style.height = Math.min(160, event.target.scrollHeight) + 'px';
+});
 window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
   if (state.settings.theme === 'system') applyChrome();
 });
-
-onStatus(() => {
-  paintStatus();
-  const banner = $('#load-banner');
-  if (banner) banner.innerHTML = bannerHTML();
-});
-
-let parallelSnapshot = state.settings.maxParallel;
-document.addEventListener('change', async (event) => {
-  if (event.target?.id !== 'parallel') return;
-  const next = clampParallel(event.target.value);
-  if (next > parallelSnapshot) {
-    const ok = await confirm({
-      title: 'Raise a limit',
-      text: `Agents at once will go from ${parallelSnapshot} to ${next}. That can use more memory.`,
-      ok: 'Raise',
-    });
-    if (!ok) { event.target.value = parallelSnapshot; return; }
-    audit('limit', `agents at once: ${next}`);
-  }
-  parallelSnapshot = next;
-  state.settings.maxParallel = next;
-  save();
-});
-
-async function importMetrics(input) {
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    const parsed = parseMetrics(data);
-    if (!parsed.ok) { toast(parsed.error); return; }
-    state.metrics = parsed.metrics;
-    audit('scores', `imported metrics for ${parsed.metrics.student || 'unnamed student'}`);
-    save();
-    toast('Scores loaded from the file. No numbers were added.');
-    draw();
-  } catch (err) {
-    toast('Could not read that metrics file: ' + redactSecrets(err.message));
-  }
-}
-
-async function importFile(input) {
-  const file = input.files?.[0];
-  input.value = '';
-  if (!file) return;
-  const ok = await confirm({
-    title: 'Load a copy',
-    text: 'The agents, notes, and log on this computer will be replaced by the file. The OpenRouter key is not in the file.',
-    ok: 'Load',
-  });
-  if (!ok) return;
-  try {
-    const data = JSON.parse(await file.text());
-    if (!data || typeof data !== 'object' || !Array.isArray(data.agents)) throw new Error('That file is not an Agona copy.');
-    replaceAll(data);
-    session.note = null;
-    toast('Loaded into this browser only.');
-    applyChrome();
-    draw();
-  } catch (err) {
-    toast('Could not load that file: ' + redactSecrets(err.message));
-  }
-}
-
-teachers.register(createOpenRouterAdapter());
-applyChrome();
-const brand = $('.brand-mark');
-if (brand) brand.innerHTML = mark();
-draw({ keepDraft: false });
+onStatus(() => paintStatus());
 gpuPromise = checkWebGPU();
 gpuPromise.then((result) => {
   session.gpu = { ...result, pending: false };
-  if (!result.ok) {
-    const el = $('#model-status');
-    if (el) el.textContent = usingOpenRouter() ? 'Answers can come from OpenRouter' : 'No helper on this computer without WebGPU';
-  }
-  const banner = $('#load-banner');
-  if (banner) banner.innerHTML = bannerHTML();
+  paintStatus();
+  if (result.ok) loadModel(state.settings.model).catch(() => {});
 });
+ensureOnline();
 showWelcome();
