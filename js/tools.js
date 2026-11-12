@@ -210,7 +210,7 @@ export async function webSearch(query, opts = {}) {
   for (const item of wiki) add(item);
   for (const item of instant) add(item);
   const top = results.slice(0, 5);
-  if (!top.length) return 'No pages found. Try a simpler question.';
+  if (!top.length) return 'Nem találtam oldalt. Próbálj egyszerűbb kérdést.';
   const note = !(web.results || []).length && web.note ? web.note : '';
   return formatSources(top, note);
 }
@@ -246,21 +246,53 @@ async function fetch_wikipedia_page(args, opts) {
   return readPage({ title: args.title || args.query, url: args.url }, opts);
 }
 
-function write_file({ path, content }) {
+export function resolveWritePath(path, agentId, files = {}, owners = {}) {
+  path = normPath(path);
+  if (!agentId) return path;
+  const owner = owners?.[path];
+  if (!owner || owner === agentId || !(path in files)) return path;
+  const match = path.match(/^(.*?)(\.[^./]+)?$/);
+  const base = match?.[1] || path;
+  const ext = match?.[2] || '';
+  const stamp = String(agentId).replace(/[^\w-]/g, '').slice(0, 8) || 'agent';
+  let next = `${base}-${stamp}${ext}`;
+  let n = 2;
+  while (next in files && owners?.[next] && owners[next] !== agentId) {
+    next = `${base}-${stamp}-${n}${ext}`;
+    n += 1;
+  }
+  return next;
+}
+
+export function applyWrite(path, content, agentId, files, owners = {}, backups = {}) {
+  const text = String(content ?? '');
+  if (text.length > 100000) throw new Error('A jegyzet túl hosszú.');
+  const dest = resolveWritePath(path, agentId, files, owners);
+  if (dest === '/') throw new Error('Pick a file name, like /notes.txt');
+  if (dest in files) backups[dest] = files[dest];
+  files[dest] = text;
+  if (agentId) owners[dest] = agentId;
+  return dest;
+}
+
+function write_file({ path, content }, opts = {}) {
   path = normPath(path);
   if (path === '/') throw new Error('Pick a file name, like /notes.txt');
-  state.files[path] = String(content ?? '');
+  if (!state.fileOwners || typeof state.fileOwners !== 'object') state.fileOwners = {};
+  if (!state.fileBackups || typeof state.fileBackups !== 'object') state.fileBackups = {};
+  const dest = applyWrite(path, content, opts.agentId, state.files, state.fileOwners, state.fileBackups);
   save();
-  return `Wrote ${state.files[path].length} chars to ${path}`;
+  if (dest !== path) return `A(z) ${path} másik agent jegyzete, ezért ide mentettem: ${dest} (${state.files[dest].length} karakter)`;
+  return `${dest} mentve (${state.files[dest].length} karakter).`;
 }
 function read_file({ path }) {
   path = normPath(path);
-  if (!(path in state.files)) return `File not found: ${path}. Use list_files to see what exists.`;
+  if (!(path in state.files)) return `Nincs ilyen jegyzet: ${path}. A list_files megmutatja, mi van.`;
   return clip(state.files[path], 3000);
 }
 function list_files() {
   const names = Object.keys(state.files).sort();
-  return names.length ? names.map((p) => `${p} (${state.files[p].length} chars)`).join('\n') : '(no notes yet)';
+  return names.length ? names.map((p) => `${p} (${state.files[p].length} karakter)`).join('\n') : '(még nincs jegyzet)';
 }
 
 const WORKER_SRC = `self.onmessage=(e)=>{const logs=[];const fmt=(a)=>a.map(x=>{try{return typeof x==='string'?x:JSON.stringify(x)}catch{return String(x)}}).join(' ');
@@ -300,14 +332,16 @@ export const TOOLS = {
 
 const PROMPT_TOOLS = ['web_search', 'read_page', 'write_file', 'read_file', 'list_files', 'run_js'];
 
-export function toolPrompt() {
+export function toolPrompt(allowed) {
+  const names = Array.isArray(allowed) ? PROMPT_TOOLS.filter((name) => allowed.includes(name)) : PROMPT_TOOLS;
+  if (!names.length) return 'Reply with exactly NONE.';
   return `Reply with ONLY one line. Either:
 NONE
 or
 TOOL: tool_name {"arg":"value"}
 
 Tools:
-${PROMPT_TOOLS.map((name) => `- ${name} ${TOOLS[name].sig} — ${TOOLS[name].desc}`).join('\n')}
+${names.map((name) => `- ${name} ${TOOLS[name].sig} — ${TOOLS[name].desc}`).join('\n')}
 
 Examples:
 User: hi
