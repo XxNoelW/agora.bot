@@ -1,6 +1,8 @@
 // Runs planned tasks on the shared workspace thread.
 import { state, save, audit, agentById, uid, workspaceChat } from './store.js';
 import { agentTurn, isSmallTalk, settlePending } from './orchestrator.js';
+import { usingOpenRouter } from './generate.js';
+import { session } from './session.js';
 import { assignRunnable, handoffSource, planFromPrompt, planSingle } from './scheduler.js';
 import { handoffLine } from './roles.js';
 
@@ -25,9 +27,9 @@ function taskBrief(task) {
     .map((id) => state.tasks.find((item) => item.id === id))
     .filter(Boolean);
   const earlier = deps.map((item) => `${item.title}\n${item.result || item.error || item.status}`).join('\n\n');
-  return `A te részed: ${task.title}
-Csak a saját részedet csináld, magyarul, röviden. Más agent munkáját ne írd felül.
-${earlier ? `Eddigi eredmények:\n${earlier.slice(0, 1400)}` : ''}`;
+  return `Your part: ${task.title}
+Do only your part. Reply in simple English, unless the user wrote in another language. Do not overwrite another agent's work.
+${earlier ? `So far:\n${earlier.slice(0, 1400)}` : ''}`;
 }
 
 async function runTask(task, chat, parentSignal, onUpdate, gate) {
@@ -50,7 +52,7 @@ async function runTask(task, chat, parentSignal, onUpdate, gate) {
     const line = handoffLine(from, agent);
     chat.messages.push({ id: uid('m_'), role: 'handoff', content: line, fromId: from.id, toId: agent.id, ts: Date.now() });
     state.handoff = { id: uid('h_'), fromId: from.id, toId: agent.id, at: Date.now() };
-    audit('átadás', line, from.name);
+    audit('handoff', line, from.name);
   }
 
   chat.messages.push({
@@ -59,7 +61,7 @@ async function runTask(task, chat, parentSignal, onUpdate, gate) {
     taskId: task.id,
     agentId: agent.id,
     wave: task.id,
-    content: `${agent.name} kapta: ${task.title}`,
+    content: `${agent.name} got this job: ${task.title}`,
     brief: taskBrief(task),
     ts: Date.now(),
   });
@@ -68,7 +70,7 @@ async function runTask(task, chat, parentSignal, onUpdate, gate) {
   agent.paused = false;
   agent.error = '';
   agent.taskId = task.id;
-  audit('indítás', `${agent.name}: ${task.title}`, agent.name);
+  audit('start', `${agent.name}: ${task.title}`, agent.name);
   save();
   onUpdate?.();
 
@@ -109,27 +111,27 @@ async function runTask(task, chat, parentSignal, onUpdate, gate) {
   }
   if (timedOut) {
     task.status = 'error';
-    task.error = 'Lejárt az időkeret.';
+    task.error = 'The time limit ran out.';
     agent.status = 'error';
     agent.error = task.error;
-    audit('hiba', `${agent.name}: ${task.error}`, agent.name);
+    audit('problem', `${agent.name}: ${task.error}`, agent.name);
     save();
     onUpdate?.();
     return;
   }
   if (!reply || reply.error) {
     task.status = 'error';
-    task.error = reply?.content || 'A feladat nem készült el.';
+    task.error = reply?.content || 'The job did not finish.';
     agent.status = 'error';
     agent.error = task.error;
-    audit('hiba', `${agent.name}: ${String(task.error).slice(0, 180)}`, agent.name);
+    audit('problem', `${agent.name}: ${String(task.error).slice(0, 180)}`, agent.name);
   } else {
     task.status = 'done';
     task.result = reply.content;
     task.error = '';
     agent.status = 'done';
     agent.error = '';
-    audit('kész', `${agent.name}: ${task.title}`, agent.name);
+    audit('done', `${agent.name}: ${task.title}`, agent.name);
     const taskId = task.id;
     setTimeout(() => {
       if (agent.status === 'done' && agent.taskId === taskId) {
@@ -178,19 +180,20 @@ export async function runUserTask(text, { signal = new AbortController().signal,
   const clean = String(text || '').trim();
   if (!clean) return;
   active += 1;
+  session.runBucket = { run: 0, global: state.usage.openrouterCalls || 0, stopped: false };
   try {
     chat.messages.push({ id: uid('m_'), role: 'user', content: clean, ts: Date.now() });
     state.usage.userMessages++;
-    audit('üzenet', clean.slice(0, 400));
-    if (gpu && gpu.ok === false) {
-      chat.messages.push({ id: uid('m_'), role: 'system', content: gpu.reason || 'Ezen a böngészőn nincs WebGPU.', ts: Date.now() });
+    audit('message', clean.slice(0, 400));
+    if (gpu && gpu.ok === false && !usingOpenRouter()) {
+      chat.messages.push({ id: uid('m_'), role: 'system', content: gpu.reason || 'This browser has no WebGPU.', ts: Date.now() });
       save();
       onUpdate?.();
       return;
     }
     if (isSmallTalk(clean) && !onlyAgentId) {
       const lead = state.agents.find((agent) => agent.role === 'orchestrator' && !agent.paused) || state.agents.find((agent) => !agent.paused);
-      if (!lead) throw new Error('Nincs agent, aki válaszolhatna.');
+      if (!lead) throw new Error('There is no agent to answer.');
       lead.status = 'thinking';
       lead.error = '';
       const ctl = new AbortController();
@@ -228,7 +231,7 @@ export async function runUserTask(text, { signal = new AbortController().signal,
       ? planSingle(clean, agent, () => uid('t_'))
       : planFromPrompt(clean, state.agents, { limit: state.settings.maxParallel, id: () => uid('t_') }));
     state.tasks.push(...tasks);
-    audit('terv', tasks.map((task) => task.title).join(' · ').slice(0, 400), 'Panna');
+    audit('plan', tasks.map((task) => task.title).join(' · ').slice(0, 400), 'Panna');
     save();
     onUpdate?.();
     await drain(chat, signal, onUpdate);
@@ -246,7 +249,7 @@ export function pauseAgent(id) {
   const task = state.tasks.find((item) => item.id === agent.taskId && (item.status === 'running' || item.status === 'queued'));
   if (task) task.status = 'paused';
   runs.get(id)?.abort();
-  audit('szünet', agent.name);
+  audit('pause', agent.name);
   save();
 }
 
@@ -259,7 +262,7 @@ export function resumeAgent(id) {
   for (const task of state.tasks) {
     if (task.assigneeId === id && task.status === 'paused') task.status = 'queued';
   }
-  audit('folytatás', agent.name);
+  audit('continue', agent.name);
   save();
 }
 
@@ -275,6 +278,6 @@ export function stopAgent(id) {
     agent.status = 'idle';
     agent.taskId = null;
   }
-  audit('leállítás', agent.name);
+  audit('stop', agent.name);
   save();
 }

@@ -1,12 +1,16 @@
-# Döntésnapló
+# Decisions
 
-## 2026-11-12
+## 2026-11-12, teachers
 
-- A termék neve a specifikáció szerint Agona. A repó és a GitHub Pages cím (`agora.bot`) marad, mert a feladat a meglévő oldal cseréje, nem új oldal.
-- Ebben a lépésben csak statikus felület készül. Nincs backend, nincs titok a kódban, és a tanári vagy tanítási hívás nem megy ki a gépről.
-- A helyi modell a már használt WebLLM `0.2.87`. Az asztali alap a dokumentált Qwen2.5 Coder 7B. Telefonon és 4 GB vagy kevesebb jelzett memórián a Qwen2.5 0.5B az alap, hogy ahol van WebGPU, ott elférjen.
-- A betű a rendszer Inter vagy Geist betűje, utána a szokásos sans-serif sor. Google Fonts kérés nincs, hogy a lap ne küldjön adatot egy betűszolgáltatónak.
-- A feladat bontása szabályokkal történik, nem a kis modell JSON-jával, mert az megbízhatatlan. A válaszokat maga a modell írja. A böngésző egyszerre egy választ tud írni, ezt a felület ki is mondja.
-- A tanárillesztés egy `registerTeacher` adapter. Most egy sincs regisztrálva. Árat, benchmarkot és modellnevet nem találunk ki.
-- A közös jegyzet nem git-ág. Ha két agent ugyanazt a fájlt írná, a második új nevet kap, és egy előző másolat megmarad. Ez a statikus oldal határa.
-- A régi `agentcloud:v1` mentés megnyílik. A régi, kézzel még nem választott 1.5B alap asztali gépen a 7B-re vált; a már elmentett 0.5B telefonos modell megmarad.
+- The spec wants API keys on a server. This site is static GitHub Pages and has no server. The visitor pastes their own OpenRouter key. It is stored only in this browser (`agona:openrouter-key`), apart from the rest of the saved data, so a downloaded copy does not include it. A "Forget key" button deletes it. The key is sent only to `https://openrouter.ai`. The log and the screen mask it.
+- On the public model list checked on 2026-11-12 there was no Qwen or DeepSeek id ending in `:free`. The default pair is two free models that were really on that list (`google/gemma-4-26b-a4b-it:free` and `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`). If a free Qwen and a free DeepSeek show up later, the picker uses those first. No model id is invented.
+- Teacher text is untrusted data. A person must approve an example before it can be downloaded for training.
+- The Kaggle training notebook is the next step. This change does not start a training run.
+
+## 2026-11-12, first shell
+
+- The product name is Agona. The repo stays `agora.bot`.
+- The local helper is WebLLM `0.2.87`. Desktop default is Qwen2.5 Coder 7B. Phones and devices that report 4 GB or less start on Qwen2.5 0.5B.
+- No Google Fonts request. The font stack is Inter, Geist, then the usual sans-serif fonts.
+- Jobs are split with rules, because a tiny model is unreliable at JSON.
+- Shared notes are not a git history. If two agents would write the same file, the second gets a new name, and one older copy is kept.

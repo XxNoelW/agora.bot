@@ -4,30 +4,30 @@ export const PARALLEL_MIN = 1;
 export const PARALLEL_MAX = 5;
 export const DEFAULT_PARALLEL = 4;
 
-const WORDS = { egy: 1, két: 2, ket: 2, három: 3, harom: 3, négy: 4, negy: 4, öt: 5, ot: 5 };
+const WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
 
 const RULES = [
-  { role: 'researcher', re: /kutat|keress|keresd|forrás|forras|nézz utána|nezz utana|wikipedia|cikk|search/i },
-  { role: 'coder', re: /kód|kod|program|frontend|backend|teszt|bug|függvény|fuggveny|html|css|javascript|api/i },
-  { role: 'teacher', re: /tanár|tanar|teacher/i },
-  { role: 'judge', re: /bíró|biro|ellenőriz|ellenoriz|ítél|itel|review/i },
-  { role: 'cleaner', re: /tisztít|tisztit|duplik|személyes adat|szemelyes adat/i },
-  { role: 'trainer', re: /tanít|tanit|lora|finomhang/i },
-  { role: 'evaluator', re: /értékel|ertekel|benchmark|mérés|meres/i },
-  { role: 'documenter', re: /dokument|jegyzet|írd le|ird le|összefoglal|osszefoglal/i },
+  { role: 'researcher', re: /research|look up|find out|source|wikipedia|article|search/i },
+  { role: 'coder', re: /code|program|frontend|backend|test|bug|function|html|css|javascript|api/i },
+  { role: 'teacher', re: /teacher/i },
+  { role: 'judge', re: /judge|check|review/i },
+  { role: 'cleaner', re: /clean|duplicate|personal data/i },
+  { role: 'trainer', re: /train|lora|fine-?tun/i },
+  { role: 'evaluator', re: /score|benchmark|measure|evaluat/i },
+  { role: 'documenter', re: /document|note|write up|summar/i },
 ];
 
 const TITLES = {
-  researcher: 'Kutatás',
-  coder: 'Megvalósítás',
-  teacher: 'Tanári egyeztetés',
-  judge: 'Ellenőrzés',
-  cleaner: 'Adattisztítás',
-  trainer: 'Tanítási előkészítés',
-  evaluator: 'Értékelés',
-  documenter: 'Dokumentálás',
-  orchestrator: 'Összegzés',
-  custom: 'Feladat',
+  researcher: 'Research',
+  coder: 'Building',
+  teacher: 'Teacher check',
+  judge: 'Checking',
+  cleaner: 'Cleaning',
+  trainer: 'Training prep',
+  evaluator: 'Scoring',
+  documenter: 'Notes',
+  orchestrator: 'Summary',
+  custom: 'Job',
 };
 
 export function clampParallel(n) {
@@ -37,7 +37,7 @@ export function clampParallel(n) {
 }
 
 export function mentionedAgents(text) {
-  const match = String(text || '').toLowerCase().match(/(\d+|[a-záéíóöőúüű]+)\s+agent/);
+  const match = String(text || '').toLowerCase().match(/(\d+|[a-z]+)\s+agents?/);
   if (!match) return 0;
   if (/^\d+$/.test(match[1])) return Math.max(1, Math.min(PARALLEL_MAX, +match[1]));
   return WORDS[match[1]] || 0;
