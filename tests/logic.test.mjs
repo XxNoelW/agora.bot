@@ -45,8 +45,8 @@ test('withTimeout rejects instead of hanging', async () => {
 });
 
 test('load progress text is plain language', () => {
-  assert.match(llm.friendlyLoadText('Fetching params 10/100', 0.1), /Downloading the helper brain \(10%\)/);
-  assert.match(llm.friendlyLoadText('Loading model from cache', 0.4), /saved helper brain/);
+  assert.match(llm.friendlyLoadText('Fetching params 10/100', 0.1), /A segéd letöltése \(10%\)/);
+  assert.match(llm.friendlyLoadText('Loading model from cache', 0.4), /mentett segéd/);
 });
 
 test('legacy default model upgrades once, then a chosen small helper stays', () => {
@@ -160,7 +160,7 @@ test('a stalled reply does not stay pending', () => {
   ];
   orch.settlePending(messages, { aborted: true });
   assert.equal(messages[0].pending, false);
-  assert.equal(messages[0].content, 'Stopped.');
+  assert.equal(messages[0].content, 'Megállítva.');
   assert.equal(messages[1].content, 'Half a reply');
   assert.equal(messages[2].content, 'Done');
 });

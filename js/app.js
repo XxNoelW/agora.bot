@@ -1,538 +1,621 @@
-import { state, save, uid, agentById, MODELS, replaceAll, resetAll } from './store.js';
-import { onStatus, status, loadModel, checkWebGPU, isReady } from './llm.js';
-import { runConversation, settlePending } from './orchestrator.js';
-import { execTool, normPath } from './tools.js';
+import { state, save, audit, uid, agentById, resetAll, replaceAll, workspaceChat, MODELS, prefersSmallModel } from './store.js';
+import { onStatus, status, loadModel, checkWebGPU } from './llm.js';
+import { normPath } from './tools.js';
+import { TEMPLATES, roleById } from './roles.js';
+import { clampParallel } from './scheduler.js';
+import { teachers, requestTraining } from './teachers.js';
+import { runUserTask, pauseAgent, resumeAgent, stopAgent, isRunning } from './runner.js';
+import { watchFigures, playHandoff, figureHTML } from './characters.js';
+import { session } from './session.js';
+import { $, closeModal, openModal, confirm, toast, announce } from './dom.js';
+import {
+  renderPage, bannerHTML, patchThread, syncAgents, filterLog,
+  createModalHTML, renameModalHTML, runModalHTML, mark,
+} from './pages.js';
 
-const $ = (s, r = document) => r.querySelector(s);
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const view = $('#view');
-let gpu = { ok: false, reason: '', pending: true };
-let gpuPromise = null;
-let currentChatId = state.chats[0]?.id || null;
-let running = null;
-let currentFile = null;
-let advTab = 'brain';
-
-const TOOL_LABEL = {
-  web_search: 'looked on the internet',
-  read_page: 'read a page',
-  fetch_wikipedia_page: 'read a Wikipedia page',
-  write_file: 'saved a note',
-  read_file: 'read a note',
-  list_files: 'checked the notes',
-  run_js: 'did some math',
+const TITLES = {
+  dashboard: 'Kezdőlap',
+  agents: 'Agentek',
+  workspace: 'Közös munkatér',
+  teachers: 'Tanármodellek',
+  training: 'Tanítás',
+  eval: 'Értékelés',
+  log: 'Napló',
+  settings: 'Beállítások',
 };
 
-function linkify(escaped) {
-  return escaped
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-    .replace(/(^|[\s>])(https?:\/\/[^\s<]+)/g, (all, pre, url) => {
-      const trail = url.match(/[.,)]+$/);
-      const clean = trail ? url.slice(0, -trail[0].length) : url;
-      return `${pre}<a href="${clean}" target="_blank" rel="noopener noreferrer">${clean}</a>${trail ? trail[0] : ''}`;
-    });
-}
-const rich = (s) => linkify(esc(s));
+let runCtl = null;
+let seenHandoff = state.handoff?.id || null;
+let gpuPromise = null;
 
-function modal(html, onMount) {
-  $('#modal-box').innerHTML = html;
-  $('#modal').classList.remove('hidden');
-  onMount?.($('#modal-box'));
-}
-const closeModal = () => $('#modal').classList.add('hidden');
-$('#modal').addEventListener('click', (e) => { if (e.target.id === 'modal') closeModal(); });
-
-function modelLabel(id) {
-  return MODELS.find((m) => m.id === id)?.label || id;
+function resolvedTheme() {
+  const choice = state.settings.theme;
+  if (choice === 'light' || choice === 'dark') return choice;
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
 }
 
-onStatus((s) => {
-  const pct = s.progress > 0 && s.progress < 1 ? Math.round(s.progress * 100) : 0;
+function applyChrome() {
+  document.documentElement.dataset.theme = resolvedTheme();
+  document.documentElement.dataset.sidebar = state.settings.sidebarCollapsed ? 'collapsed' : 'open';
+  const themeBtn = $('#theme-btn');
+  if (themeBtn) {
+    const label = state.settings.theme === 'light' ? 'Világos téma' : state.settings.theme === 'dark' ? 'Sötét téma' : 'Rendszer témája';
+    themeBtn.textContent = label;
+    themeBtn.setAttribute('aria-label', `Téma: ${label}. Kattintásra vált.`);
+  }
+  const collapse = $('#collapse-btn');
+  if (collapse) {
+    const collapsed = state.settings.sidebarCollapsed;
+    collapse.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    collapse.setAttribute('aria-label', collapsed ? 'Oldalsáv kinyitása' : 'Oldalsáv összecsukása');
+  }
+}
+
+function paintStatus() {
   const el = $('#model-status');
-  if (el) el.innerHTML = `${esc(s.text)}${pct ? `<div class="progress"><div style="width:${pct}%"></div></div>` : ''}`;
-  const banner = $('#load-banner');
-  if (banner) banner.innerHTML = bannerHTML();
-});
-
-function bannerHTML() {
-  if (gpu.pending) return '<div class="banner">Checking whether this browser can run the AI friends…</div>';
-  if (!gpu.ok) return `<div class="banner">${esc(gpu.reason)}</div>`;
-  if (status.error) {
-    return `<div class="banner"><b>${esc(status.text)}</b>${status.detail ? `<div class="small">${esc(status.detail)}</div>` : ''}
-      <div class="row" style="margin-top:8px"><button data-act="load-model">Try again</button></div></div>`;
-  }
-  if (isReady(state.settings.model)) return '';
-  const pct = status.progress > 0 && status.progress < 1
-    ? `<div class="progress" role="progressbar" aria-valuenow="${Math.round(status.progress * 100)}" aria-valuemin="0" aria-valuemax="100"><div style="width:${Math.round(status.progress * 100)}%"></div></div>`
-    : '';
-  return `<div class="banner ok"><b>${esc(status.busy ? status.text : 'The helper brain runs on this computer.')}</b>
-    <div class="small">${esc(modelLabel(state.settings.model))}. The first download can take a few minutes. After that it stays in this browser.</div>
-    ${status.detail ? `<div class="small">${esc(status.detail)}</div>` : ''}${pct}
-    <div class="row" style="margin-top:8px"><button data-act="load-model" ${status.busy ? 'disabled' : ''}>${status.busy ? 'Working…' : 'Load the helper'}</button></div></div>`;
+  if (!el) return;
+  const pct = status.progress > 0 && status.progress < 1 ? Math.round(status.progress * 100) : 0;
+  el.innerHTML = `${status.text}${pct ? `<div class="progress"><div style="width:${pct}%"></div></div>` : ''}`;
 }
 
-document.addEventListener('click', (e) => {
-  const button = e.target.closest('[data-act="load-model"]');
-  if (!button || button.disabled) return;
-  button.disabled = true;
-  loadModel(state.settings.model).catch(() => {});
-});
-
-const routes = { chats: renderChats, agents: renderAgents, advanced: renderAdvanced };
-function route() {
-  const name = (location.hash.replace('#/', '') || 'chats').split('/')[0];
-  if (name === 'computer') advTab = 'notes';
-  if (name === 'keys') advTab = 'keys';
-  if (name === 'usage') advTab = 'usage';
-  if (name === 'settings') advTab = 'brain';
-  const key = ['computer', 'keys', 'usage', 'settings', 'advanced'].includes(name) ? 'advanced' : name;
-  document.querySelectorAll('nav a').forEach((a) => a.classList.toggle('active', a.dataset.route === key));
-  $('#sidebar').classList.remove('open');
-  (routes[key] || renderChats)();
+function setBusy(on) {
+  const send = $('#send');
+  const stop = $('#stop');
+  if (send) send.hidden = on;
+  if (stop) stop.hidden = !on;
 }
-window.addEventListener('hashchange', route);
-$('#menu-btn').onclick = () => $('#sidebar').classList.toggle('open');
 
-function renderChats() {
-  const chat = state.chats.find((c) => c.id === currentChatId) || state.chats[0];
-  currentChatId = chat?.id || null;
-  const together = chat && chat.type === 'group' && chat.agentIds.length > 1;
-  view.innerHTML = `<div class="chat-layout">
-    <div class="chat-list card">
-      <div class="row" style="margin-bottom:10px"><button id="new-group">New group</button><button class="secondary" id="new-dm">One friend</button></div>
-      ${state.chats.map((c) => `<div class="chat-item ${c.id === currentChatId ? 'active' : ''}" data-id="${c.id}">
-        <div>${c.type === 'group' ? '👥' : esc(agentById(c.agentIds[0])?.emoji || '🙂')} ${esc(c.name)}</div>
-        <div class="small muted">${c.agentIds.map((id) => esc(agentById(id)?.name || 'Missing friend')).join(', ') || 'No friends yet'}</div></div>`).join('') || '<div class="muted small">No chats yet.</div>'}
-    </div>
-    <div class="chat-main">${chat ? `
-      <div class="chat-head row" style="justify-content:space-between">
-        <div><b>${esc(chat.name)}</b><div class="small muted">${together ? 'Friends answer together, then they can reply to each other.' : 'A chat with one friend.'}</div></div>
-        <div class="row"><button class="secondary" id="edit-chat">Edit</button><button class="secondary" id="clear-chat">Clear</button><button class="danger" id="del-chat">Delete</button></div>
-      </div>
-      <div id="load-banner" style="padding:12px 12px 0">${bannerHTML()}</div>
-      <div class="messages" id="messages"></div>
-      <div class="composer">
-        <textarea id="input" placeholder="Type a message and press Enter"></textarea>
-        <button id="send">Send</button><button class="danger" id="stop" style="display:none">Stop</button>
-      </div>` : '<div style="padding:20px" class="muted">Make a chat to get started.</div>'}
-    </div></div>`;
-  view.querySelectorAll('.chat-item').forEach((el) => { el.onclick = () => { currentChatId = el.dataset.id; renderChats(); }; });
-  $('#new-group').onclick = () => chatModal({ type: 'group' });
-  $('#new-dm').onclick = () => chatModal({ type: 'dm' });
-  if (!chat) return;
-  renderMessages(chat);
-  $('#edit-chat').onclick = () => chatModal(chat);
-  $('#clear-chat').onclick = () => { if (confirm('Clear this chat?')) { chat.messages = []; save(); renderChats(); } };
-  $('#del-chat').onclick = () => { if (confirm('Delete this chat?')) { state.chats = state.chats.filter((c) => c !== chat); currentChatId = state.chats[0]?.id; save(); renderChats(); } };
+function draw({ keepDraft = true } = {}) {
+  const draft = keepDraft ? ($('#input')?.value ?? '') : '';
+  const focused = document.activeElement?.id === 'input';
+  session.route = routeName();
+  document.title = `${TITLES[session.route] || 'Agona'} · Agona`;
+  document.querySelectorAll('#nav a').forEach((link) => link.classList.toggle('active', link.dataset.route === session.route));
+  document.body.classList.remove('nav-open');
+  view.innerHTML = renderPage(session.route);
   const input = $('#input');
-  input.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(chat); } };
-  $('#send').onclick = () => send(chat);
-  $('#stop').onclick = () => running?.abort();
-  view.querySelectorAll('[data-say]').forEach((button) => {
-    button.onclick = () => send(chat, button.dataset.say);
-  });
-  setRunningUI(!!running && currentChatId === chat.id);
-}
-
-function setRunningUI(on) {
-  const sendBtn = $('#send');
-  const stopBtn = $('#stop');
-  if (!sendBtn || !stopBtn) return;
-  sendBtn.disabled = on;
-  stopBtn.style.display = on ? '' : 'none';
-}
-
-function pendingLabel(m) {
-  if (!m.pending) return '';
-  if (m.toolCall && !m.answered) return ' · looking something up…';
-  if (m.loading) return ' · getting ready…';
-  return ' · writing…';
-}
-
-function msgHTML(m) {
-  if (m.role === 'tool') {
-    const who = agentById(m.agentId)?.name || 'A friend';
-    return `<div class="msg tool"><div class="av">🔎</div><div class="stack"><div class="name">${esc(who)} ${esc(TOOL_LABEL[m.tool] || 'used a tool')}</div><div class="body">${rich(m.content)}</div></div></div>`;
+  if (input && draft) input.value = draft;
+  if (focused && input) input.focus();
+  const brand = $('.brand-mark');
+  if (brand && !brand.innerHTML) brand.innerHTML = mark();
+  paintStatus();
+  watchFigures(document);
+  syncAgents();
+  setBusy(isRunning());
+  const hop = state.handoff;
+  if (hop && hop.id !== seenHandoff) {
+    seenHandoff = hop.id;
+    playHandoff(hop.fromId, hop.toId);
+    const from = agentById(hop.fromId);
+    const to = agentById(hop.toId);
+    if (from && to) announce(`${from.name} átadta a feladatot ${to.name} nevű agentnek.`);
   }
-  if (m.role === 'user') return `<div class="msg user"><div class="av">🧑</div><div class="stack"><div class="body">${rich(m.content)}</div></div></div>`;
-  const agent = agentById(m.agentId) || { name: 'Friend', emoji: '🙂' };
-  const body = m.content ? rich(m.content) : (m.pending ? '…' : '');
-  return `<div class="msg${m.pending ? ' pending' : ''}${m.error ? ' error' : ''}"><div class="av">${esc(agent.emoji)}</div><div class="stack"><div class="name">${esc(agent.name)}${pendingLabel(m)}</div><div class="body">${body}</div></div></div>`;
 }
 
-function waveCaption(chat, wave, react) {
-  const names = [...new Set(chat.messages.filter((m) => m.wave === wave && m.role === 'agent').map((m) => agentById(m.agentId)?.name).filter(Boolean))];
-  if (!names.length) return react ? 'Replying to each other' : 'Answering together';
-  const who = names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : names[0];
-  if (react) return names.length > 1 ? `${who} reply to each other` : `${who} adds a thought`;
-  return names.length > 1 ? `${who} are answering together` : `${who} is answering`;
+function routeName() {
+  const name = (location.hash.replace(/^#\/?/, '') || 'dashboard').split('/')[0];
+  return TITLES[name] ? name : 'dashboard';
 }
 
-function renderMessages(chat) {
-  const box = $('#messages');
-  if (!box) return;
-  const nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  if (!chat.messages.length) {
-    box.innerHTML = `<div class="welcome"><h2>Say hi</h2>
-      <p>Your friends answer in this box. The first message downloads a helper brain. A bar shows how far along it is.</p>
-      <div class="row"><button data-say="hi">Say hi</button><button class="secondary" data-say="How do bees make honey?">How do bees make honey?</button></div></div>`;
-    box.querySelectorAll('[data-say]').forEach((button) => { button.onclick = () => send(chat, button.dataset.say); });
+function refresh(patch) {
+  syncAgents();
+  if (patch && patchThread()) {
+    setBusy(isRunning());
+    const hop = state.handoff;
+    if (hop && hop.id !== seenHandoff) {
+      seenHandoff = hop.id;
+      playHandoff(hop.fromId, hop.toId);
+    }
     return;
   }
-  const multi = chat.type === 'group' && chat.agentIds.length > 1;
-  let html = '';
-  let lastWave = null;
-  for (const message of chat.messages) {
-    if (multi && message.wave && message.wave !== lastWave && message.role === 'agent') {
-      html += `<div class="wave-label">${esc(waveCaption(chat, message.wave, message.react))}</div>`;
-      lastWave = message.wave;
-    }
-    html += msgHTML(message);
-  }
-  box.innerHTML = html;
-  if (nearBottom || running) box.scrollTop = box.scrollHeight;
+  if (session.route === 'workspace' || session.route === 'dashboard' || session.route === 'agents') draw();
 }
 
-let rafPending = false;
 async function ensureGpu() {
-  if (!gpu.pending) return gpu;
-  gpu = { ...(await gpuPromise), pending: false };
-  const banner = $('#load-banner');
-  if (banner) banner.innerHTML = bannerHTML();
-  if (!gpu.ok) $('#model-status').textContent = 'This browser cannot run the friends';
-  return gpu;
+  if (!session.gpu.pending) return session.gpu;
+  session.gpu = { ...(await gpuPromise), pending: false };
+  return session.gpu;
 }
 
-async function send(chat, preset) {
+async function submitText(text, extra = {}) {
+  const clean = String(text || '').trim();
+  if (!clean || runCtl) return;
   const input = $('#input');
-  const text = String(preset ?? input?.value ?? '').trim();
-  if (!text || running) return;
   if (input) input.value = '';
   await ensureGpu();
-  chat.messages.push({ id: uid('m_'), role: 'user', content: text, ts: Date.now() });
-  state.usage.userMessages++;
-  save();
-  if (!gpu.ok) {
-    chat.messages.push({
-      id: uid('m_'), role: 'agent', agentId: chat.agentIds[0], error: true,
-      content: gpu.reason, answered: true, ts: Date.now(),
-    });
+  if (session.route !== 'workspace') location.hash = '#/workspace';
+  runCtl = new AbortController();
+  setBusy(true);
+  const onUpdate = (patch) => refresh(!!patch);
+  try {
+    await runUserTask(clean, { signal: runCtl.signal, onUpdate, gpu: session.gpu, ...extra });
+  } catch (err) {
+    console.error(err);
+    const chat = workspaceChat();
+    chat.messages.push({ id: uid('m_'), role: 'system', content: err.friendly || err.message || 'Valami hiba történt.', ts: Date.now() });
     save();
-    if (currentChatId === chat.id) renderMessages(chat);
-    return;
-  }
-  running = new AbortController();
-  const signal = running.signal;
-  setRunningUI(true);
-  renderMessages(chat);
-  const onUpdate = () => {
-    if (currentChatId !== chat.id) return;
-    if (rafPending) return;
-    rafPending = true;
-    requestAnimationFrame(() => { rafPending = false; renderMessages(chat); });
-  };
-  try { await runConversation(chat, { onUpdate, signal }); }
-  catch (e) {
-    console.error(e);
-    chat.messages.push({
-      id: uid('m_'), role: 'agent', agentId: chat.agentIds[0], error: true, answered: true,
-      content: e.friendly || e.message || 'Something went wrong. Please try again.', ts: Date.now(),
-    });
   } finally {
-    settlePending(chat.messages, { aborted: signal.aborted });
-    running = null;
-    save();
-    if (currentChatId === chat.id && $('#messages')) { renderMessages(chat); setRunningUI(false); }
+    runCtl = null;
+    draw({ keepDraft: true });
   }
 }
 
-function chatModal(chat) {
-  const isNew = !chat.id;
-  const isGroup = chat.type === 'group';
-  if (!state.agents.length) { alert('Make a friend first.'); location.hash = '#/agents'; return; }
-  modal(`<h2>${isNew ? 'New' : 'Edit'} ${isGroup ? 'group' : 'chat'}</h2>
-    <p class="muted">A group lets friends answer together. A one-friend chat is just you and one friend.</p>
-    <label>Name</label><input id="cn" value="${esc(chat.name || '')}" placeholder="${isGroup ? 'Group name' : 'Optional'}">
-    <label>${isGroup ? 'Which friends?' : 'Which friend?'}</label><div class="checks">
-    ${state.agents.map((a) => `<label><input type="${isGroup ? 'checkbox' : 'radio'}" name="ag" value="${a.id}" ${chat.agentIds?.includes(a.id) ? 'checked' : ''}> ${esc(a.emoji)} ${esc(a.name)}</label>`).join('')}</div>
-    <div class="row" style="margin-top:16px"><button id="cs">Save</button><button class="secondary" id="cc">Cancel</button></div>`, (box) => {
-    $('#cc', box).onclick = closeModal;
-    $('#cs', box).onclick = () => {
-      const ids = [...box.querySelectorAll('input[name=ag]:checked')].map((i) => i.value);
-      if (!ids.length) return alert('Pick at least one friend.');
-      if (!isGroup && ids.length > 1) ids.splice(1);
-      const name = $('#cn', box).value.trim() || (isGroup ? 'Group' : agentById(ids[0]).name);
-      if (isNew) {
-        const created = { id: uid('c_'), name, type: chat.type, agentIds: ids, messages: [] };
-        state.chats.unshift(created);
-        currentChatId = created.id;
-      } else Object.assign(chat, { name, agentIds: ids });
-      save();
-      closeModal();
-      renderChats();
-    };
-  });
+function readNumber(id, fallback) {
+  const value = +$(id)?.value;
+  return Number.isFinite(value) ? value : fallback;
 }
 
-function renderAgents() {
-  view.innerHTML = `<div class="row" style="justify-content:space-between;align-items:flex-end"><div><h1>Friends</h1><p class="lead">A friend is an AI buddy with a name and a personality.</p></div><button id="na">New friend</button></div>
-  <div class="grid">${state.agents.map((a) => `<div class="card"><div style="font-size:36px">${esc(a.emoji)}</div><b>${esc(a.name)}</b>
-    <p class="muted small" style="white-space:pre-wrap;max-height:90px;overflow:hidden">${esc(a.prompt)}</p>
-    <div class="row"><button data-chat="${a.id}">Chat</button><button class="secondary" data-edit="${a.id}">Edit</button><button class="danger" data-del="${a.id}">Delete</button></div></div>`).join('')}</div>
-  ${state.agents.length ? '' : '<p class="muted">No friends yet. Make one, then start a chat.</p>'}`;
-  $('#na').onclick = () => agentModal({});
-  view.querySelectorAll('[data-edit]').forEach((b) => { b.onclick = () => agentModal(agentById(b.dataset.edit)); });
-  view.querySelectorAll('[data-del]').forEach((b) => b.onclick = () => {
-    if (!confirm('Delete this friend?')) return;
-    const id = b.dataset.del;
-    state.agents = state.agents.filter((a) => a.id !== id);
-    state.chats.forEach((c) => { c.agentIds = c.agentIds.filter((x) => x !== id); });
-    save();
-    renderAgents();
-  });
-  view.querySelectorAll('[data-chat]').forEach((b) => b.onclick = () => {
-    let chat = state.chats.find((c) => c.type === 'dm' && c.agentIds.length === 1 && c.agentIds[0] === b.dataset.chat);
-    if (!chat) {
-      chat = { id: uid('c_'), name: agentById(b.dataset.chat).name, type: 'dm', agentIds: [b.dataset.chat], messages: [] };
-      state.chats.unshift(chat);
-      save();
-    }
-    currentChatId = chat.id;
-    location.hash = '#/chats';
-  });
-}
-
-function agentModal(agent) {
-  const isNew = !agent.id;
-  modal(`<h2>${isNew ? 'New friend' : 'Edit friend'}</h2>
-    <div class="row"><div style="width:110px"><label>Picture</label><input id="ae" value="${esc(agent.emoji || '🙂')}" maxlength="8"></div><div style="flex:1"><label>Name</label><input id="an" value="${esc(agent.name || '')}" placeholder="Ada"></div></div>
-    <label>What is this friend like?</label><textarea id="ap" rows="6">${esc(agent.prompt || 'You are a kind friend. You explain things in simple words and keep answers short.')}</textarea>
-    <div class="row" style="margin-top:16px"><button id="as">Save</button><button class="secondary" id="ac">Cancel</button></div>`, (box) => {
-    $('#ac', box).onclick = closeModal;
-    $('#as', box).onclick = () => {
-      const name = $('#an', box).value.trim();
-      if (!name) return alert('Please add a name.');
-      const data = { name, emoji: $('#ae', box).value.trim() || '🙂', prompt: $('#ap', box).value.trim() };
-      if (isNew) state.agents.push({ id: uid('a_'), ...data });
-      else Object.assign(agent, data);
-      save();
-      closeModal();
-      renderAgents();
-    };
-  });
-}
-
-function advNav(active) {
-  const items = [['brain', 'Helper brain'], ['notes', 'Shared notes'], ['keys', 'Script keys'], ['usage', 'Counters'], ['data', 'Save & reset']];
-  return `<div class="row" style="margin:12px 0">${items.map(([id, label]) => `<button class="${id === active ? '' : 'secondary'}" data-adv="${id}">${label}</button>`).join('')}</div>`;
-}
-function bindAdv() {
-  view.querySelectorAll('[data-adv]').forEach((button) => {
-    button.onclick = () => { advTab = button.dataset.adv; renderAdvanced(); };
-  });
-}
-
-function renderAdvanced() {
-  if (advTab === 'notes') return renderComputer();
-  if (advTab === 'keys') return renderKeys();
-  if (advTab === 'usage') return renderUsage();
-  if (advTab === 'data') return renderData();
-  return renderBrain();
-}
-
-function renderBrain() {
-  const s = state.settings;
-  view.innerHTML = `<h1>Advanced</h1><p class="lead">You can ignore this page and just chat. These controls change the helper brain.</p>${advNav('brain')}
-    <div class="card"><h2>Helper brain</h2><div id="load-banner">${bannerHTML()}</div>
-      <label>Which helper?</label><select id="sm">${MODELS.map((m) => `<option value="${m.id}" ${m.id === s.model ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select>
-      <p class="small muted">Super helper is the best at coding and using the web. If it will not load, pick Small helper.</p>
-      <div class="row"><div style="flex:1"><label>Creativity (0 is steady, 1 is playful)</label><input id="st" type="number" step="0.1" min="0" max="2" value="${s.temperature}"></div>
-      <div style="flex:1"><label>Longest reply</label><input id="sx" type="number" min="64" max="2048" value="${s.maxTokens}"></div>
-      <div style="flex:1"><label>Group replies</label><select id="sr">${[1, 2, 3].map((n) => `<option value="${n}" ${n === +s.rounds ? 'selected' : ''}>${n === 1 ? '1 — answer only' : n === 2 ? '2 — answer, then react' : '3 — keep talking'}</option>`).join('')}</select></div></div>
-      <div class="row" style="margin-top:12px"><button id="ss">Save</button></div></div>`;
-  bindAdv();
-  $('#ss').onclick = () => {
-    const nextModel = $('#sm').value;
-    Object.assign(s, {
-      model: nextModel,
-      temperature: +$('#st').value || 0.7,
-      maxTokens: +$('#sx').value || 384,
-      rounds: +$('#sr').value || 1,
-      modelMigrated: true,
+async function saveSettings(fromForm) {
+  const prev = { ...state.settings };
+  const nextParallel = clampParallel(readNumber('#parallel', prev.maxParallel));
+  const nextRuntime = Math.max(30, Math.min(300, Math.round(readNumber('#runtime', prev.maxRuntimeSec))));
+  const nextTokens = Math.max(64, Math.min(1024, Math.round(readNumber('#tokens', prev.maxTokens))));
+  const bumps = [];
+  if (fromForm) {
+    if (nextParallel > prev.maxParallel) bumps.push(`párhuzamosság ${prev.maxParallel} → ${nextParallel}`);
+    if (nextRuntime > prev.maxRuntimeSec) bumps.push(`időkeret ${prev.maxRuntimeSec} mp → ${nextRuntime} mp`);
+    if (nextTokens > prev.maxTokens) bumps.push(`válaszhossz ${prev.maxTokens} → ${nextTokens}`);
+  }
+  if (bumps.length) {
+    const ok = await confirm({
+      title: 'Limit emelése',
+      text: `Ezek nőnek: ${bumps.join(', ')}. Több memória vagy idő kellhet a gépeden.`,
+      ok: 'Emelés',
     });
-    save();
-    renderBrain();
-  };
+    if (!ok) { draw(); return; }
+    audit('limit', bumps.join(', '));
+  }
+  const model = fromForm ? ($('#set-model')?.value || prev.model) : prev.model;
+  if (prefersHeavy(model) && model !== prev.model) {
+    const ok = await confirm({
+      title: 'Nagy modell',
+      text: 'Ez a modell nagy lehet ehhez az eszközhöz. Ha nincs elég memória, a betöltés elhasal. A kis modell a biztonságos választás.',
+      ok: 'Mégis ezt választom',
+    });
+    if (!ok) { draw(); return; }
+  }
+  state.settings.theme = fromForm ? ($('#theme')?.value || prev.theme) : prev.theme;
+  state.settings.model = MODELS.some((item) => item.id === model) ? model : prev.model;
+  state.settings.temperature = fromForm ? Math.max(0, Math.min(2, readNumber('#temperature', prev.temperature))) : prev.temperature;
+  state.settings.maxTokens = fromForm ? nextTokens : prev.maxTokens;
+  state.settings.maxParallel = nextParallel;
+  state.settings.maxRuntimeSec = fromForm ? nextRuntime : prev.maxRuntimeSec;
+  state.settings.modelMigrated = true;
+  save();
+  applyChrome();
+  draw();
+  toast('Beállítások elmentve, csak ezen a gépen.');
 }
 
-function renderComputer() {
-  const files = Object.keys(state.files).sort();
-  if (currentFile && !(currentFile in state.files)) currentFile = null;
-  view.innerHTML = `<h1>Advanced</h1><p class="lead">Shared notes live in this browser. Friends can read and write them.</p>${advNav('notes')}
-  <div class="fs">
-    <div class="fs-list card"><div class="row" style="margin-bottom:8px"><button id="nf">New note</button></div>
-      ${files.map((f) => `<div class="fs-file ${f === currentFile ? 'active' : ''}" data-f="${esc(f)}">📄 ${esc(f)}</div>`).join('') || '<div class="muted small">No notes yet</div>'}</div>
-    <div class="fs-edit card">${currentFile ? `
-      <div class="row" style="justify-content:space-between"><b class="mono">${esc(currentFile)}</b><div class="row"><button id="sf">Save</button><button class="danger" id="df">Delete</button></div></div>
-      <textarea id="fc">${esc(state.files[currentFile])}</textarea>` : '<div class="muted">Pick a note, or make a new one.</div>'}
-      <details class="advanced"><summary>Try JavaScript</summary>
-        <p class="small muted">This runs in a little sandbox for 3 seconds. It cannot see the page. Friends can use the same tool.</p>
-        <div class="row"><input id="js" placeholder="console.log(2 + 2)" class="mono" style="flex:1"><button id="rj">Run</button></div>
-        <pre id="jout" class="mono small" style="white-space:pre-wrap"></pre>
-      </details>
-    </div></div>`;
-  bindAdv();
-  view.querySelectorAll('[data-f]').forEach((el) => { el.onclick = () => { currentFile = el.dataset.f; renderComputer(); }; });
-  $('#nf').onclick = () => {
-    const named = prompt('Note name', '/notes.txt');
-    if (!named) return;
-    const path = normPath(named);
-    if (path === '/') return alert('Please add a file name, like /notes.txt');
-    state.files[path] ??= '';
-    currentFile = path;
-    save();
-    renderComputer();
-  };
-  $('#rj').onclick = async () => { $('#jout').textContent = 'Running…'; $('#jout').textContent = await execTool('run_js', { code: $('#js').value }); };
-  if (!currentFile) return;
-  $('#sf').onclick = () => { state.files[currentFile] = $('#fc').value; save(); };
-  $('#df').onclick = () => { if (confirm('Delete this note?')) { delete state.files[currentFile]; currentFile = null; save(); renderComputer(); } };
+function prefersHeavy(id) {
+  return prefersSmallModel() && (id === MODELS[0].id || id === MODELS[1].id);
 }
 
-function genKey() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return 'ak_' + [...bytes].map((x) => x.toString(16).padStart(2, '0')).join('');
+async function onFile(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  if (file.size > 200000) { toast('Ez a fájl túl nagy egy jegyzethez.'); return; }
+  const text = await file.text();
+  if (text.includes('\u0000')) { toast('Csak szöveges fájlt tudok a jegyzetekbe tenni.'); return; }
+  const path = normPath('/csatolmany/' + file.name.replace(/[^\w.\-áéíóöőúüű ]/gi, '_'));
+  state.files[path] = text.slice(0, 100000);
+  state.fileOwners[path] = 'user';
+  save();
+  const box = $('#input');
+  if (box) box.value = `${box.value ? box.value + ' ' : ''}Csatolt jegyzet: ${path}`;
+  toast('A fájl a közös jegyzetekbe került. Nem töltöttük fel.');
+  if (session.route === 'workspace') draw();
 }
 
-function renderKeys() {
-  view.innerHTML = `<h1>Advanced</h1><p class="lead">You do not need a key to chat. Keys only let a script on this page talk to Agora.</p>${advNav('keys')}
-  <div class="card small muted">Keys stay in this browser. They do not work from another website. There is no server.
-  <pre class="mono">const ac = Agora.connect('ak_...');
-ac.listAgents();
-await ac.send(chatId, 'Hello!');</pre></div>
-  <div class="row" style="margin-bottom:10px"><button id="nk">Make a key</button></div>
-  <div class="card"><table><tr><th>Name</th><th>Key</th><th>Created</th><th></th></tr>
-  ${state.keys.map((k) => `<tr><td>${esc(k.name)}</td><td><span class="key">${esc(k.key.slice(0, 10))}…${esc(k.key.slice(-4))}</span> <button class="secondary" data-copy="${k.key}">Copy</button></td><td class="small muted">${new Date(k.created).toLocaleString()}</td><td><button class="danger" data-rev="${k.key}">Remove</button></td></tr>`).join('') || '<tr><td colspan="4" class="muted">No keys.</td></tr>'}</table></div>`;
-  bindAdv();
-  $('#nk').onclick = () => {
-    const name = prompt('Key name', 'My script');
-    if (name === null) return;
-    const key = genKey();
-    state.keys.push({ name: name || 'key', key, created: Date.now() });
-    save();
-    renderKeys();
-    navigator.clipboard?.writeText(key).catch(() => {});
-    alert('New key (copied if the browser allowed it):\n' + key);
-  };
-  view.querySelectorAll('[data-copy]').forEach((b) => { b.onclick = () => navigator.clipboard?.writeText(b.dataset.copy).then(() => { b.textContent = 'Copied'; }); });
-  view.querySelectorAll('[data-rev]').forEach((b) => b.onclick = () => {
-    if (confirm('Remove this key?')) { state.keys = state.keys.filter((k) => k.key !== b.dataset.rev); save(); renderKeys(); }
-  });
-}
-
-function renderUsage() {
-  const u = state.usage;
-  view.innerHTML = `<h1>Advanced</h1><p class="lead">Everything runs on your computer. There is no bill.</p>${advNav('usage')}
-  <div class="grid">${[['Your messages', u.userMessages], ['Friend messages', u.agentMessages], ['Lookups and tools', u.toolCalls], ['Script calls', u.apiCalls], ['Friends', state.agents.length], ['Notes', Object.keys(state.files).length]]
-    .map(([label, value]) => `<div class="card"><div class="muted small">${label}</div><div class="stat">${value}</div></div>`).join('')}</div>
-  <button class="secondary" id="ru">Reset counters</button>`;
-  bindAdv();
-  $('#ru').onclick = () => { state.usage = { userMessages: 0, agentMessages: 0, toolCalls: 0, apiCalls: 0 }; save(); renderUsage(); };
-}
-
-function renderData() {
-  view.innerHTML = `<h1>Advanced</h1><p class="lead">Save a copy of your friends and chats, or start fresh.</p>${advNav('data')}
-    <div class="card"><div class="row"><button class="secondary" id="ex">Download a copy</button><label class="btn" style="margin:0">Load a copy<input type="file" id="im" accept="application/json" hidden></label><button class="danger" id="cl">Erase everything</button></div>
-    <p class="small muted">The copy is a JSON file on your computer. Nothing is uploaded.</p></div>`;
-  bindAdv();
-  $('#ex').onclick = () => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }));
-    a.download = 'agora-export.json';
-    a.click();
-  };
-  $('#im').onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const data = JSON.parse(await file.text());
-      if (!data || typeof data !== 'object' || !Array.isArray(data.agents)) throw new Error('That file is not an Agora copy.');
-      replaceAll(data);
-      currentChatId = state.chats[0]?.id;
-      alert('Loaded.');
-      renderData();
-    } catch (err) { alert('Could not load that file: ' + err.message); }
-  };
-  $('#cl').onclick = () => {
-    if (confirm('Erase all friends, chats, notes, and keys on this browser?')) {
-      resetAll();
-      currentChatId = state.chats[0]?.id;
-      renderData();
+const actions = {
+  async 'load-model'() {
+    await ensureGpu();
+    if (!session.gpu.ok) { toast(session.gpu.reason); return; }
+    loadModel(state.settings.model).catch(() => {});
+  },
+  'toggle-model'(btn) {
+    const pop = $('#model-pop');
+    if (!pop) return;
+    pop.hidden = !pop.hidden;
+    btn.setAttribute('aria-expanded', pop.hidden ? 'false' : 'true');
+  },
+  async 'pick-model'(btn) {
+    const id = btn.dataset.model;
+    if (!MODELS.some((model) => model.id === id)) return;
+    if (prefersHeavy(id) && id !== state.settings.model) {
+      const ok = await confirm({
+        title: 'Nagy modell',
+        text: 'Ez a modell nagy lehet ehhez az eszközhöz. Ha nincs elég memória, a betöltés elhasal.',
+        ok: 'Mégis ezt választom',
+      });
+      if (!ok) return;
     }
-  };
-}
-
-window.Agora = {
-  connect(key) {
-    if (!state.keys.some((k) => k.key === key)) throw new Error('Invalid or revoked API key');
-    const tick = () => { state.usage.apiCalls++; save(); };
-    const ok = () => { if (!state.keys.some((k) => k.key === key)) throw new Error('API key revoked'); tick(); };
-    return {
-      listAgents: () => (ok(), state.agents.map(({ id, name, emoji }) => ({ id, name, emoji }))),
-      listChats: () => (ok(), state.chats.map(({ id, name, type, agentIds }) => ({ id, name, type, agentIds }))),
-      listFiles: () => (ok(), Object.keys(state.files)),
-      readFile: async (path) => (ok(), execTool('read_file', { path })),
-      writeFile: async (path, content) => (ok(), execTool('write_file', { path, content })),
-      runJS: async (code) => (ok(), execTool('run_js', { code })),
-      async send(chatId, text) {
-        ok();
-        const chat = state.chats.find((c) => c.id === chatId);
-        if (!chat) throw new Error('chat not found');
-        const check = await checkWebGPU();
-        if (!check.ok) throw new Error(check.reason);
-        chat.messages.push({ id: uid('m_'), role: 'user', content: String(text), ts: Date.now() });
-        state.usage.userMessages++;
-        save();
-        const start = chat.messages.length;
-        const ctl = new AbortController();
-        await runConversation(chat, { onUpdate: () => currentChatId === chat.id && renderMessages(chat), signal: ctl.signal });
-        settlePending(chat.messages, { aborted: ctl.signal.aborted });
-        save();
-        return chat.messages.slice(start).map((m) => ({ role: m.role, agent: agentById(m.agentId)?.name, content: m.content }));
-      },
-    };
+    state.settings.model = id;
+    state.settings.modelMigrated = true;
+    audit('modell', id);
+    save();
+    $('#model-pop')?.setAttribute('hidden', '');
+    draw();
+  },
+  attach() { $('#file')?.click(); },
+  'stop-all'() {
+    runCtl?.abort();
+    for (const agent of state.agents) {
+      if (agent.status === 'working' || agent.status === 'thinking') stopAgent(agent.id);
+    }
+    toast('Leállítottam, amit épp futott.');
+    draw();
+  },
+  'open-create'() { openModal(createModalHTML(), null, closeModal); },
+  'close-modal': closeModal,
+  'save-create'() {
+    const role = roleById($('#tmpl')?.value) || TEMPLATES[0];
+    const name = $('#an')?.value.trim();
+    if (!name) { toast('Kell egy név.'); return; }
+    state.agents.push({
+      id: uid('a_'),
+      name,
+      role: role.id,
+      color: role.color,
+      accessory: role.accessory,
+      prompt: $('#ap')?.value.trim() || role.prompt,
+      tools: role.tools.slice(),
+      status: 'idle',
+      paused: false,
+      error: '',
+      taskId: null,
+    });
+    audit('létrehozás', `${name} · ${role.title}`);
+    save();
+    closeModal();
+    draw();
+  },
+  'rename-agent'(btn) {
+    const agent = agentById(btn.dataset.id);
+    if (!agent) return;
+    openModal(renameModalHTML(agent), null, closeModal);
+  },
+  'save-rename'(btn) {
+    const agent = agentById(btn.dataset.id);
+    const name = $('#an')?.value.trim();
+    if (!agent || !name) return;
+    const prev = agent.name;
+    agent.name = name;
+    audit('átnevezés', `${prev} → ${name}`);
+    save();
+    closeModal();
+    draw();
+  },
+  pause(btn) { pauseAgent(btn.dataset.id); draw(); },
+  resume(btn) { resumeAgent(btn.dataset.id); draw(); },
+  'stop-agent'(btn) { stopAgent(btn.dataset.id); draw(); },
+  'ask-run'(btn) {
+    const agent = agentById(btn.dataset.id);
+    if (!agent) return;
+    if (agent.paused) { toast('Előbb folytasd az agentet.'); return; }
+    openModal(runModalHTML(agent), null, closeModal);
+  },
+  'save-run'(btn) {
+    const text = $('#one-task')?.value.trim();
+    const id = btn.dataset.id;
+    if (!text) { toast('Írd le a feladatot.'); return; }
+    closeModal();
+    submitText(text, { onlyAgentId: id });
+  },
+  async 'delete-agent'(btn) {
+    const agent = agentById(btn.dataset.id);
+    if (!agent) return;
+    const ok = await confirm({
+      title: 'Agent törlése',
+      text: `${agent.name} törlődik erről a gépről. A jegyzetei megmaradnak. Ezt nem vonjuk vissza.`,
+      ok: 'Törlés',
+      danger: true,
+    });
+    if (!ok) return;
+    stopAgent(agent.id);
+    state.agents = state.agents.filter((item) => item.id !== agent.id);
+    for (const task of state.tasks) {
+      if (task.assigneeId === agent.id && ['queued', 'running', 'paused'].includes(task.status)) task.status = 'skipped';
+    }
+    audit('törlés', agent.name);
+    save();
+    draw();
+  },
+  async 'delete-task'(btn) {
+    const task = state.tasks.find((item) => item.id === btn.dataset.id);
+    if (!task) return;
+    const ok = await confirm({
+      title: 'Feladat törlése',
+      text: `Törlöd a listából: ${task.title}`,
+      ok: 'Törlés',
+      danger: true,
+    });
+    if (!ok) return;
+    state.tasks = state.tasks.filter((item) => item.id !== task.id);
+    audit('törlés', task.title);
+    save();
+    draw();
+  },
+  'new-note'() {
+    openModal(`<h2 id="modal-title">Új jegyzet</h2><label for="note-name">Fájlnév</label><input id="note-name" value="/jegyzet.txt"><div class="row"><button type="button" data-ok data-act="save-new-note">Létrehozás</button><button type="button" class="ghost" data-act="close-modal">Mégse</button></div>`, null, closeModal);
+  },
+  'save-new-note'() {
+    const path = normPath($('#note-name')?.value || '');
+    if (path === '/') { toast('Kell egy fájlnév, például /jegyzet.txt'); return; }
+    state.files[path] ??= '';
+    state.fileOwners[path] = 'user';
+    session.note = path;
+    audit('jegyzet', path);
+    save();
+    closeModal();
+    draw();
+  },
+  'open-note'(btn) { session.note = btn.dataset.path; draw(); },
+  'save-note'() {
+    if (!session.note) return;
+    state.files[session.note] = $('#note-body')?.value ?? '';
+    state.fileOwners[session.note] = state.fileOwners[session.note] || 'user';
+    save();
+    toast('Jegyzet elmentve ezen a gépen.');
+  },
+  async 'delete-note'() {
+    if (!session.note) return;
+    const ok = await confirm({ title: 'Jegyzet törlése', text: `Törlöd: ${session.note}`, ok: 'Törlés', danger: true });
+    if (!ok) return;
+    delete state.files[session.note];
+    delete state.fileOwners[session.note];
+    audit('törlés', session.note);
+    session.note = null;
+    save();
+    draw();
+  },
+  async 'test-teacher'(btn) {
+    const teacher = state.teachers.find((item) => item.id === btn.dataset.id);
+    const result = await teachers.testConnection(teacher?.id || btn.dataset.id);
+    audit('tesztkapcsolat', result.message, teacher?.label || 'tanár');
+    toast(result.message);
+  },
+  async 'delete-teacher'(btn) {
+    const teacher = state.teachers.find((item) => item.id === btn.dataset.id);
+    if (!teacher) return;
+    const ok = await confirm({
+      title: 'Tanárfeljegyzés törlése',
+      text: `${teacher.label} feljegyzése törlődik erről a gépről. Hálózati fiók nem törlődik, mert nincs csatlakoztatva.`,
+      ok: 'Törlés',
+      danger: true,
+    });
+    if (!ok) return;
+    state.teachers = state.teachers.filter((item) => item.id !== teacher.id);
+    audit('törlés', teacher.label);
+    save();
+    draw();
+  },
+  'export-data'() {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'agona-masolat.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    audit('mentés', 'helyi másolat letöltve');
+  },
+  async erase() {
+    const ok = await confirm({
+      title: 'Minden törlése',
+      text: 'Minden agent, feladat, jegyzet és napló törlődik ebből a böngészőből. Ezt nem lehet visszavonni.',
+      ok: 'Törlés',
+      danger: true,
+    });
+    if (!ok) return;
+    resetAll();
+    session.note = null;
+    toast('Törölve, csak ezen a böngészőn.');
+    draw();
+  },
+  menu() { document.body.classList.toggle('nav-open'); },
+  collapse() {
+    state.settings.sidebarCollapsed = !state.settings.sidebarCollapsed;
+    save();
+    applyChrome();
+  },
+  'cycle-theme'() {
+    const order = ['system', 'dark', 'light'];
+    const next = order[(order.indexOf(state.settings.theme) + 1) % order.length];
+    state.settings.theme = next;
+    save();
+    applyChrome();
   },
 };
 
-function showWelcome() {
-  if (state.settings.welcomed) return;
-  const done = () => {
-    if (!state.settings.welcomed) { state.settings.welcomed = true; save(); }
-    closeModal();
-  };
-  modal(`<h2>Welcome to Agora</h2>
-    <p>This is a chat with AI friends. They run in this browser, on your computer. You do not need an account.</p>
-    <p><b>1.</b> Type a message and press Send. Try saying hi.</p>
-    <p><b>2.</b> The first time, your computer downloads a helper brain. A bar shows the progress. It can take a few minutes, then it is saved here.</p>
-    <p><b>3.</b> In a group, friends answer together. Then they can reply to each other.</p>
-    <p><b>4.</b> They can search the web and show you the links they used.</p>
-    <div class="row" style="margin-top:16px"><button id="welcome-go">Start chatting</button></div>`, (box) => {
-    $('#welcome-go', box).onclick = done;
-  });
-  const onBackdrop = (e) => {
-    if (e.target.id !== 'modal') return;
-    done();
-    $('#modal').removeEventListener('click', onBackdrop);
-  };
-  $('#modal').addEventListener('click', onBackdrop);
+async function onClick(event) {
+  const btn = event.target.closest('[data-act]');
+  if (!btn || btn.disabled) return;
+  if (btn.dataset.act === 'pick-model') event.preventDefault();
+  const fn = actions[btn.dataset.act];
+  if (!fn) return;
+  try { await fn(btn); }
+  catch (err) { console.error(err); toast(err.friendly || err.message || 'Ez nem sikerült.'); }
 }
 
-route();
+function onSubmit(event) {
+  const form = event.target;
+  if (!(form instanceof HTMLFormElement)) return;
+  event.preventDefault();
+  if (form.id === 'composer') submitText($('#input')?.value);
+  else if (form.id === 'settings-form') saveSettings(true);
+  else if (form.id === 'teacher-form') saveTeacher(form);
+  else if (form.id === 'train-form') startTraining();
+}
+
+function saveTeacher(form) {
+  const data = new FormData(form);
+  const label = String(data.get('label') || '').trim();
+  if (!label) { toast('Kell egy név.'); return; }
+  state.teachers.push({
+    id: uid('t_'),
+    label,
+    provider: String(data.get('provider') || '').trim(),
+    tags: String(data.get('tags') || '').split(',').map((tag) => tag.trim()).filter(Boolean),
+    price: String(data.get('price') || '').trim(),
+    note: String(data.get('note') || '').trim(),
+    connected: false,
+  });
+  audit('tanár', `${label} feljegyezve, nincs kapcsolat`);
+  save();
+  form.reset();
+  draw();
+}
+
+async function startTraining() {
+  const trainer = state.agents.find((agent) => agent.role === 'trainer');
+  state.trainingConfig = {
+    rank: Math.max(1, Math.min(64, Math.round(readNumber('#rank', 8)))),
+    epochs: Math.max(1, Math.min(3, Math.round(readNumber('#epochs', 1)))),
+  };
+  if (trainer) {
+    trainer.status = 'approval';
+    trainer.paused = false;
+  }
+  save();
+  syncAgents();
+  const ok = await confirm({
+    title: 'Tanítás indítása',
+    text: 'Tanítást szeretnél indítani. A kapcsolat még nincs bekötve, ezért futás nem indul, és adat nem megy ki. Folytatod?',
+    ok: 'Jóváhagyom',
+    extra: trainer ? `<div class="confirm-fig">${figureHTML({ ...trainer, status: 'approval', paused: false }, { live: false, size: 'sm' })}</div>` : '',
+  });
+  if (trainer) trainer.status = 'idle';
+  if (!ok) {
+    audit('elutasítva', 'tanítás indítása', 'te');
+    save();
+    draw();
+    return;
+  }
+  let result;
+  try { result = requestTraining(state.trainingConfig, { approved: true }); }
+  catch (err) { result = { ok: false, message: err.message, code: err.code }; }
+  state.trainingRuns.unshift({ id: uid('run_'), ts: Date.now(), status: 'nem indult', message: result.message });
+  audit('tanítás', result.message, trainer?.name || 'Sári');
+  save();
+  toast(result.message);
+  draw();
+}
+
+function showWelcome() {
+  if (state.settings.welcomed) return;
+  openModal(`<h2 id="modal-title">Szia, ez az Agona</h2>
+    <p>Több kis agent dolgozik a böngésződben, a te gépeden. Nem kell fiók, és nem küldjük el a feladatot egy titkos szervernek.</p>
+    <p><b>1.</b> Írd le a feladatot a nagy mezőbe.</p>
+    <p><b>2.</b> Az első alkalommal letöltődik egy helyi modell. A sáv mutatja, hol tart.</p>
+    <p><b>3.</b> A csapat a közös munkatéren beszél, buborékban.</p>
+    <div class="row"><button type="button" data-act="welcome-ok">Rendben</button></div>`, null, () => actions['welcome-ok']());
+}
+
+actions['welcome-ok'] = () => {
+  state.settings.welcomed = true;
+  save();
+  closeModal();
+};
+
+document.addEventListener('click', onClick);
+document.addEventListener('submit', onSubmit);
+document.addEventListener('change', async (event) => {
+  const target = event.target;
+  if (target?.id === 'file') onFile(target);
+  if (target?.id === 'import-file') importFile(target);
+  if (target?.id === 'tmpl') {
+    const role = roleById(target.value);
+    if (!role) return;
+    const name = $('#an');
+    const prompt = $('#ap');
+    if (name) name.value = role.name;
+    if (prompt) prompt.value = role.prompt;
+  }
+  if (target?.id === 'log-filter') filterLog(target.value);
+});
+
+document.addEventListener('input', (event) => {
+  if (event.target?.id === 'input') {
+    event.target.style.height = 'auto';
+    event.target.style.height = Math.min(160, event.target.scrollHeight) + 'px';
+  }
+  if (event.target?.id === 'log-filter') filterLog(event.target.value);
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.target?.id === 'input' && event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    submitText(event.target.value);
+  }
+});
+
+$('#scrim')?.addEventListener('click', () => document.body.classList.remove('nav-open'));
+
+window.addEventListener('hashchange', () => draw());
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  if (state.settings.theme === 'system') applyChrome();
+});
+
+onStatus(() => {
+  paintStatus();
+  const banner = $('#load-banner');
+  if (banner) banner.innerHTML = bannerHTML();
+});
+
+let parallelSnapshot = state.settings.maxParallel;
+document.addEventListener('change', async (event) => {
+  if (event.target?.id !== 'parallel') return;
+  const next = clampParallel(event.target.value);
+  if (next > parallelSnapshot) {
+    const ok = await confirm({
+      title: 'Limit emelése',
+      text: `A párhuzamos agentek száma ${parallelSnapshot} értékről ${next} értékre nő. Ez több memóriát használhat.`,
+      ok: 'Emelés',
+    });
+    if (!ok) { event.target.value = parallelSnapshot; return; }
+    audit('limit', `párhuzamosság: ${next}`);
+  }
+  parallelSnapshot = next;
+  state.settings.maxParallel = next;
+  save();
+});
+
+async function importFile(input) {
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  const ok = await confirm({
+    title: 'Másolat betöltése',
+    text: 'A mostani agentek, jegyzetek és a napló felülíródnak a fájllal, csak ezen a gépen.',
+    ok: 'Betöltés',
+  });
+  if (!ok) return;
+  try {
+    const data = JSON.parse(await file.text());
+    if (!data || typeof data !== 'object' || !Array.isArray(data.agents)) throw new Error('Ez a fájl nem Agona-másolat.');
+    replaceAll(data);
+    session.note = null;
+    toast('Betöltve, csak ebbe a böngészőbe.');
+    applyChrome();
+    draw();
+  } catch (err) {
+    toast('Nem sikerült betölteni: ' + err.message);
+  }
+}
+
+applyChrome();
+const brand = $('.brand-mark');
+if (brand) brand.innerHTML = mark();
+draw({ keepDraft: false });
 gpuPromise = checkWebGPU();
 gpuPromise.then((result) => {
-  gpu = { ...result, pending: false };
-  if (!result.ok) $('#model-status').textContent = 'This browser cannot run the friends';
+  session.gpu = { ...result, pending: false };
+  if (!result.ok) {
+    const el = $('#model-status');
+    if (el) el.textContent = 'WebGPU nélkül nincs helyi modell';
+  }
   const banner = $('#load-banner');
   if (banner) banner.innerHTML = bannerHTML();
 });

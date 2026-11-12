@@ -1,23 +1,20 @@
-// Group chat: friends answer the same message together, then can react.
-// WebLLM can only write one reply at a time, so the model calls wait in a
-// line inside llm.js. The bubbles still show up together, and web lookups
-// from one friend can run while another friend is writing.
+// One WebLLM reply at a time. Several agents can wait together; generation is queued in llm.js.
 import { state, save, agentById, uid } from './store.js';
 import { chat, isReady, onStatus, offStatus, friendlyMessage } from './llm.js';
 import { toolPrompt, parseToolCall, execTool } from './tools.js';
 
 const MAX_TOOL_LOOPS = 2;
-const HISTORY_LIMIT = 10;
+const HISTORY_LIMIT = 12;
 
 const escapeReg = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function isSmallTalk(text) {
-  return /^(hi|hello|hey|hiya|yo|howdy|sup|thanks|thank you|thx|ok|okay|good morning|good afternoon|good night|how are you|how's it going|whats up|what's up|hola)[!.?\s]*$/i.test(String(text || '').trim());
+  return /^(hi|hello|hey|hiya|yo|howdy|sup|thanks|thank you|thx|ok|okay|good morning|good afternoon|good night|how are you|how's it going|whats up|what's up|hola|szia|szevasz|szervusz|helló|hali|jó napot|jo napot|jó reggelt|jo reggelt|jó estét|jo estet|köszi|koszi|köszönöm|koszonom|oké|oke|szép napot|szep napot)[!.?\s]*$/i.test(String(text || '').trim());
 }
 
 export function isPass(text) {
   const s = String(text || '').trim();
-  if (/^(pass|nothing to add|no comment|nothing new)\.?!?$/i.test(s)) return true;
+  if (/^(pass|nothing to add|no comment|nothing new|semmi új|semmi uj|nincs hozzáfűznivalóm)\.?!?$/i.test(s)) return true;
   return /^pass\b/i.test(s) && s.length < 32;
 }
 
@@ -28,7 +25,7 @@ export function cleanReply(text, agentName) {
     .replace(/^[^\n]*\bTOOL\s*:?\s*[A-Za-z0-9_]+.*$/gim, '')
     .trim();
   if (agentName) t = t.replace(new RegExp('^\\s*\\**' + escapeReg(agentName) + '\\**\\s*:\\s*', 'i'), '');
-  const names = ['User', ...state.agents.map((a) => a.name)].filter((n) => n && n !== agentName);
+  const names = ['User', 'Felhasználó', ...state.agents.map((a) => a.name)].filter((n) => n && n !== agentName);
   for (const name of names) {
     const at = t.search(new RegExp('\\n\\s*' + escapeReg(name) + '\\s*:'));
     if (at > 0) t = t.slice(0, at);
@@ -51,18 +48,25 @@ function clip(text, n) {
   return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
+function allowedTools(agent) {
+  return Array.isArray(agent?.tools) ? agent.tools : null;
+}
+
 function systemFor(agent, conv, mode) {
-  if (mode === 'decide') return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt()}`;
-  const others = conv.agentIds.filter((id) => id !== agent.id).map(agentById).filter(Boolean);
-  let group;
-  if (!others.length) group = 'You are chatting one-to-one with the user.';
-  else if (mode === 'react') group = `You are in a group with the user and: ${others.map((a) => a.name).join(', ')}. They just answered. React to what they said. Do not repeat their whole answer.`;
-  else group = `You are in a group with the user and: ${others.map((a) => a.name).join(', ')}. You are answering together. You cannot see their reply yet, so give your own answer. Do not speak for them.`;
-  const style = 'Use simple words a kid can understand. Keep it short (1 to 4 sentences) unless they ask for more. Do not start with your own name.';
-  if (mode === 'react') {
-    return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf you have nothing new to add, reply with exactly PASS.`;
+  const tools = allowedTools(agent);
+  if (mode === 'decide') {
+    return `Your name is ${agent.name}. You only decide if a tool is needed. The user writes in Hungarian.\n${toolPrompt(tools || undefined)}`;
   }
-  return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf tool results are in the conversation, use them and cite sources as [Title](url). Never invent a link. Do not write a TOOL line.`;
+  const others = (conv.agentIds || []).filter((id) => id !== agent.id).map(agentById).filter(Boolean);
+  let group;
+  if (!others.length) group = 'Egyedül válaszolsz a felhasználónak.';
+  else if (mode === 'react') group = `Egy csoportban vagy vele: ${others.map((a) => a.name).join(', ')}. Ők már válaszoltak. Reagálj, ne ismételd az egész válaszukat.`;
+  else group = `Egy csoportban vagy vele: ${others.map((a) => a.name).join(', ')}. Még nem látod a válaszukat, a sajátodat add. Ne beszélj helyettük.`;
+  const style = 'Magyarul válaszolj, egyszerűen. 1–4 mondat, hacsak nem kérnek többet. Ne kezdd a saját neveddel.';
+  if (mode === 'react') {
+    return `${agent.prompt}\n\nA neved ${agent.name}. ${group}\n${style}\nHa nincs új mondanivalód, válaszolj pontosan így: PASS.`;
+  }
+  return `${agent.prompt}\n\nA neved ${agent.name}. ${group}\n${style}\nHa eszköz eredménye van a beszélgetésben, abból dolgozz, és a forrást így jelöld: [Cím](url). Soha ne találj ki linket. Ne írj TOOL sort.`;
 }
 
 export function buildMessages(agent, conv, { mode = 'answer' } = {}) {
@@ -74,12 +78,19 @@ export function buildMessages(agent, conv, { mode = 'answer' } = {}) {
       if (m.agentId !== agent.id) continue;
       role = 'user';
       content = `TOOL RESULT (${m.tool}):\n${clip(m.content, 1800)}`;
+    } else if (m.role === 'task') {
+      role = 'user';
+      content = clip(m.brief || m.content, 900);
+    } else if (m.role === 'system' || m.role === 'handoff') {
+      role = 'user';
+      content = clip(m.content, 500);
     } else if (m.agentId === agent.id) {
       role = 'assistant';
       content = clip(m.content, 700);
     } else {
       role = 'user';
-      content = `${m.role === 'user' ? 'User' : (agentById(m.agentId)?.name || 'Friend')}: ${clip(m.content, 700)}`;
+      const who = m.role === 'user' ? 'Felhasználó' : (agentById(m.agentId)?.name || 'Agent');
+      content = `${who}: ${clip(m.content, 700)}`;
     }
     if (!content) continue;
     const last = msgs[msgs.length - 1];
@@ -89,8 +100,8 @@ export function buildMessages(agent, conv, { mode = 'answer' } = {}) {
   const nudge = mode === 'decide'
     ? 'Reply with NONE or one TOOL line only.'
     : mode === 'react'
-      ? `Your turn, ${agent.name}. Reply to the others in one or two sentences, or say PASS.`
-      : `Your turn, ${agent.name}. Answer the user.`;
+      ? `Te jössz, ${agent.name}. Egy-két mondat, vagy PASS.`
+      : `Te jössz, ${agent.name}. Válaszolj a felhasználónak.`;
   if (mode === 'decide' || mode === 'react' || msgs[msgs.length - 1].role !== 'user') {
     const last = msgs[msgs.length - 1];
     if (last.role === 'user') last.content += '\n\n' + nudge;
@@ -123,12 +134,12 @@ function insertAfterTurn(conv, msg, extra) {
 }
 
 function lookingText(call) {
-  if (call.name === 'web_search') return `Looking up: ${call.args?.query || 'that'}`;
-  if (call.name === 'read_page' || call.name === 'fetch_wikipedia_page') return 'Reading a page…';
-  if (call.name === 'write_file') return 'Saving a note…';
-  if (call.name === 'read_file' || call.name === 'list_files') return 'Checking the notes…';
-  if (call.name === 'run_js') return 'Working it out…';
-  return 'One moment…';
+  if (call.name === 'web_search') return `Keresek: ${call.args?.query || 'ezt'}`;
+  if (call.name === 'read_page' || call.name === 'fetch_wikipedia_page') return 'Olvasok egy oldalt…';
+  if (call.name === 'write_file') return 'Jegyzetet mentek…';
+  if (call.name === 'read_file' || call.name === 'list_files') return 'A jegyzeteket nézem…';
+  if (call.name === 'run_js') return 'Számolok…';
+  return 'Egy pillanat…';
 }
 
 function isNone(text) {
@@ -142,7 +153,7 @@ export function settlePending(messages, { aborted = false } = {}) {
     message.pending = false;
     message.loading = false;
     if (message.error) continue;
-    if (!answered) message.content = aborted ? 'Stopped.' : 'The reply stopped. Please try again.';
+    if (!answered) message.content = aborted ? 'Megállítva.' : 'A válasz megállt. Próbáld újra.';
   }
 }
 
@@ -151,11 +162,11 @@ function settings() {
   return {
     model: s.model,
     temperature: Number.isFinite(+s.temperature) ? +s.temperature : 0.7,
-    maxTokens: Math.max(64, Math.min(2048, +s.maxTokens || 384)),
+    maxTokens: Math.max(64, Math.min(1024, +s.maxTokens || 384)),
   };
 }
 
-export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = false, gate }) {
+export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = false, gate, onPhase } = {}) {
   const prefs = settings();
   const msg = {
     id: uid('m_'),
@@ -169,30 +180,32 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     ts: Date.now(),
   };
   conv.messages.push(msg);
-  onUpdate();
+  onPhase?.('thinking');
+  onUpdate?.();
 
   let stat = null;
   const detach = () => { if (stat) { offStatus(stat); stat = null; } };
   if (!isReady(prefs.model)) {
     stat = (st) => {
       if (!msg.pending || msg.answered) return;
-      if (st.ready) { msg.loading = false; if (!msg.toolCall) msg.content = ''; onUpdate(true); return; }
+      if (st.ready) { msg.loading = false; if (!msg.toolCall) msg.content = ''; onUpdate?.(true); return; }
       msg.loading = true;
-      msg.content = st.text || 'Getting the helper ready…';
-      onUpdate(true);
+      msg.content = st.text || 'A segéd készül…';
+      onUpdate?.(true);
     };
     onStatus(stat);
   }
 
   const stopCheck = () => !!(gate?.failed);
   const aborted = () => signal?.aborted;
+  const tools = allowedTools(agent);
 
   try {
-    if (stopCheck()) { removeMsg(conv, msg); onUpdate(); return; }
+    if (stopCheck()) { removeMsg(conv, msg); onUpdate?.(); return; }
     let direct = '';
     let usedTool = false;
     const seed = contextFor(agent, conv, msg);
-    const skipTools = react || isSmallTalk(lastUserText(seed.messages));
+    const skipTools = react || isSmallTalk(lastUserText(seed.messages)) || (tools && tools.length === 0);
 
     if (!skipTools) {
       for (let loop = 0; loop < MAX_TOOL_LOOPS; loop++) {
@@ -209,21 +222,31 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           if (!usedTool && decision && !isNone(decision) && !/\bTOOL\s*:/i.test(decision)) direct = decision;
           break;
         }
+        if (tools && !tools.includes(call.name)) {
+          insertAfterTurn(conv, msg, {
+            id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: call.args,
+            content: 'Ez az eszköz nincs engedélyezve ennek az agentnek.',
+            ts: Date.now(),
+          });
+          onUpdate?.();
+          continue;
+        }
         if (call.args === null) {
           insertAfterTurn(conv, msg, {
             id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: null,
-            content: 'Tool error: the arguments were not valid JSON. Use one line like TOOL: web_search {"query":"bees"}.',
+            content: 'Az eszköz paramétere nem érvényes JSON. Egy sor kell, például: TOOL: web_search {"query":"méhek"}.',
             ts: Date.now(),
           });
-          onUpdate();
+          onUpdate?.();
           continue;
         }
         msg.toolCall = call.name;
         msg.loading = false;
         msg.content = lookingText(call);
-        onUpdate(true);
+        onPhase?.('working');
+        onUpdate?.(true);
         let result;
-        try { result = await execTool(call.name, call.args, { signal }); }
+        try { result = await execTool(call.name, call.args, { signal, agentId: agent.id }); }
         catch (e) {
           if (aborted() || e.name === 'AbortError') break;
           result = 'Tool error: ' + (e.message || e);
@@ -234,16 +257,16 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
         usedTool = true;
         direct = '';
         save();
-        onUpdate();
+        onUpdate?.();
       }
     }
 
-    if (stopCheck()) { removeMsg(conv, msg); onUpdate(); return; }
+    if (stopCheck()) { removeMsg(conv, msg); onUpdate?.(); return; }
     if (aborted()) {
       msg.pending = false;
       msg.loading = false;
-      if (!msg.answered) msg.content = 'Stopped.';
-      onUpdate();
+      if (!msg.answered) msg.content = 'Megállítva.';
+      onUpdate?.();
       return;
     }
 
@@ -259,17 +282,18 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           msg.loading = false;
           msg.answered = true;
           msg.content = chunk;
-          onUpdate(true);
+          onPhase?.('working');
+          onUpdate?.(true);
         },
       });
     }
 
-    if (stopCheck()) { removeMsg(conv, msg); onUpdate(); return; }
+    if (stopCheck()) { removeMsg(conv, msg); onUpdate?.(); return; }
     if (aborted()) {
       msg.pending = false;
       msg.loading = false;
-      msg.content = msg.answered ? (cleanReply(msg.content, agent.name) || 'Stopped.') : 'Stopped.';
-      onUpdate();
+      msg.content = msg.answered ? (cleanReply(msg.content, agent.name) || 'Megállítva.') : 'Megállítva.';
+      onUpdate?.();
       return;
     }
 
@@ -277,28 +301,29 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     if (react && isPass(cleaned)) {
       removeMsg(conv, msg);
       save();
-      onUpdate();
+      onUpdate?.();
       return;
     }
-    msg.content = cleaned || "I'm not sure what to say. Try asking in a different way.";
+    msg.content = cleaned || 'Nem vagyok benne biztos. Fogalmazd meg máshogy, légy szíves.';
     msg.pending = false;
     msg.loading = false;
     msg.answered = true;
     state.usage.agentMessages++;
+    onPhase?.('done');
     save();
-    onUpdate();
+    onUpdate?.();
   } catch (e) {
     if (e?.code === 'skip' || (stopCheck() && !msg.answered)) {
       removeMsg(conv, msg);
-      onUpdate();
+      onUpdate?.();
       return;
     }
     if (signal?.aborted || e?.code === 'abort') {
       msg.pending = false;
       msg.loading = false;
-      if (!msg.answered) msg.content = 'Stopped.';
-      else msg.content = cleanReply(msg.content, agent.name) || 'Stopped.';
-      onUpdate();
+      if (!msg.answered) msg.content = 'Megállítva.';
+      else msg.content = cleanReply(msg.content, agent.name) || 'Megállítva.';
+      onUpdate?.();
       return;
     }
     const fatal = !isReady(prefs.model) && (e?.code === 'webgpu' || e?.code === 'timeout' || e?.code === 'model');
@@ -310,8 +335,9 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     msg.error = true;
     msg.answered = true;
     msg.content = partial ? partial + '\n\n(' + note + ')' : note;
+    onPhase?.('error');
     save();
-    onUpdate();
+    onUpdate?.();
   } finally {
     detach();
   }
@@ -319,7 +345,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
 
 export async function runConversation(conv, { onUpdate, signal }) {
   const agents = conv.agentIds.map(agentById).filter(Boolean);
-  if (!agents.length) throw new Error('This chat has no friends yet. Add one first.');
+  if (!agents.length) throw new Error('Ebben a beszélgetésben még nincs agent.');
   const multi = conv.type === 'group' && agents.length > 1;
   const rounds = multi ? Math.max(1, Math.min(3, +state.settings.rounds || 1)) : 1;
   for (let round = 0; round < rounds; round++) {
