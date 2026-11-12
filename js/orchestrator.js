@@ -5,7 +5,7 @@ import { isReady, onStatus, offStatus, friendlyMessage } from './llm.js';
 import { generate, usingOpenRouter } from './generate.js';
 import {
   toolPrompt, parseToolCall, execTool, needsWebSearch, gatherSources, formatSources,
-  answerFromSources, ensureCited, extractSources,
+  answerFromSources, extractSources, localDateAnswer, clockPrompt, sourcesUsed, isDateTimeQuestion,
 } from './tools.js';
 
 const MAX_TOOL_LOOPS = 2;
@@ -57,7 +57,7 @@ function allowedTools(agent) {
   return Array.isArray(agent?.tools) ? agent.tools : null;
 }
 
-function systemFor(agent, conv, mode) {
+function systemFor(agent, conv, mode, clockLine = '') {
   const tools = allowedTools(agent);
   if (mode === 'decide') {
     return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}`;
@@ -67,15 +67,24 @@ function systemFor(agent, conv, mode) {
   if (!others.length) group = 'You are chatting one to one with the user.';
   else if (mode === 'react') group = `You are in a group with: ${others.map((a) => a.name).join(', ')}. They already answered. Add something new. Do not repeat their whole answer.`;
   else group = `You are in a group with: ${others.map((a) => a.name).join(', ')}. You cannot see their reply yet, so give your own. Do not speak for them.`;
-  const style = 'Reply in the user\'s language. If they write in English, reply in simple English. Use 1 to 4 sentences unless they ask for more. Do not start with your own name. Do not mention internal model names.';
+  const style = [
+    clockLine,
+    'Answer the user\'s latest question in the first sentence and stay on that topic.',
+    'Reply in the user\'s language. If they write in English, use simple English.',
+    'Use 1 to 4 sentences unless they ask for more.',
+    'Do not start with your own name. Do not mention internal model names, training, or tools.',
+    'If they ask the date or the time, answer from the visitor clock above. Never say a date was not provided.',
+    'Ignore a tool result that is about a different topic. Cite a page as [Title](url) only when you used that page. If you did not use one, do not add a sources list.',
+  ].filter(Boolean).join(' ');
   if (mode === 'react') {
     return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf you have nothing new, reply with exactly PASS.`;
   }
-  return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf a tool result is in the chat, use it and cite sources as [Title](url). Never invent a link. Do not write a TOOL line.`;
+  return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nDo not write a TOOL line.`;
 }
 
-export function buildMessages(agent, conv, { mode = 'answer' } = {}) {
-  const msgs = [{ role: 'system', content: systemFor(agent, conv, mode) }];
+export function buildMessages(agent, conv, { mode = 'answer', clockLine = '' } = {}) {
+  const clock = mode === 'decide' ? '' : (clockLine || clockPrompt());
+  const msgs = [{ role: 'system', content: systemFor(agent, conv, mode, clock) }];
   for (const m of conv.messages.slice(-HISTORY_LIMIT)) {
     let role;
     let content;
@@ -192,6 +201,33 @@ function sourcesIn(conv, agentId, wave) {
   return rows;
 }
 
+function applyUsedSources(conv, agentId, wave, used) {
+  const notes = conv.messages.filter((message) => (
+    message.role === 'tool'
+    && message.agentId === agentId
+    && (!wave || message.wave === wave)
+    && (message.tool === 'web_search' || message.tool === 'read_page' || message.tool === 'fetch_wikipedia_page')
+  ));
+  notes.forEach((message, index) => {
+    const show = index === notes.length - 1 && used.length > 0;
+    message.sources = show ? used : [];
+    message.hidden = !show;
+  });
+}
+
+function replyWithSources(conv, agent, wave, text) {
+  const cleaned = cleanReply(text, agent.name);
+  const pool = sourcesIn(conv, agent.id, wave);
+  let body = cleaned;
+  let used = sourcesUsed(body, pool);
+  if (!body && pool.length) {
+    body = answerFromSources(pool);
+    used = sourcesUsed(body, pool);
+  }
+  applyUsedSources(conv, agent.id, wave, used);
+  return body;
+}
+
 async function lookup(agent, conv, msg, query, signal, onUpdate, onPhase) {
   msg.toolCall = 'web_search';
   msg.loading = false;
@@ -199,16 +235,22 @@ async function lookup(agent, conv, msg, query, signal, onUpdate, onPhase) {
   onPhase?.('working');
   onUpdate?.(true);
   const found = await gatherSources(query, { signal });
-  const top = found.results.slice(0, 5);
+  const top = found.results.slice(0, 4);
+  if (!top.length) {
+    msg.content = '';
+    onUpdate?.(true);
+    return [];
+  }
   insertAfterTurn(conv, msg, {
     id: uid('m_'),
     role: 'tool',
     agentId: agent.id,
     wave: msg.wave,
     tool: 'web_search',
-    args: { query },
-    content: top.length ? formatSources(top, found.note) : 'No pages found.',
+    args: { query: found.query || query },
+    content: formatSources(top, found.note),
     sources: top,
+    hidden: true,
     ts: Date.now(),
   });
   save();
@@ -307,8 +349,10 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     onUpdate?.();
   };
   const finishAbort = () => {
-    const fallback = timedOut?.() ? answerFromSources(sourcesIn(conv, agent.id, wave)) : '';
+    const pool = sourcesIn(conv, agent.id, wave);
+    const fallback = timedOut?.() ? answerFromSources(pool) : '';
     if (fallback) {
+      applyUsedSources(conv, agent.id, wave, sourcesUsed(fallback, pool));
       msg.pending = false;
       msg.loading = false;
       msg.error = false;
@@ -329,7 +373,20 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     let usedTool = false;
     const seed = contextFor(agent, conv, msg);
     const userText = lastUserText(seed.messages);
-    const skipTools = react || isSmallTalk(userText) || (tools && tools.length === 0);
+    const clockReply = !react ? localDateAnswer(userText) : '';
+    if (clockReply) {
+      msg.content = clockReply;
+      msg.pending = false;
+      msg.loading = false;
+      msg.answered = true;
+      msg.error = false;
+      state.usage.agentMessages++;
+      onPhase?.('done');
+      save();
+      onUpdate?.();
+      return;
+    }
+    const skipTools = react || isSmallTalk(userText) || isDateTimeQuestion(userText) || (tools && tools.length === 0);
     const allowSearch = !tools || tools.includes('web_search');
     const factual = !skipTools && allowSearch && needsWebSearch(userText);
 
@@ -343,7 +400,10 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     }
 
     if (!modelOn) {
-      finishOffline(msg, sourcesIn(conv, agent.id, wave), userText, onPhase, onUpdate);
+      const pool = sourcesIn(conv, agent.id, wave);
+      const body = answerFromSources(pool);
+      if (body) applyUsedSources(conv, agent.id, wave, sourcesUsed(body, pool));
+      finishOffline(msg, pool, userText, onPhase, onUpdate);
       return;
     }
 
@@ -362,6 +422,8 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           if (!usedTool && decision && !isNone(decision) && !/\bTOOL\s*:/i.test(decision)) direct = decision;
           break;
         }
+        if (call.name === 'web_search' || call.name === 'fetch_wikipedia_page') continue;
+        if (call.name === 'read_page' && !/https?:\/\//i.test(userText)) continue;
         if (tools && !tools.includes(call.name)) {
           insertAfterTurn(conv, msg, {
             id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: call.args,
@@ -408,7 +470,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
 
     let text = direct;
     if (!text || usedTool) {
-      text = await generateReliable(prefs.model, buildMessages(agent, contextFor(agent, conv, msg), { mode: react ? 'react' : 'answer' }), {
+      text = await generateReliable(prefs.model, buildMessages(agent, contextFor(agent, conv, msg), { mode: react ? 'react' : 'answer', clockLine: clockPrompt() }), {
         temperature: prefs.temperature,
         maxTokens: react ? Math.min(prefs.maxTokens, 180) : prefs.maxTokens,
         signal,
@@ -427,14 +489,14 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     if (stopCheck()) { removeMsg(conv, msg); onUpdate?.(); return; }
     if (aborted()) { finishAbort(); return; }
 
-    const cleaned = ensureCited(cleanReply(text, agent.name), sourcesIn(conv, agent.id, wave));
+    const cleaned = replyWithSources(conv, agent, wave, text);
     if (react && isPass(cleaned)) {
       removeMsg(conv, msg);
       save();
       onUpdate?.();
       return;
     }
-    msg.content = cleaned || answerFromSources(sourcesIn(conv, agent.id, wave)) || 'I am not sure what to say. Try asking in a different way.';
+    msg.content = cleaned || 'I am not sure what to say. Try asking in a different way.';
     msg.pending = false;
     msg.loading = false;
     msg.answered = true;
@@ -456,6 +518,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     const found = sourcesIn(conv, agent.id, wave);
     const fallback = answerFromSources(found);
     if (fallback) {
+      applyUsedSources(conv, agent.id, wave, sourcesUsed(fallback, found));
       msg.pending = false;
       msg.loading = false;
       msg.error = false;

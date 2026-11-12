@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-12, date and search
+
+- Date and time questions use the visitor's clock. They are not sent to web search.
+- Search runs only for lookup questions, uses a shorter query, and drops pages that do not match. A reply lists a source only when that reply used it.
+
 ## 2026-11-12, workspace
 
 - The page is a dark chat workspace: agents on the left, separate chats for each agent, and one composer.

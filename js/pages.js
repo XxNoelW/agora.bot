@@ -17,7 +17,7 @@ const TOOL_LABEL = {
 };
 
 function sourceItems(message) {
-  if (Array.isArray(message.sources) && message.sources.length) return message.sources;
+  if (Array.isArray(message.sources)) return message.sources;
   return extractSources(message.content || '');
 }
 
@@ -35,8 +35,10 @@ export function messageHTML(message) {
     return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${rich(message.content)}</div></div></div>`;
   }
   if (message.role === 'tool') {
+    if (message.hidden) return '';
     const who = agentById(message.agentId);
     const web = message.tool === 'web_search' || message.tool === 'read_page' || message.tool === 'fetch_wikipedia_page';
+    if (web && !sourceItems(message).some((item) => item && item.url)) return '';
     return `<div class="tool-line" data-mid="${esc(message.id)}"><div class="meta">${esc(who?.name || 'Agent')} ${esc(TOOL_LABEL[message.tool] || 'used a tool')}</div>${web ? sourcesHTML(message) : `<p data-body>${esc(message.content || '')}</p>`}</div>`;
   }
   if (message.role === 'system' || message.role === 'handoff' || message.role === 'task') {

@@ -133,12 +133,140 @@ export function formatSources(results, note = '') {
   return (note ? note + '\n\n' : '') + body;
 }
 
+const TERM_DROP = new Set([
+  'what', 'whats', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how', 'which',
+  'is', 'are', 'was', 'were', 'do', 'does', 'did', 'can', 'could', 'would', 'should',
+  'the', 'and', 'for', 'you', 'your', 'please', 'tell', 'about', 'from', 'with',
+  'that', 'this', 'make', 'made', 'making', 'look', 'search', 'find', 'out', 'latest',
+  'news', 'into', 'onto', 'over', 'under', 'than', 'then', 'just', 'have', 'has',
+]);
+
+export function isDateTimeQuestion(text) {
+  const s = String(text || '').trim().replace(/[!?.]+$/g, '').replace(/\s+/g, ' ').trim();
+  if (!s || s.length > 70) return false;
+  return /^(what(?:'s| is|s)?|whats|tell me|do you know)?\s*(the\s+|today'?s\s+|current\s+|local\s+)*(date|time|day)(\s+and\s+(date|time))?(\s+(today|now|is it|please))?$/i.test(s)
+    || /^(today'?s date|the date today|the time now|what day is it|what time is it|current date|current time|what(?:'s| is) today)$/i.test(s);
+}
+
+export function isSimpleMath(text) {
+  const s = String(text || '').trim();
+  return /^(what(?:'s| is)?\s+)?[-+]?\d[\d\s.+*/x×÷()-]{0,32}\??$/i.test(s);
+}
+
+export function searchQuery(text) {
+  let q = String(text || '').replace(/[?!.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  q = q.replace(/^(please\s+)?(can you\s+|could you\s+|would you\s+)?/i, '');
+  q = q.replace(/^(search(?: for)?|look up|lookup|find(?: out)?|tell me(?: about)?)\s+/i, '');
+  // "How..." stays intact. Wikipedia ranks those better than the bare keywords.
+  q = q.replace(/^(what|who|where|which)\s+(is|are|was|were)\s+/i, '');
+  q = q.replace(/^(a|an|the)\s+/i, '');
+  return q.trim().slice(0, 140);
+}
+
+export function contentTerms(text) {
+  return [...new Set(String(text || '').toLowerCase().split(/[^a-z0-9]+/).filter((word) => word.length > 2 && !TERM_DROP.has(word)))];
+}
+
+function escapeReg(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function termHit(hay, term) {
+  const forms = [term];
+  if (term.endsWith('s') && term.length > 3) forms.push(term.slice(0, -1));
+  else forms.push(term + 's');
+  return forms.some((form) => new RegExp('\\b' + escapeReg(form) + '\\b', 'i').test(hay));
+}
+
+function offTopic(query, item) {
+  const title = String(item?.title || '');
+  const hay = `${title} ${item?.snippet || ''}`;
+  if (/\bmay refer to\b|\bdisambiguation\b/i.test(hay)) return true;
+  if (/^what is\b/i.test(title)) return true;
+  const q = searchQuery(query).toLowerCase();
+  const of = q.match(/^([a-z0-9]+)\s+of\s+(.+)$/);
+  if (!of) return false;
+  const head = of[1];
+  const object = of[2].trim();
+  const compound = title.toLowerCase().match(new RegExp('\\b' + escapeReg(head) + '\\s+([a-z]+)'));
+  if (compound && compound[1] !== 'of' && compound[1] !== 'and') return true;
+  const titled = title.toLowerCase();
+  if (new RegExp('\\b' + escapeReg(head) + 's?\\b').test(titled) && !titled.includes(object) && !/\bof\b/.test(titled)) return true;
+  const near = new RegExp(
+    '\\b' + escapeReg(head) + '\\b(?:\\W+\\w+){0,6}\\W+\\b' + escapeReg(object) + '\\b|\\b'
+    + escapeReg(object) + '\\b(?:\\W+\\w+){0,6}\\W+\\b' + escapeReg(head) + '\\b',
+    'i',
+  );
+  return !near.test(hay);
+}
+
+export function relevantSources(query, results) {
+  const looked = searchQuery(query) || String(query || '');
+  const terms = contentTerms(looked);
+  if (!terms.length) return [];
+  const need = terms.length <= 2 ? terms.length : Math.ceil(terms.length * 0.5);
+  return (results || []).filter((item) => {
+    if (!item?.title || !item?.url || offTopic(query, item)) return false;
+    const hay = `${item.title} ${item.snippet || ''}`;
+    let hits = 0;
+    for (const term of terms) if (termHit(hay, term)) hits += 1;
+    return hits >= need;
+  }).slice(0, 3);
+}
+
+export function sourcesUsed(answer, results) {
+  const body = String(answer || '');
+  const low = body.toLowerCase();
+  return (results || []).filter((item) => {
+    if (!item?.url || !item?.title) return false;
+    if (body.includes(item.url)) return true;
+    const title = String(item.title).trim();
+    const words = title.split(/\s+/).filter(Boolean);
+    if (words.length < 2) return false;
+    return low.includes(title.toLowerCase());
+  });
+}
+
 export function needsWebSearch(text) {
   const s = String(text || '').trim();
   if (s.length < 8) return false;
   if (/^(hi|hello|hey|hiya|yo|howdy|sup|thanks|thank you|thx|ok|okay|bye|good morning|good afternoon|good night|how are you|what's up|whats up|hola)[!.?\s]*$/i.test(s)) return false;
-  if (/\b(search|look up|lookup|find out|who is|who was|what is|what are|what was|when did|when was|where is|where are|why do|why is|why are|how do|how does|how did|how can|latest|news|wikipedia|source|according to)\b/i.test(s)) return true;
-  return /\?\s*$/.test(s) && s.split(/\s+/).length >= 3;
+  if (isDateTimeQuestion(s) || isSimpleMath(s)) return false;
+  if (/^(what(?:'s| is) your name|who are you|what are you)[?!.\s]*$/i.test(s)) return false;
+  if (!contentTerms(searchQuery(s)).length) return false;
+  if (/\b(search|look up|lookup|find out|wikipedia|according to)\b/i.test(s)) return true;
+  if (s.split(/\s+/).length < 4) return false;
+  return /\b(how|who|why|where|when|what|which)\b/i.test(s);
+}
+
+export function formatClock(now = new Date(), timeZone) {
+  const zone = timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  const date = new Intl.DateTimeFormat('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: zone,
+  }).format(now);
+  const time = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: zone,
+  }).format(now);
+  return { timeZone: zone, date, time };
+}
+
+export function clockPrompt(now = new Date(), timeZone) {
+  const clock = formatClock(now, timeZone);
+  return `The visitor's local date and time is ${clock.date}, ${clock.time}. Timezone: ${clock.timeZone}. Use this for today, the date, the time, and the day of the week.`;
+}
+
+export function localDateAnswer(text, now = new Date(), timeZone) {
+  if (!isDateTimeQuestion(text)) return '';
+  const clock = formatClock(now, timeZone);
+  const s = String(text || '').toLowerCase();
+  const wantsZone = /time\s*zone/.test(s);
+  const wantsTime = /\btime\b/.test(s);
+  const wantsDate = /\b(date|day|today)\b/.test(s) || (!wantsTime && !wantsZone);
+  const parts = [];
+  if (wantsDate) parts.push(`Today is ${clock.date}.`);
+  if (wantsTime) parts.push(`The local time is ${clock.time}.`);
+  if (wantsZone) parts.push(`The timezone is ${clock.timeZone}.`);
+  return parts.join(' ') || `Today is ${clock.date}. The local time is ${clock.time}.`;
 }
 
 export function extractSources(text) {
@@ -171,14 +299,8 @@ export function answerFromSources(results) {
   return `Here is what I found.\n\n${parts.join('\n\n')}`;
 }
 
-export function ensureCited(text, results) {
-  const body = String(text || '').trim();
-  const rows = (results || []).filter((item) => item && item.url && item.title);
-  if (!body || !rows.length) return body;
-  const missing = rows.filter((item) => !body.includes(item.url)).slice(0, 4);
-  if (!missing.length) return body;
-  const links = missing.map((item) => `[${item.title}](${item.url})`).join(' · ');
-  return `${body}\n\nSources: ${links}`;
+export function ensureCited(text) {
+  return String(text || '').trim();
 }
 
 async function wikiRestSearch(query, opts) {
@@ -275,14 +397,17 @@ async function collectSources(query, opts) {
 }
 
 export async function gatherSources(query, opts = {}) {
-  const q = String(query || '').trim();
+  const raw = String(query || '').trim();
+  const q = searchQuery(raw) || raw;
   if (!q) throw new Error('Tell me what to look up.');
   let found = { results: [], note: '' };
   for (let attempt = 0; attempt < 2; attempt += 1) {
     if (opts.signal?.aborted) break;
     found = await collectSources(q, opts);
+    found.results = relevantSources(q, found.results);
     if (found.results.length || opts.signal?.aborted) break;
   }
+  found.query = q;
   return found;
 }
 
