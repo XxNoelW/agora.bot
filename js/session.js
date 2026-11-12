@@ -2,4 +2,9 @@
 export const session = {
   gpu: { ok: false, reason: '', pending: true },
   route: 'dashboard',
+  catalog: [],
+  catalogError: '',
+  catalogQuery: '',
+  pipelineRunning: false,
+  runBucket: null,
 };

@@ -51,7 +51,7 @@ async function fetchText(url, opts = {}, ms = 15000) {
       signal: gate.signal,
       headers: { Accept: 'application/json, text/plain, */*' },
     });
-    if (!response.ok) throw new Error('Request failed (' + response.status + ')');
+    if (!response.ok) throw new Error('The request failed (' + response.status + ')');
     return await response.text();
   } catch (e) {
     if (gate.parentAborted()) {
@@ -59,7 +59,7 @@ async function fetchText(url, opts = {}, ms = 15000) {
       err.name = 'AbortError';
       throw err;
     }
-    if (e.name === 'AbortError') throw new Error('The website took too long to answer.');
+    if (e.name === 'AbortError') throw new Error('That site took too long to answer.');
     throw e;
   } finally {
     gate.done();
@@ -71,7 +71,7 @@ export function assertPublicHttpUrl(raw) {
   try { url = new URL(String(raw || '').trim()); }
   catch { throw new Error('That link does not look right.'); }
   if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('Only http and https links can be read.');
-  if (url.username || url.password) throw new Error('Links with a password hidden in them are blocked.');
+  if (url.username || url.password) throw new Error('Links with a hidden password are blocked.');
   const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
   const ipv4 = host.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
   const privateIp = ipv4 && (
@@ -179,7 +179,7 @@ async function ddgWeb(query, opts) {
   try {
     const text = await fetchText(url, opts, 20000);
     if (/bots use DuckDuckGo|complete the following challenge|select all squares/i.test(text)) {
-      return { results: [], note: 'The live web search was busy, so these sources are from Wikipedia and quick answers.' };
+      return { results: [], note: 'Live web search was busy, so these sources are from Wikipedia and quick answers.' };
     }
     return { results: parseDdgLite(text), note: '' };
   } catch (e) {
@@ -190,7 +190,7 @@ async function ddgWeb(query, opts) {
 
 export async function webSearch(query, opts = {}) {
   const q = String(query || '').trim();
-  if (!q) throw new Error('Tell me what to search for.');
+  if (!q) throw new Error('Tell me what to look up.');
   const [wiki, instant, web] = await Promise.all([
     wikiSearch(q, opts).catch((e) => (opts.signal?.aborted || e.name === 'AbortError' ? Promise.reject(e) : [])),
     ddgInstant(q, opts).catch((e) => (opts.signal?.aborted || e.name === 'AbortError' ? Promise.reject(e) : [])),
@@ -210,7 +210,7 @@ export async function webSearch(query, opts = {}) {
   for (const item of wiki) add(item);
   for (const item of instant) add(item);
   const top = results.slice(0, 5);
-  if (!top.length) return 'Nem találtam oldalt. Próbálj egyszerűbb kérdést.';
+  if (!top.length) return 'No pages found. Try a simpler question.';
   const note = !(web.results || []).length && web.note ? web.note : '';
   return formatSources(top, note);
 }
@@ -221,7 +221,7 @@ export async function readPage(args = {}, opts = {}) {
   if (!target && (title || args.query)) {
     target = 'https://en.wikipedia.org/wiki/' + encodeURIComponent((title || String(args.query)).replace(/ /g, '_'));
   }
-  if (!target) throw new Error('Give a url or a Wikipedia title.');
+  if (!target) throw new Error('Give a link or a Wikipedia title.');
   const safe = assertPublicHttpUrl(target);
   const wiki = wikipediaTitle(safe);
   if (wiki) {
@@ -231,7 +231,7 @@ export async function readPage(args = {}, opts = {}) {
     const page = Object.values(data.query?.pages || {})[0];
     if (!page || page.missing !== undefined) return 'That Wikipedia page was not found.';
     const pageUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(String(page.title).replace(/ /g, '_'));
-    return `Title: ${page.title}\nURL: ${pageUrl}\n\n${clip(page.extract || 'No text on that page.', 2800)}`;
+    return `Title: ${page.title}\nLink: ${pageUrl}\n\n${clip(page.extract || 'No text on that page.', 2800)}`;
   }
   const text = await fetchText('https://r.jina.ai/' + safe, opts, 20000);
   if (!text.trim()) return 'That page had no text I could read.';
@@ -266,7 +266,7 @@ export function resolveWritePath(path, agentId, files = {}, owners = {}) {
 
 export function applyWrite(path, content, agentId, files, owners = {}, backups = {}) {
   const text = String(content ?? '');
-  if (text.length > 100000) throw new Error('A jegyzet túl hosszú.');
+  if (text.length > 100000) throw new Error('That note is too long.');
   const dest = resolveWritePath(path, agentId, files, owners);
   if (dest === '/') throw new Error('Pick a file name, like /notes.txt');
   if (dest in files) backups[dest] = files[dest];
@@ -282,17 +282,17 @@ function write_file({ path, content }, opts = {}) {
   if (!state.fileBackups || typeof state.fileBackups !== 'object') state.fileBackups = {};
   const dest = applyWrite(path, content, opts.agentId, state.files, state.fileOwners, state.fileBackups);
   save();
-  if (dest !== path) return `A(z) ${path} másik agent jegyzete, ezért ide mentettem: ${dest} (${state.files[dest].length} karakter)`;
-  return `${dest} mentve (${state.files[dest].length} karakter).`;
+  if (dest !== path) return `${path} belongs to another agent, so I saved this instead: ${dest} (${state.files[dest].length} characters)`;
+  return `Saved ${state.files[dest].length} characters to ${dest}.`;
 }
 function read_file({ path }) {
   path = normPath(path);
-  if (!(path in state.files)) return `Nincs ilyen jegyzet: ${path}. A list_files megmutatja, mi van.`;
+  if (!(path in state.files)) return `No note named ${path}. Use list_files to see what exists.`;
   return clip(state.files[path], 3000);
 }
 function list_files() {
   const names = Object.keys(state.files).sort();
-  return names.length ? names.map((p) => `${p} (${state.files[p].length} karakter)`).join('\n') : '(még nincs jegyzet)';
+  return names.length ? names.map((p) => `${p} (${state.files[p].length} characters)`).join('\n') : '(no notes yet)';
 }
 
 const WORKER_SRC = `self.onmessage=(e)=>{const logs=[];const fmt=(a)=>a.map(x=>{try{return typeof x==='string'?x:JSON.stringify(x)}catch{return String(x)}}).join(' ');
@@ -313,9 +313,9 @@ export function run_js({ code }, opts = {}) {
     }
     worker.onmessage = (e) => {
       const { ok, logs, result, error } = e.data;
-      done(clip([logs.length ? 'console:\n' + logs.join('\n') : '', ok ? (result !== undefined ? 'return: ' + result : '') : 'error: ' + error].filter(Boolean).join('\n') || '(no output; use console.log or return)'));
+      done(clip([logs.length ? 'log:\n' + logs.join('\n') : '', ok ? (result !== undefined ? 'result: ' + result : '') : 'problem: ' + error].filter(Boolean).join('\n') || '(no output; use console.log or return)'));
     };
-    worker.onerror = (e) => { e.preventDefault(); done('error: ' + e.message); };
+    worker.onerror = (e) => { e.preventDefault(); done('problem: ' + e.message); };
     worker.postMessage(String(code || ''));
   });
 }
@@ -479,6 +479,6 @@ export async function execTool(name, args, opts = {}) {
   try { return String(await tool.fn(args || {}, opts)); }
   catch (e) {
     if (opts.signal?.aborted || e.name === 'AbortError') throw e;
-    return 'Tool error: ' + (e.message || e);
+    return 'Tool problem: ' + (e.message || e);
   }
 }

@@ -67,7 +67,7 @@ export function figureHTML(agent, { size = 'md', live = true, caption = true } =
   const state = viewState(agent);
   const liveAttr = live && agent?.id ? ` data-live-agent="${esc(agent.id)}"` : '';
   const cap = caption
-    ? `<figcaption><span class="fig-name">${esc(agent?.name || '')}</span><span class="fig-state" data-state-label>${esc(STATE_LABEL[state] || 'Vár')}</span></figcaption>`
+    ? `<figcaption><span class="fig-name">${esc(agent?.name || '')}</span><span class="fig-state" data-state-label>${esc(STATE_LABEL[state] || 'Waiting')}</span></figcaption>`
     : '';
   return `<figure class="fig fig-${size}"${liveAttr} data-state="${esc(state)}" data-role="${esc(agent?.role || '')}" style="--agent:${safeColor(agent?.color)}" role="img" aria-label="${esc(altText(agent))}">
     ${characterSVG(agent?.accessory)}

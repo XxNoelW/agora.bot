@@ -25,7 +25,7 @@ export function openModal(html, onMount, dismiss) {
   focus?.focus();
 }
 
-export function confirm({ title, text, ok = 'Megerősítem', cancel = 'Mégse', danger = false, extra = '' }) {
+export function confirm({ title, text, ok = 'OK', cancel = 'Cancel', danger = false, extra = '' }) {
   const previous = document.activeElement;
   return new Promise((resolve) => {
     let settled = false;

@@ -66,15 +66,15 @@ test('all seven character states have text, not only motion', () => {
     assert.ok(html.includes(roles.altText({ ...agent, status, paused: status === 'paused' })));
     assert.ok(html.includes(roles.STATE_LABEL[status]));
   }
-  assert.equal(roles.altText({ role: 'coder', status: 'working' }), 'Kódoló agent: dolgozik');
-  assert.equal(roles.altText({ role: 'judge', status: 'approval' }), 'Bíró agent: jóváhagyásra vár');
+  assert.equal(roles.altText({ role: 'coder', status: 'working' }), 'Coder agent: working');
+  assert.equal(roles.altText({ role: 'judge', status: 'approval' }), 'Judge agent: waiting for a yes');
 });
 
 test('the planner runs independent work together and waits on the rest', () => {
   let n = 0;
   const agents = roles.ROLE_DEFS.map((role) => ({ id: role.id, role: role.id, name: role.name, paused: false }));
   const tasks = scheduler.planFromPrompt(
-    'Keresd meg a méhek mézét, írj kódot a teszthez, és dokumentáld.',
+    'Look up how bees make honey, write code for the test, and write notes.',
     agents,
     { limit: 4, id: () => 't' + (++n) },
   );
@@ -116,7 +116,7 @@ test('parallel limit and paused agents hold the queue', () => {
   assert.equal(picked[0].id, '1');
   assert.equal(scheduler.clampParallel(9), 5);
   assert.equal(scheduler.clampParallel(0), 1);
-  assert.equal(scheduler.mentionedAgents('Indíts három agentet a feladatra'), 3);
+  assert.equal(scheduler.mentionedAgents('Start three agents on the job'), 3);
 });
 
 test('agents do not silently overwrite each others notes', () => {
@@ -156,9 +156,9 @@ test('teacher adapter stays disconnected until a later step registers one', asyn
 });
 
 test('hungarian greetings skip tools and handoff is a sentence', () => {
-  assert.equal(orch.isSmallTalk('Szia!'), true);
-  assert.equal(orch.isSmallTalk('Indíts három agentet'), false);
-  assert.equal(roles.handoffLine({ name: 'Kata' }, { name: 'Bence' }), 'Kata átadta a feladatot Bence nevű agentnek.');
+  assert.equal(orch.isSmallTalk('Thanks!'), true);
+  assert.equal(orch.isSmallTalk('Start three agents'), false);
+  assert.equal(roles.handoffLine({ name: 'Kata' }, { name: 'Bence' }), 'Kata handed the job to Bence.');
 });
 
 test('audit log is local and destructive actions are named', () => {
@@ -181,7 +181,7 @@ test('the static shell keeps the spec tokens, motion, and hungarian page', () =>
   assert.match(css, /Inter,\s*Geist/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /is-offscreen/);
-  assert.match(html, /lang="hu"/);
+  assert.match(html, /lang="en"/);
   assert.match(html, /prefers-color-scheme/);
   assert.doesNotMatch(html + css, /grok/i);
   const source = readFileSync(new URL('../js/characters.js', import.meta.url), 'utf8');

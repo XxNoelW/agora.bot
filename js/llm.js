@@ -22,7 +22,7 @@ let genChain = Promise.resolve();
 
 const statusListeners = new Set();
 export let status = {
-  text: 'A segéd még nincs betöltve',
+  text: 'The helper is not loaded yet',
   detail: '',
   progress: 0,
   ready: false,
@@ -40,15 +40,15 @@ export class LlmError extends Error {
 }
 
 export function friendlyMessage(e) {
-  if (!e) return 'Valami hiba történt. Próbáld újra.';
+  if (!e) return 'Something went wrong. Please try again.';
   if (e.friendly) return e.friendly;
-  if (e.name === 'AbortError' || e.code === 'abort') return 'Megállítva.';
+  if (e.name === 'AbortError' || e.code === 'abort') return 'Stopped.';
   const m = String(e.message || e);
-  if (/webgpu/i.test(m)) return 'Ez a böngésző nem tudja futtatni az agenteket. Chrome vagy Edge kell, ott, ahol van WebGPU. Enélkül a felület megnyílik, de válasz nem készül.';
-  if (/timeout|timed out|stall|too long|went quiet/i.test(m)) return 'Túl sokáig tartott, ezért megálltam. Próbáld újra, vagy válassz kisebb modellt a beállításokban.';
-  if (/failed to fetch|network|import|load failed/i.test(m)) return 'Nem sikerült letölteni a segédet. Ellenőrizd a netet, és próbáld újra.';
-  if (/not found|unknown model|cannot find model|model_id/i.test(m)) return 'Ez a modell nem elérhető. Válassz másikat a beállításokban.';
-  return 'Hiba történt válasz közben. Próbáld újra.';
+  if (/webgpu/i.test(m)) return 'This browser cannot run the helpers. Use Chrome or Edge where WebGPU works. You can still look around.';
+  if (/timeout|timed out|stall|too long|went quiet/i.test(m)) return 'This took too long, so I stopped. Try again, or pick a smaller helper in Settings.';
+  if (/failed to fetch|network|import|load failed/i.test(m)) return 'I could not download the helper. Check your internet and try again.';
+  if (/not found|unknown model|cannot find model|model_id/i.test(m)) return 'That helper is not available. Pick another one in Settings.';
+  return 'Something went wrong while writing. Please try again.';
 }
 
 export const onStatus = (fn) => { statusListeners.add(fn); fn(status); };
@@ -64,11 +64,11 @@ function setStatus(patch) {
 export function friendlyLoadText(raw, progress) {
   const pct = progress > 0 && progress < 1 ? ` (${Math.round(progress * 100)}%)` : '';
   const t = String(raw || '');
-  if (/fetch|download/i.test(t)) return `A segéd letöltése${pct}`;
-  if (/cache/i.test(t)) return `A mentett segéd betöltése${pct}`;
-  if (/shader|gpu|compil/i.test(t)) return `Indulás a grafikus chipen${pct}`;
-  if (/lib/i.test(t)) return `A segédkönyvtár megnyitása${pct}`;
-  if (!t) return `A segéd készül${pct}`;
+  if (/fetch|download/i.test(t)) return `Downloading the helper${pct}`;
+  if (/cache/i.test(t)) return `Loading the saved helper${pct}`;
+  if (/shader|gpu|compil/i.test(t)) return `Starting on the graphics chip${pct}`;
+  if (/lib/i.test(t)) return `Opening the helper library${pct}`;
+  if (!t) return `Getting the helper ready${pct}`;
   return t + pct;
 }
 
@@ -103,7 +103,7 @@ function watchdog(ms, makeError) {
 
 function abortPromise(signal) {
   return new Promise((_, reject) => {
-    const stop = () => reject(new LlmError('Megállítva.', { friendly: 'Megállítva.', code: 'abort' }));
+    const stop = () => reject(new LlmError('Stopped.', { friendly: 'Stopped.', code: 'abort' }));
     if (signal.aborted) stop();
     else signal.addEventListener('abort', stop, { once: true });
   });
@@ -117,19 +117,19 @@ export async function checkWebGPU() {
   if (!webgpuSupported()) {
     return {
       ok: false,
-      reason: 'Ez a böngésző nem tudja futtatni az agenteket. Chrome vagy Edge kell, WebGPU-val. Telefonon is csak ott megy, ahol van WebGPU. A felület ettől még megnyílik.',
+      reason: 'This browser cannot run the helpers. Use Chrome or Edge with WebGPU. Phones work only where WebGPU exists. You can still look around.',
     };
   }
   try {
     const adapter = await withTimeout(
       navigator.gpu.requestAdapter(),
       GPU_TIMEOUT_MS,
-      'Nem találom a grafikus chipet az agentekhez. Próbáld Chrome-ban vagy Edge-ben.',
+      'I could not find a graphics chip for the helpers. Try Chrome or Edge.',
     );
     if (!adapter) {
       return {
         ok: false,
-        reason: 'Ez a böngésző nem tudja használni a grafikus chipet. Próbáld Chrome-ban vagy Edge-ben. A felület ettől még megnyílik.',
+        reason: 'This browser cannot use a graphics chip. Try Chrome or Edge. You can still look around.',
       };
     }
     return { ok: true, reason: '' };
@@ -149,7 +149,7 @@ async function getLib() {
     return await withTimeout(
       libPromise,
       IMPORT_TIMEOUT_MS,
-      'Nem sikerült letölteni a segédkönyvtárat. Ellenőrizd a netet, és próbáld újra.',
+      'I could not download the helper library. Check your internet and try again.',
     );
   } catch (e) {
     if (e?.code === 'timeout') {
@@ -177,7 +177,7 @@ async function doLoad(modelId) {
     setStatus({ text: chk.reason, detail: '', progress: 0, ready: false, error: true, busy: false });
     throw new LlmError(chk.reason, { friendly: chk.reason, code: 'webgpu' });
   }
-  setStatus({ text: 'A segédkönyvtár megnyitása…', detail: WEBLLM_URL, progress: 0, ready: false, error: false, busy: true });
+  setStatus({ text: 'Opening the helper library…', detail: WEBLLM_URL, progress: 0, ready: false, error: false, busy: true });
   let lib;
   try { lib = await getLib(); }
   catch (e) {
@@ -186,25 +186,25 @@ async function doLoad(modelId) {
     if (e.friendly) throw e;
     throw new LlmError(e.message || 'import failed', { friendly, code: e.code || 'llm' });
   }
-  if (my !== loadEpoch) throw new LlmError('Megállítva.', { friendly: 'Megállítva.', code: 'abort' });
+  if (my !== loadEpoch) throw new LlmError('Stopped.', { friendly: 'Stopped.', code: 'abort' });
 
   const known = lib.prebuiltAppConfig?.model_list;
   if (Array.isArray(known) && known.length && !known.some((m) => m.model_id === modelId)) {
-    const friendly = 'Ez a modell nem elérhető. Válassz másikat a beállításokban.';
+    const friendly = 'That helper is not available. Pick another one in Settings.';
     setStatus({ text: friendly, detail: modelId, progress: 0, ready: false, error: true, busy: false });
     throw new LlmError('unknown model ' + modelId, { friendly, code: 'model' });
   }
 
   const stalled = () => new LlmError(
     'download stalled',
-    { friendly: 'A letöltés megállt. Ellenőrizd a netet, vagy válassz kisebb modellt a beállításokban.', code: 'timeout' },
+    { friendly: 'The download stalled. Check your internet, or pick a smaller helper in Settings.', code: 'timeout' },
   );
   const watch = watchdog(LOAD_STALL_MS, stalled);
   let maxTimer;
   const maxPromise = new Promise((_, reject) => {
     maxTimer = setTimeout(() => reject(new LlmError(
       'download too long',
-      { friendly: 'A letöltés túl sokáig tartott. Próbáld újra, vagy válassz kisebb modellt.', code: 'timeout' },
+      { friendly: 'The download took too long. Try again, or pick a smaller helper.', code: 'timeout' },
     )), LOAD_MAX_MS);
   });
   const onProgress = (report) => {
@@ -237,7 +237,7 @@ async function doLoad(modelId) {
   try {
     const ready = await Promise.race([task, watch.promise, maxPromise]);
     if (!ready || my !== loadEpoch) throw stalled();
-    setStatus({ text: 'Kész a beszélgetésre', detail: modelId, progress: 1, ready: true, error: false, busy: false });
+    setStatus({ text: 'Ready to chat', detail: modelId, progress: 1, ready: true, error: false, busy: false });
     return ready;
   } catch (e) {
     if (my === loadEpoch) loadEpoch += 1;
@@ -305,25 +305,25 @@ export async function chat(modelId, messages, {
 
 async function complete(modelId, messages, { temperature, maxTokens, onToken, signal, stop, shouldStop }) {
   if (signal?.aborted || shouldStop?.()) {
-    throw new LlmError('Megállítva.', { friendly: 'Megállítva.', code: signal?.aborted ? 'abort' : 'skip' });
+    throw new LlmError('Stopped.', { friendly: 'Stopped.', code: signal?.aborted ? 'abort' : 'skip' });
   }
   // Stop must unblock the chat even while a big download continues in the background.
   const eng = await (signal ? Promise.race([loadModel(modelId), abortPromise(signal)]) : loadModel(modelId));
   if (signal?.aborted || shouldStop?.()) {
     try { eng.interruptGenerate(); } catch { /* idle */ }
-    throw new LlmError('Megállítva.', { friendly: 'Megállítva.', code: signal?.aborted ? 'abort' : 'skip' });
+    throw new LlmError('Stopped.', { friendly: 'Stopped.', code: signal?.aborted ? 'abort' : 'skip' });
   }
 
   const quiet = () => new LlmError(
     'generation stalled',
-    { friendly: 'A segéd elhallgatott, ezért megálltam. Nem marad örökre „írja…” állapotban. Próbáld újra.', code: 'timeout' },
+    { friendly: 'The helper went quiet, so I stopped. It will not stay on "writing" forever. Please try again.', code: 'timeout' },
   );
   const watch = watchdog(FIRST_TOKEN_MS, quiet);
   let maxTimer;
   const maxPromise = new Promise((_, reject) => {
     maxTimer = setTimeout(() => reject(new LlmError(
       'reply too long',
-      { friendly: 'A válasz túl sokáig tartott, ezért megálltam. Próbálj rövidebb kérdést, vagy kisebb modellt.', code: 'timeout' },
+      { friendly: 'That reply took too long, so I stopped. Try a shorter question, or a smaller helper.', code: 'timeout' },
     )), GEN_MAX_MS);
   });
   const racers = [watch.promise, maxPromise];
@@ -364,7 +364,7 @@ async function complete(modelId, messages, { temperature, maxTokens, onToken, si
   } catch (e) {
     try { eng.interruptGenerate(); } catch { /* idle */ }
     if (signal?.aborted || e?.code === 'abort') {
-      throw new LlmError('Megállítva.', { friendly: 'Megállítva.', code: 'abort' });
+      throw new LlmError('Stopped.', { friendly: 'Stopped.', code: 'abort' });
     }
     if (shouldStop?.() || e?.code === 'skip') {
       throw new LlmError('skip', { friendly: '', code: 'skip' });
@@ -376,7 +376,7 @@ async function complete(modelId, messages, { temperature, maxTokens, onToken, si
     clearTimeout(maxTimer);
   }
 
-  if (signal?.aborted) throw new LlmError('Megállítva.', { friendly: 'Megállítva.', code: 'abort' });
+  if (signal?.aborted) throw new LlmError('Stopped.', { friendly: 'Stopped.', code: 'abort' });
   if (shouldStop?.()) throw new LlmError('skip', { friendly: '', code: 'skip' });
   return out.trim();
 }

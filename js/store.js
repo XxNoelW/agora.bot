@@ -1,6 +1,7 @@
 // localStorage-backed state for the static Agona site.
 import { createRoleAgents, ROLE_DEFS } from './roles.js';
 import { clampParallel, DEFAULT_PARALLEL } from './scheduler.js';
+import { forgetOpenRouterKey, redactSecrets } from './openrouter.js';
 
 const KEY = 'agona:v1';
 const OLD_KEY = 'agentcloud:v1';
@@ -14,15 +15,15 @@ export const SMALL_CODER_MODEL = 'Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC';
 export const LEGACY_DEFAULT_MODEL = FALLBACK_MODEL;
 
 export const MODELS = [
-  { id: DEFAULT_MODEL, label: 'Nagy kódoló · Qwen2.5 Coder 7B (asztali alap, kb. 5 GB)' },
-  { id: MEDIUM_MODEL, label: 'Közepes · Qwen2.5 3B (kb. 2,5 GB)' },
-  { id: SMALL_CODER_MODEL, label: 'Kisebb kódoló · Qwen2.5 Coder 1.5B' },
-  { id: FALLBACK_MODEL, label: 'Kisebb · Qwen2.5 1.5B (kb. 1,1 GB)' },
-  { id: PHONE_MODEL, label: 'Telefon · Qwen2.5 0.5B (kb. 0,5 GB)' },
+  { id: DEFAULT_MODEL, label: 'Big coder · Qwen2.5 Coder 7B (desktop default, about 5 GB)' },
+  { id: MEDIUM_MODEL, label: 'Medium · Qwen2.5 3B (about 2.5 GB)' },
+  { id: SMALL_CODER_MODEL, label: 'Small coder · Qwen2.5 Coder 1.5B' },
+  { id: FALLBACK_MODEL, label: 'Small · Qwen2.5 1.5B (about 1.1 GB)' },
+  { id: PHONE_MODEL, label: 'Phone · Qwen2.5 0.5B (about 0.5 GB)' },
 ];
 
 const OLD_ADA = 'You are Ada, a thoughtful analyst. You reason carefully, are concise, and like to use tools to check facts.';
-const NEW_ADA = 'You are Ada, a kind and careful friend. You explain things in simple words and check facts before you sound sure.';
+const NEW_ADA = 'You are Ada, a kind and careful friend. You explain things in simple words and check facts before you sound sure. Reply in English unless the user writes in another language.';
 
 export const uid = (p = '') => p + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -54,9 +55,9 @@ function blank(nav) {
     agents: [],
     chats: [],
     files: {
-      '/jegyzetek.txt': 'Közös jegyzetek. Minden agent olvashatja. Ha egy jegyzetnek már van gazdája, a másik agent nem írja felül: új fájlt kap.',
+      '/notes.txt': 'Shared notes. Every agent can read them. If a note already has an owner, another agent does not overwrite it. They get a new file.',
     },
-    fileOwners: { '/jegyzetek.txt': 'system' },
+    fileOwners: { '/notes.txt': 'system' },
     fileBackups: {},
     keys: [],
     tasks: [],
@@ -64,9 +65,11 @@ function blank(nav) {
     teachers: [],
     trainingRuns: [],
     approvals: [],
-    student: { name: 'Agona Student', version: 'még nincs', status: 'nincs betanítva' },
+    student: { name: 'Agona Student', version: 'not yet', status: 'not trained yet' },
     trainingConfig: { rank: 8, epochs: 1 },
-    usage: { userMessages: 0, agentMessages: 0, toolCalls: 0, apiCalls: 0 },
+    usage: { userMessages: 0, agentMessages: 0, toolCalls: 0, apiCalls: 0, openrouterCalls: 0 },
+    examples: [],
+    metrics: null,
     settings: {
       model: pickDefaultModel(nav),
       modelMigrated: true,
@@ -78,6 +81,10 @@ function blank(nav) {
       theme: 'system',
       sidebarCollapsed: false,
       welcomed: false,
+      replySource: 'auto',
+      openrouterChatModel: '',
+      orPerRun: 8,
+      orGlobal: 40,
     },
   };
 }
@@ -87,7 +94,7 @@ export function defaults(nav = globalThis.navigator) {
   data.agents = createRoleAgents(uid);
   data.chats = [{
     id: 'workspace',
-    name: 'Közös munkatér',
+    name: 'Workspace',
     type: 'group',
     agentIds: data.agents.map((agent) => agent.id),
     messages: [],
@@ -101,7 +108,7 @@ function knownModel(id) {
 
 function normalizeAgent(agent) {
   const role = ROLE_DEFS.find((item) => item.id === agent.role);
-  const prompt = agent.prompt === OLD_ADA ? NEW_ADA : (agent.prompt || role?.prompt || 'Magyarul, röviden válaszolsz.');
+  const prompt = agent.prompt === OLD_ADA ? NEW_ADA : (agent.prompt || role?.prompt || 'Reply in simple English. If the user writes in another language, answer in that language.');
   return {
     id: agent.id || uid('a_'),
     name: agent.name || role?.name || 'Agent',
@@ -137,6 +144,12 @@ export function migrateState(data, nav = globalThis.navigator) {
   if (!['system', 'dark', 'light'].includes(settings.theme)) settings.theme = 'system';
   settings.sidebarCollapsed = !!settings.sidebarCollapsed;
   settings.welcomed = !!settings.welcomed;
+  if (!['auto', 'local', 'openrouter'].includes(settings.replySource)) settings.replySource = 'auto';
+  settings.openrouterChatModel = String(settings.openrouterChatModel || '');
+  settings.orPerRun = clamp(settings.orPerRun, 1, 30, 8);
+  settings.orGlobal = clamp(settings.orGlobal, 1, 500, 40);
+  delete settings.openrouterKey;
+  delete settings.apiKey;
 
   const agents = Array.isArray(src.agents) ? src.agents.map(normalizeAgent) : [];
   if (!agents.some((agent) => ROLE_DEFS.some((role) => role.id === agent.role))) {
@@ -150,7 +163,7 @@ export function migrateState(data, nav = globalThis.navigator) {
       if (!message?.pending) continue;
       message.pending = false;
       message.loading = false;
-      if (!String(message.content || '').trim()) message.content = 'A válasz megszakadt (interrupted).';
+      if (!String(message.content || '').trim()) message.content = 'The reply was interrupted.';
     }
   }
 
@@ -167,7 +180,9 @@ export function migrateState(data, nav = globalThis.navigator) {
     keys: Array.isArray(src.keys) ? src.keys : [],
     tasks: Array.isArray(src.tasks) ? src.tasks : [],
     audit: Array.isArray(src.audit) ? src.audit : [],
-    teachers: Array.isArray(src.teachers) ? src.teachers : [],
+    teachers: Array.isArray(src.teachers) ? src.teachers.map(stripTeacherSecret) : [],
+    examples: Array.isArray(src.examples) ? src.examples.map(stripExampleSecret) : [],
+    metrics: src.metrics && typeof src.metrics === 'object' ? src.metrics : null,
     trainingRuns: Array.isArray(src.trainingRuns) ? src.trainingRuns : [],
     approvals: Array.isArray(src.approvals) ? src.approvals : [],
     student: { ...base.student, ...(src.student || {}) },
@@ -201,14 +216,37 @@ export function save() {
   });
 }
 
-export function audit(action, detail, actor = 'te') {
+function stripTeacherSecret(teacher) {
+  if (!teacher || typeof teacher !== 'object') return teacher;
+  const { key, apiKey, token, secret, ...rest } = teacher;
+  return rest;
+}
+
+function stripExampleSecret(example) {
+  if (!example || typeof example !== 'object') return example;
+  const { key, apiKey, token, secret, ...rest } = example;
+  if (typeof rest.text === 'string') rest.text = redactSecrets(rest.text);
+  if (typeof rest.error === 'string') rest.error = redactSecrets(rest.error);
+  return rest;
+}
+
+export function exportState() {
+  const copy = JSON.parse(JSON.stringify(state));
+  delete copy.settings?.openrouterKey;
+  delete copy.settings?.apiKey;
+  copy.teachers = (copy.teachers || []).map(stripTeacherSecret);
+  copy.examples = (copy.examples || []).map(stripExampleSecret);
+  return copy;
+}
+
+export function audit(action, detail, actor = 'you') {
   if (!Array.isArray(state.audit)) state.audit = [];
   state.audit.unshift({
     id: uid('log_'),
     ts: Date.now(),
     actor: String(actor || 'te'),
     action: String(action || ''),
-    detail: String(detail || '').slice(0, 500),
+    detail: redactSecrets(String(detail || '')).slice(0, 500),
   });
   if (state.audit.length > 400) state.audit.length = 400;
   save();
@@ -223,6 +261,7 @@ export function replaceAll(data) {
 
 export function resetAll() {
   localStorage.removeItem(KEY);
+  forgetOpenRouterKey();
   const next = defaults();
   for (const key of Object.keys(state)) delete state[key];
   Object.assign(state, migrateState(next));
@@ -235,7 +274,7 @@ export function workspaceChat() {
   let chat = state.chats.find((item) => item && item.id === 'workspace');
   if (!chat) chat = state.chats[0];
   if (!chat) {
-    chat = { id: 'workspace', name: 'Közös munkatér', type: 'group', agentIds: [], messages: [] };
+    chat = { id: 'workspace', name: 'Workspace', type: 'group', agentIds: [], messages: [] };
     state.chats.unshift(chat);
   }
   chat.messages = Array.isArray(chat.messages) ? chat.messages : [];

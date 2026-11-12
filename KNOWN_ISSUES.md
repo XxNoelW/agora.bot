@@ -1,12 +1,15 @@
-# Ismert hibák és határok
+# Known issues
 
-- WebGPU nélkül a felület megnyílik, de az agentek nem tudnak válaszolni. Sok telefonon nincs WebGPU.
-- A modell egyszerre egy választ ír. A többiek közben várnak vagy gondolkodnak, akkor is, ha a keret 3–5.
-- Az asztali alapmodell letöltése nagy, a korábbi leírás szerint körülbelül 5 GB. Ha nem fér el, a beállításokban kisebbet kell választani.
-- A `deviceMemory` jelzés főleg Chromiumban van. Más böngészőben a telefon felismerése a user agentből megy.
-- A webes keresés a felhasználó kérésére a Wikipediát, a DuckDuckGo gyors választ és a `r.jina.ai` olvasót hívja. Ezt a felület kiírja. Más rejtett küldés nincs.
-- A `run_js` egy rövid web worker. Nem biztonsági homokozó egy ellenséges program ellen.
-- A jegyzetek és a napló csak ebben a böngészőben, a `localStorage`-ban élnek. Nincs igazi git-történet, csak egy előző másolat és külön fájlnév ütközéskor.
-- A tanár, a tanítás és az értékelés még nem mér és nem tanít. A gombok ezt megmondják, és nem küldenek adatot.
-- A kis modell tévedhet, és a keresett linkeket ellenőrizni kell.
-- Az átadás animáció csak akkor repül, ha mindkét figura a képernyőn van. A mondat a beszélgetésben akkor is megmarad.
+- Without WebGPU the local helper cannot answer. A saved OpenRouter key and a picked teacher can answer instead. Many phones have no WebGPU.
+- The local helper writes one answer at a time, even when several agents are working.
+- The desktop helper download is large (about 5 GB in the earlier note). Pick a smaller one in Settings if it does not fit.
+- `deviceMemory` is mainly a Chromium hint.
+- Web search, when an agent uses it, calls Wikipedia, DuckDuckGo quick answers, and `r.jina.ai`. The page says so.
+- `run_js` is a short web worker. It is not a security sandbox.
+- Notes, the log, and the OpenRouter key stay in this browser only.
+- Teacher prices are the strings from OpenRouter. This page does not turn them into a bill.
+- Free Qwen, DeepSeek, Llama, and Mistral models were not on the public list on 2026-11-12. Defaults are other free models from that list, with reasoning models after instruct models. A provider can still fail after the retry and the fallback.
+- The notebook is a real training script, but this environment does not run a GPU fine-tune. You run it on Kaggle.
+- Scores stay empty until you import `agona-metrics.json`. The page does not fill in missing numbers.
+- The handoff animation plays when both characters are on screen. The sentence stays either way.
+- OpenRouter must allow the browser call. If it blocks it, the page shows the error and does not hide it.
