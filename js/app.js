@@ -5,8 +5,9 @@ import { TEMPLATES, roleById } from './roles.js';
 import { clampParallel } from './scheduler.js';
 import { teachers, requestTraining } from './teachers.js';
 import {
-  createOpenRouterAdapter, listModels, pickDefaultTeacherIds, formatPrice,
+  createOpenRouterAdapter, listModels, pickDefaultTeacherIds, pickTeacherCandidates, formatPrice,
   writeOpenRouterKey, forgetOpenRouterKey, readOpenRouterKey, redactSecrets, reserveCall,
+  completeWithFallback,
 } from './openrouter.js';
 import { runTeacherPipeline, setApproval, toJSONL } from './pipeline.js';
 import { parseMetrics } from './metrics.js';
@@ -614,6 +615,26 @@ async function askTeachers() {
   const useJudge = !!$('#use-judge-model')?.checked;
   const judgeId = $('#judge-model')?.value || state.teachers[0]?.model;
   try {
+    const claimed = new Set(state.teachers.map((item) => item.model));
+    const askModel = (model, prompt, opts) => {
+      const chain = [model];
+      for (const id of pickTeacherCandidates(session.catalog, 8)) {
+        if (claimed.has(id)) continue;
+        claimed.add(id);
+        chain.push(id);
+        if (chain.length >= 3) break;
+      }
+      return completeWithFallback(prompt, {
+        models: chain,
+        catalog: session.catalog,
+        ...opts,
+        beforeExtraCall: () => {
+          reserveCall(bucket, limitsNow());
+          state.usage.openrouterCalls = bucket.global;
+          save();
+        },
+      });
+    };
     const examples = await runTeacherPipeline({
       models: state.teachers.map((item) => ({
         id: item.model,
@@ -623,9 +644,9 @@ async function askTeachers() {
         contextLength: item.contextLength,
       })),
       prompt: task,
-      complete: (model, prompt, opts) => teachers.complete('openrouter', prompt, { ...opts, model }),
+      complete: (model, prompt, opts) => askModel(model, prompt, opts),
       judgeComplete: useJudge && judgeId
-        ? (prompt, opts) => teachers.complete('openrouter', prompt, { ...opts, model: judgeId })
+        ? (prompt, opts) => askModel(judgeId, prompt, opts)
         : null,
       limits: limitsNow(),
       bucket,

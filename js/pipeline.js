@@ -138,6 +138,8 @@ function blankExample(fields) {
     approval: 'waiting',
     source: 'teacher',
     error: '',
+    textSource: 'content',
+    fallbackNote: '',
     license: 'not listed',
     ...fields,
   };
@@ -189,11 +191,15 @@ export async function runTeacherPipeline({
     };
     try {
       const result = await complete(model.id, task, { signal, maxTokens: 500 });
+      const earlier = (result?.attempts || []).filter((item) => !item.ok).map((item) => item.message).join(' ');
       return blankExample({
         ...base,
         text: String(result?.text || ''),
         version: result?.version || base.version,
         model: result?.model || model.id,
+        modelName: result?.model && result.model !== model.id ? result.model : base.modelName,
+        textSource: result?.source || 'content',
+        fallbackNote: earlier,
       });
     } catch (err) {
       if (err?.code === 'abort' || signal?.aborted || bucket.stopped) throw err;

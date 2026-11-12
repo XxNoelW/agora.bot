@@ -1,5 +1,5 @@
 // Live check. Reads OPENROUTER_API_KEY from the environment and never prints it.
-import { listModels, pickDefaultTeacherIds, createOpenRouterAdapter, redactSecrets } from '../js/openrouter.js';
+import { listModels, pickTeacherCandidates, completeWithFallback, redactSecrets } from '../js/openrouter.js';
 
 const key = process.env.OPENROUTER_API_KEY;
 if (!key) {
@@ -8,23 +8,30 @@ if (!key) {
 }
 
 const models = await listModels();
-const ids = pickDefaultTeacherIds(models);
-if (ids.length < 2) {
-  console.error('The public list does not have two usable free teacher models.');
+const ids = pickTeacherCandidates(models, 4);
+if (!ids.length) {
+  console.error('The public list does not have a free teacher model.');
   process.exit(1);
 }
 
-const adapter = createOpenRouterAdapter({ getKey: () => key });
-let failed = 0;
+let answered = 0;
 for (const id of ids) {
   try {
-    const result = await adapter.complete('Say one short sentence about bees.', { model: id, maxTokens: 80 });
+    const result = await completeWithFallback('Say one short sentence about bees.', {
+      models: [id],
+      catalog: models,
+      getKey: () => key,
+      maxTokens: 80,
+    });
+    answered += 1;
     const snippet = redactSecrets(String(result.text || '').replace(/\s+/g, ' '), key).slice(0, 80);
-    console.log(`${id}\tok\t${snippet}`);
+    const via = result.source === 'reasoning' ? 'reasoning field' : 'content';
+    const retry = (result.attempts || []).some((item) => !item.ok) ? ' after retry' : '';
+    console.log(`${id}\tok\t${via}${retry}\t${snippet}`);
   } catch (err) {
-    failed += 1;
-    const snippet = redactSecrets(err.message || 'error', key).replace(/\s+/g, ' ').slice(0, 80);
+    const snippet = redactSecrets(err.message || 'error', key).replace(/\s+/g, ' ').slice(0, 180);
     console.log(`${id}\terror\t${snippet}`);
   }
 }
-process.exit(failed ? 1 : 0);
+console.log(`answered ${answered} of ${ids.length}`);
+process.exit(answered ? 0 : 1);

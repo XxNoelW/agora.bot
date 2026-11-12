@@ -264,6 +264,8 @@ function exampleCard(example) {
     <p class="small muted">${esc(new Date(example.created || Date.now()).toLocaleString('en'))} · ${esc(example.priceNote || '')}</p>
     <p class="small muted">License: ${esc(example.license || 'not listed')} · Source: ${esc(example.source || 'teacher')}</p>
     <pre>${esc(example.text || example.error || '')}</pre>
+    ${example.textSource === 'reasoning' ? '<p class="small muted">These words came from the reasoning field. The answer field was empty.</p>' : ''}
+    ${example.fallbackNote ? `<p class="small">${esc(example.fallbackNote)}</p>` : ''}
     <p class="small">${esc(example.judgeNote || '')}</p>
     ${reasons ? `<p class="error-text">${esc(reasons)}</p>` : ''}
     <div class="row">

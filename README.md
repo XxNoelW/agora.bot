@@ -31,7 +31,7 @@ Open `http://localhost:8000`. Modules do not load from `file://`.
 node --test tests/*.mjs
 ```
 
-The web search test uses the network. `scripts/smoke-openrouter.mjs` is a live check. It reads `OPENROUTER_API_KEY` from the environment and does not print the key.
+The web search test uses the network. `scripts/smoke-openrouter.mjs` is a live check. It reads `OPENROUTER_API_KEY` from the environment, tries up to four free models, and does not print the key.
 
 ## Pages
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-12, teacher replies
+
+- Default free teachers prefer non-reasoning instruct models, and Qwen, DeepSeek, Llama, or Mistral when the public list has them.
+- Reasoning models get a higher token limit. If the answer field is empty, the reasoning field is used. Models that allow it are asked not to spend the reply on reasoning.
+- A provider error is retried once, then the next free model is tried. The error message and code show in the page and in the smoke script. The key does not.
+- The smoke script tries up to four free models and prints which ones answered.
+
 ## 2026-11-12, training notebook
 
 - Added a Kaggle GPU notebook that fine-tunes `Qwen/Qwen2.5-1.5B-Instruct` (Apache 2.0) with QLoRA on an approved JSONL file.
