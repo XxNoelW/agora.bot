@@ -1,5 +1,6 @@
 // localStorage-backed state for the static Agona site.
-import { createRoleAgents, ROLE_DEFS } from './roles.js';
+import { ROLE_DEFS } from './roles.js';
+import { normalizeIcon } from './icons.js';
 import { clampParallel, DEFAULT_PARALLEL } from './scheduler.js';
 import { forgetOpenRouterKey, redactSecrets } from './openrouter.js';
 
@@ -91,14 +92,8 @@ function blank(nav) {
 
 export function defaults(nav = globalThis.navigator) {
   const data = blank(nav);
-  data.agents = createRoleAgents(uid);
-  data.chats = [{
-    id: 'workspace',
-    name: 'Workspace',
-    type: 'group',
-    agentIds: data.agents.map((agent) => agent.id),
-    messages: [],
-  }];
+  data.agents = [];
+  data.chats = [];
   return data;
 }
 
@@ -123,7 +118,8 @@ function normalizeAgent(agent) {
     color: role?.color || agent.color || '#E8B4B8',
     accessory: role?.accessory || agent.accessory || 'spark',
     prompt,
-    tools: withSearch(Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['read_file', 'list_files', 'write_file'])),
+    tools: withSearch(Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['web_search', 'read_page', 'read_file', 'list_files', 'write_file'])),
+    icon: normalizeIcon(agent.icon, role?.color || agent.color),
     status: agent.paused ? 'paused' : (agent.status || 'idle'),
     paused: !!agent.paused,
     error: agent.error || '',
@@ -159,9 +155,6 @@ export function migrateState(data, nav = globalThis.navigator) {
   delete settings.apiKey;
 
   const agents = Array.isArray(src.agents) ? src.agents.map(normalizeAgent) : [];
-  if (!agents.some((agent) => ROLE_DEFS.some((role) => role.id === agent.role))) {
-    agents.push(...createRoleAgents(uid));
-  }
 
   const chats = Array.isArray(src.chats) ? src.chats : base.chats;
   for (const chat of chats) {

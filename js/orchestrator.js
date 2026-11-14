@@ -64,7 +64,9 @@ function systemFor(agent, conv, mode, clockLine = '') {
   }
   const others = (conv.agentIds || []).filter((id) => id !== agent.id).map(agentById).filter(Boolean);
   let group;
-  if (!others.length) group = 'You are chatting one to one with the user.';
+  if (conv.type === 'group' && others.length) {
+    group = `You are in a group with ${others.map((a) => a.name).join(', ')}. You can read every message already in the chat, including the other agents. When someone has spoken, respond to them by name and refer to what they said.`;
+  } else if (!others.length) group = 'You are chatting one to one with the user.';
   else if (mode === 'react') group = `You are in a group with: ${others.map((a) => a.name).join(', ')}. They already answered. Add something new. Do not repeat their whole answer.`;
   else group = `You are in a group with: ${others.map((a) => a.name).join(', ')}. You cannot see their reply yet, so give your own. Do not speak for them.`;
   const style = [
@@ -189,6 +191,18 @@ async function generateReliable(model, messages, opts) {
     }
   }
   throw last;
+}
+
+export function groupReplyFallback(agent, conv) {
+  for (let i = (conv?.messages || []).length - 1; i >= 0; i -= 1) {
+    const message = conv.messages[i];
+    if (message?.role !== 'agent' || !message.agentId || message.agentId === agent?.id) continue;
+    if (message.pending || !String(message.content || '').trim()) continue;
+    const who = agentById(message.agentId);
+    const bit = String(message.content).replace(/\s+/g, ' ').trim().slice(0, 160);
+    return `${who?.name || 'They'} said "${bit}". I am responding to that.`;
+  }
+  return `I am ${agent?.name || 'here'}. I am ready to talk with the group.`;
 }
 
 function sourcesIn(conv, agentId, wave) {
@@ -401,8 +415,24 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
 
     if (!modelOn) {
       const pool = sourcesIn(conv, agent.id, wave);
-      const body = answerFromSources(pool);
-      if (body) applyUsedSources(conv, agent.id, wave, sourcesUsed(body, pool));
+      const sourced = answerFromSources(pool);
+      if (sourced) {
+        applyUsedSources(conv, agent.id, wave, sourcesUsed(sourced, pool));
+        finishOffline(msg, pool, userText, onPhase, onUpdate);
+        return;
+      }
+      if (conv.type === 'group') {
+        msg.content = groupReplyFallback(agent, conv);
+        msg.pending = false;
+        msg.loading = false;
+        msg.answered = true;
+        msg.error = false;
+        state.usage.agentMessages++;
+        onPhase?.('done');
+        save();
+        onUpdate?.();
+        return;
+      }
       finishOffline(msg, pool, userText, onPhase, onUpdate);
       return;
     }

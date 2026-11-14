@@ -1,6 +1,6 @@
 // Runs planned tasks on the shared workspace thread.
 import { state, save, audit, agentById, uid, workspaceChat } from './store.js';
-import { maybeTitle, touchChat } from './chats.js';
+import { maybeTitle, touchChat, nextGroupSpeakers } from './chats.js';
 import { agentTurn, isSmallTalk, settlePending } from './orchestrator.js';
 import { usingOpenRouter } from './generate.js';
 import { session } from './session.js';
@@ -287,6 +287,73 @@ export async function runUserTask(text, { signal = new AbortController().signal,
   } finally {
     active = Math.max(0, active - 1);
     save();
+  }
+}
+
+async function speakOnce(agent, chat, parentSignal, onUpdate) {
+  const ctl = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ctl.abort(); }, runtimeMs());
+  const onParent = () => ctl.abort();
+  parentSignal.addEventListener('abort', onParent);
+  runs.set(agent.id, ctl);
+  agent.status = 'thinking';
+  agent.error = '';
+  save();
+  onUpdate?.();
+  try {
+    await agentTurn(agent, chat, {
+      onUpdate,
+      signal: ctl.signal,
+      wave: uid('w_'),
+      timedOut: () => timedOut,
+      onPhase: (phase) => {
+        if (!agent.paused) agent.status = phase === 'done' ? 'working' : phase;
+        onUpdate?.(true);
+      },
+    });
+  } finally {
+    clearTimeout(timer);
+    parentSignal.removeEventListener('abort', onParent);
+    runs.delete(agent.id);
+    if (!agent.paused) agent.status = 'idle';
+    settlePending(chat.messages, { aborted: parentSignal.aborted || timedOut });
+    save();
+    onUpdate?.();
+  }
+}
+
+export async function runGroupRound(chat, { text = '', signal = new AbortController().signal, onUpdate, fresh = false } = {}) {
+  const clean = String(text || '').trim();
+  active += 1;
+  session.runBucket = { run: 0, global: state.usage.openrouterCalls || 0, stopped: false };
+  try {
+    if (clean) {
+      chat.messages.push({ id: uid('m_'), role: 'user', content: clean, ts: Date.now() });
+      state.usage.userMessages++;
+      touchChat(chat);
+      audit('message', clean.slice(0, 400));
+      fresh = true;
+    }
+    const members = (chat.agentIds || []).map((id) => agentById(id)).filter((agent) => agent && !agent.paused);
+    const step = nextGroupSpeakers(members.map((agent) => agent.id), fresh ? 0 : (chat.spoke || 0), fresh ? 0 : (chat.rounds || 0));
+    chat.spoke = step.spoke;
+    chat.rounds = step.rounds;
+    save();
+    onUpdate?.();
+    for (const id of step.ids) {
+      if (signal.aborted) break;
+      const agent = agentById(id);
+      if (!agent) continue;
+      await speakOnce(agent, chat, signal, onUpdate);
+      chat.spoke += 1;
+      save();
+      onUpdate?.();
+    }
+  } finally {
+    active = Math.max(0, active - 1);
+    save();
+    onUpdate?.();
   }
 }
 

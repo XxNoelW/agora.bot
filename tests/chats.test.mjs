@@ -54,6 +54,20 @@ test('every agent gets a chat, and a first message can name it', () => {
 });
 
 test('chats survive a save and load on this computer', () => {
+  if (!store.state.agents.length) {
+    store.state.agents.push({
+      id: 'ada',
+      name: 'Ada',
+      role: 'custom',
+      color: '#7EC8C3',
+      prompt: 'You are Ada.',
+      tools: ['web_search'],
+      status: 'idle',
+      paused: false,
+      error: '',
+      taskId: null,
+    });
+  }
   const agent = store.state.agents[0];
   chats.ensureAgentChats(store.state.agents);
   const created = chats.createAgentChat(agent.id, { name: 'Persist me', id: 'persist-1' });

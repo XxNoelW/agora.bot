@@ -1,10 +1,9 @@
 import { esc, rich } from './text.js';
 import { state, agentById } from './store.js';
-import { figureHTML, safeColor } from './characters.js';
-import { viewState, altText, STATE_LABEL } from './roles.js';
 import { readOpenRouterKey } from './openrouter.js';
 import { extractSources } from './tools.js';
-import { listAgentChats } from './chats.js';
+import { listAgentChats, listGroupChats } from './chats.js';
+import { iconMarkup, iconSVG, SHAPES, ICON_COLORS, safeHex } from './icons.js';
 
 const TOOL_LABEL = {
   web_search: 'looked on the web',
@@ -23,10 +22,8 @@ function sourceItems(message) {
 
 function sourcesHTML(message) {
   const sources = sourceItems(message).filter((item) => item && item.url);
-  if (!sources.length) return `<p>${esc(message.content || '')}</p>`;
-  return `<p class="src-label">Sources</p><ul class="sources">${sources.map((item) => `<li>
-      <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title || item.url)}</a>
-    </li>`).join('')}</ul>`;
+  if (!sources.length) return '';
+  return `<p class="src-label">Sources</p><ul class="sources">${sources.map((item) => `<li><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title || item.url)}</a></li>`).join('')}</ul>`;
 }
 
 export function messageHTML(message) {
@@ -39,34 +36,38 @@ export function messageHTML(message) {
     const who = agentById(message.agentId);
     const web = message.tool === 'web_search' || message.tool === 'read_page' || message.tool === 'fetch_wikipedia_page';
     if (web && !sourceItems(message).some((item) => item && item.url)) return '';
-    return `<div class="tool-line" data-mid="${esc(message.id)}"><div class="meta">${esc(who?.name || 'Agent')} ${esc(TOOL_LABEL[message.tool] || 'used a tool')}</div>${web ? sourcesHTML(message) : `<p data-body>${esc(message.content || '')}</p>`}</div>`;
+    return `<div class="tool-line" data-mid="${esc(message.id)}"><div class="meta">${esc(who?.name || 'Agent')} ${esc(TOOL_LABEL[message.tool] || 'used a tool')}</div>${web ? sourcesHTML(message) : `<p>${esc(message.content || '')}</p>`}</div>`;
   }
   if (message.role === 'system' || message.role === 'handoff' || message.role === 'task') {
-    return `<div class="sys-line" data-mid="${esc(message.id)}"><p data-body>${esc(message.content || '')}</p></div>`;
+    return `<div class="sys-line" data-mid="${esc(message.id)}"><p>${esc(message.content || '')}</p></div>`;
   }
   const agent = agentById(message.agentId);
   const phase = message.pending
     ? (String(message.content || '').startsWith('Looking up') ? 'looking up' : (String(message.content || '').startsWith('Getting Agora') ? 'getting ready' : 'writing'))
     : (message.error ? 'could not finish' : 'Agora AI');
   return `<div class="bubble-row${message.pending ? ' pending' : ''}${message.error ? ' error' : ''}" data-mid="${esc(message.id)}">
-    ${agent ? figureHTML(agent, { size: 'sm', caption: false }) : ''}
+    ${agent ? iconMarkup(agent) : ''}
     <div class="bubble"><div class="meta" data-meta>${esc(agent?.name || 'Agent')} · ${esc(phase)}</div><div class="text" data-body>${message.content ? rich(message.content) : (message.pending ? '…' : '')}</div></div>
   </div>`;
 }
 
 export function agentListHTML(activeId) {
-  if (!state.agents.length) return '<p class="muted empty-note">No agents on this computer.</p>';
+  if (!state.agents.length) return '<p class="muted empty-note">No agents yet.</p>';
   return state.agents.map((agent) => {
     const on = agent.id === activeId;
-    return `<button type="button" class="agent-row${on ? ' active' : ''}" data-act="select-agent" data-id="${esc(agent.id)}" style="--agent:${safeColor(agent.color)}" aria-current="${on ? 'true' : 'false'}">
-      ${figureHTML(agent, { size: 'sm', caption: false })}
-      <span class="agent-name">${esc(agent.name)}</span>
-    </button>`;
+    return `<div class="agent-row-wrap${on ? ' active' : ''}">
+      <button type="button" class="agent-row${on ? ' active' : ''}" data-act="select-agent" data-id="${esc(agent.id)}" aria-current="${on ? 'true' : 'false'}">
+        ${iconMarkup(agent)}
+        <span class="agent-name">${esc(agent.name)}</span>
+      </button>
+      <button type="button" class="quiet tiny" data-act="edit-agent" data-id="${esc(agent.id)}" aria-label="Edit ${esc(agent.name)}">Edit</button>
+    </div>`;
   }).join('');
 }
 
-export function chatListHTML(agentId, activeChatId) {
+export function agentChatsHTML(agentId, activeChatId) {
   const chats = listAgentChats(agentId);
+  if (!agentId) return '';
   if (!chats.length) return '<p class="muted empty-note">No chats yet.</p>';
   return chats.map((chat) => {
     const on = chat.id === activeChatId;
@@ -78,27 +79,95 @@ export function chatListHTML(agentId, activeChatId) {
   }).join('');
 }
 
-export function chatHeadHTML(agent) {
-  if (!agent) return '<div class="who"><h1>Agona</h1><p class="model-pill">Agora AI</p></div>';
+export function groupListHTML(activeId) {
+  const groups = listGroupChats();
+  if (!groups.length) return '<p class="muted empty-note">No groups yet.</p>';
+  return groups.map((chat) => {
+    const on = chat.id === activeId;
+    const faces = (chat.agentIds || []).slice(0, 4).map((id) => agentById(id)).filter(Boolean);
+    return `<button type="button" class="group-row${on ? ' active' : ''}" data-act="select-group" data-id="${esc(chat.id)}" aria-current="${on ? 'true' : 'false'}">
+      <span class="face-stack">${faces.map((agent) => iconMarkup(agent)).join('')}</span>
+      <span class="agent-name">${esc(chat.name || 'Group')}</span>
+    </button>`;
+  }).join('');
+}
+
+export function chatHeadHTML(chat, agent) {
+  if (chat?.type === 'group') {
+    const members = (chat.agentIds || []).map((id) => agentById(id)).filter(Boolean);
+    return `<div class="who">
+      <span class="face-stack">${members.map((item) => iconMarkup(item)).join('')}</span>
+      <div>
+        <h1>${esc(chat.name || 'Group')}</h1>
+        <p class="model-pill">Agora AI · ${esc(members.map((item) => item.name).join(', '))}</p>
+      </div>
+    </div>`;
+  }
+  if (!agent) return '<div class="who"><div><h1>Agona</h1><p class="model-pill">Agora AI</p></div></div>';
   return `<div class="who">
-    ${figureHTML(agent, { size: 'sm', caption: false })}
+    ${iconMarkup(agent)}
     <div>
       <h1>${esc(agent.name)}</h1>
       <p class="model-pill">Agora AI</p>
     </div>
+    <button type="button" class="quiet" data-act="edit-agent" data-id="${esc(agent.id)}">Edit</button>
+    <button type="button" class="quiet" data-act="delete-agent" data-id="${esc(agent.id)}">Delete</button>
+  </div>`;
+}
+
+export function emptyHomeHTML() {
+  return `<div class="empty-home">
+    <h1>Create an agent</h1>
+    <p>You start with an empty workspace. Give an agent a name and an icon, then chat. Agora AI is the only model, and it can search the web when a question needs it.</p>
+    <button type="button" data-act="open-create">Create agent</button>
   </div>`;
 }
 
 export function threadHTML(chat, agent) {
   const messages = chat?.messages || [];
+  if (!chat) return emptyHomeHTML();
   if (!messages.length) {
-    return `<div class="welcome">
-      ${agent ? figureHTML(agent, { size: 'md', caption: false }) : ''}
-      <h2>${esc(agent?.name || 'Agona')}</h2>
-      <p>Ask anything. Agora AI answers in your language, and questions can include links from the web.</p>
-    </div>`;
+    const title = chat.type === 'group' ? (chat.name || 'Group') : (agent?.name || 'Agent');
+    const note = chat.type === 'group'
+      ? 'Everyone in the group sees the whole conversation and answers in turn.'
+      : 'Ask anything. Agora AI answers in your language.';
+    return `<div class="welcome">${chat.type === 'group' ? '' : (agent ? iconMarkup(agent) : '')}<h2>${esc(title)}</h2><p>${esc(note)}</p></div>`;
   }
   return messages.map(messageHTML).join('');
+}
+
+export function agentFormHTML(draft, { editing = false } = {}) {
+  const icon = draft?.icon || { type: 'shape', shape: 'robot', color: ICON_COLORS[0] };
+  const preview = icon.type === 'photo' && icon.dataUrl
+    ? `<img class="avatar photo lg" alt="" src="${esc(icon.dataUrl)}">`
+    : `<span class="avatar shape lg" style="--agent:${safeHex(icon.color)}">${iconSVG(icon.shape || 'robot')}</span>`;
+  return `<h2 id="modal-title">${editing ? 'Edit agent' : 'Create agent'}</h2>
+    <label for="agent-name">Name</label>
+    <input id="agent-name" maxlength="40" value="${esc(draft?.name || '')}">
+    <p class="section-label">Icon</p>
+    <div class="shape-grid">${SHAPES.map((shape) => `<button type="button" class="shape-btn${icon.type !== 'photo' && icon.shape === shape ? ' selected' : ''}" data-act="pick-shape" data-shape="${shape}" aria-label="${shape}" style="--agent:${safeHex(icon.color)}">${iconSVG(shape)}</button>`).join('')}</div>
+    <div class="color-row">${ICON_COLORS.map((color) => `<button type="button" class="color-btn${icon.color === color ? ' selected' : ''}" data-act="pick-color" data-color="${color}" style="background:${color}" aria-label="Color ${color}"></button>`).join('')}</div>
+    <div class="preview-row">${preview}<label class="btn ghost">Upload a photo<input id="agent-photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label></div>
+    <p class="small muted">Photos stay on this computer. They are resized before they are saved.</p>
+    <div class="row">
+      <button type="button" data-act="save-agent">${editing ? 'Save' : 'Create agent'}</button>
+      <button type="button" class="ghost" data-act="close-modal">Cancel</button>
+      ${editing ? `<button type="button" class="danger" data-act="delete-agent" data-id="${esc(draft?.id || '')}">Delete</button>` : ''}
+    </div>`;
+}
+
+export function groupFormHTML() {
+  if (state.agents.length < 2) {
+    return `<h2 id="modal-title">New group</h2><p>Create at least two agents first.</p><button type="button" class="ghost" data-act="close-modal">Close</button>`;
+  }
+  const boxes = state.agents.map((agent) => `<label class="checkline"><input type="checkbox" name="member" value="${esc(agent.id)}">${iconMarkup(agent)}<span>${esc(agent.name)}</span></label>`).join('');
+  return `<h2 id="modal-title">New group</h2>
+    <label for="group-name">Name</label>
+    <input id="group-name" maxlength="80" placeholder="Project room">
+    <p class="section-label">Members</p>
+    <div class="member-picks">${boxes}</div>
+    <p class="small muted">Pick at least two. They answer in turn and can read each other.</p>
+    <div class="row"><button type="button" data-act="save-group">Create group</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
 }
 
 export function settingsHTML() {
@@ -138,13 +207,6 @@ export function renameChatHTML(chat) {
     <div class="row"><button type="button" data-act="save-chat-name" data-id="${esc(chat?.id || '')}">Save</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
 }
 
-export function welcomeHTML() {
-  return `<h2 id="modal-title">Hi, this is Agona</h2>
-    <p>Pick an agent on the left and start a chat. Agora AI answers in the language you write.</p>
-    <p>Your chats stay on this computer. When a question needs the web, the reply includes links to the pages that were found.</p>
-    <div class="row"><button type="button" data-act="welcome-ok">OK</button></div>`;
-}
-
 function plainBody(node) {
   return node?.textContent ?? '';
 }
@@ -153,42 +215,18 @@ export function patchThread(chat) {
   const box = document.querySelector('#thread');
   if (!box || !chat) return false;
   const nodes = [...box.querySelectorAll('[data-mid]')];
-  if (nodes.length !== chat.messages.length) return false;
-  for (let i = 0; i < chat.messages.length; i++) {
-    const message = chat.messages[i];
+  const visible = (chat.messages || []).filter((message) => messageHTML(message));
+  if (nodes.length !== visible.length) return false;
+  for (let i = 0; i < visible.length; i += 1) {
+    const message = visible[i];
     if (nodes[i].dataset.mid !== message.id) return false;
     const body = nodes[i].querySelector('[data-body]');
     const next = message.content || (message.pending ? '…' : '');
     if (body && plainBody(body) !== next && message.role !== 'tool') body.textContent = next;
-    const meta = nodes[i].querySelector('[data-meta]');
-    if (meta && message.role === 'agent') {
-      const phase = message.pending
-        ? (String(message.content || '').startsWith('Looking up') ? 'looking up' : (String(message.content || '').startsWith('Getting Agora') ? 'getting ready' : 'writing'))
-        : (message.error ? 'could not finish' : 'Agora AI');
-      const agent = agentById(message.agentId);
-      meta.textContent = `${agent?.name || 'Agent'} · ${phase}`;
-    }
     nodes[i].classList.toggle('pending', !!message.pending);
     nodes[i].classList.toggle('error', !!message.error);
   }
-  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
-  if (near) box.scrollTop = box.scrollHeight;
   return true;
 }
 
-export function syncAgents() {
-  if (typeof document === 'undefined') return;
-  for (const agent of state.agents) {
-    const name = viewState(agent);
-    const label = STATE_LABEL[name] || 'Waiting';
-    document.querySelectorAll(`[data-live-agent="${agent.id}"]`).forEach((el) => {
-      el.dataset.state = name;
-      el.style.setProperty('--agent', safeColor(agent.color));
-      el.setAttribute('aria-label', altText(agent));
-      const cap = el.querySelector('[data-state-label]');
-      if (cap) cap.textContent = label;
-      const title = el.querySelector('.fig-name');
-      if (title) title.textContent = agent.name;
-    });
-  }
-}
+export function syncAgents() {}
