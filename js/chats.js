@@ -106,3 +106,59 @@ export function touchChat(chat, now = Date.now()) {
   if (chat) chat.updatedAt = now;
   return chat;
 }
+
+export const GROUP_TURN_CAP = 4;
+export const GROUP_ROUND_CAP = 3;
+
+export function listGroupChats(chats = state.chats) {
+  return (Array.isArray(chats) ? chats : [])
+    .filter((chat) => chat && chat.type === 'group' && (chat.agentIds || []).length >= 2)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+}
+
+export function createGroupChat(name, agentIds, {
+  id,
+  now = Date.now(),
+  chats = state.chats,
+  persist = chats === state.chats,
+} = {}) {
+  const members = [...new Set((agentIds || []).filter(Boolean))];
+  if (members.length < 2) {
+    const err = new Error('Pick at least two agents.');
+    err.code = 'members';
+    throw err;
+  }
+  const chat = {
+    id: id || uid('g_'),
+    name: cleanChatName(name, 'New group'),
+    type: 'group',
+    agentId: null,
+    agentIds: members,
+    messages: [],
+    updatedAt: now,
+    spoke: 0,
+    rounds: 0,
+  };
+  chats.push(chat);
+  if (persist) save();
+  return chat;
+}
+
+export function nextGroupSpeakers(memberIds, spoke = 0, rounds = 0, cap = GROUP_TURN_CAP) {
+  const ids = [...(memberIds || [])];
+  let cursor = Number(spoke) || 0;
+  let round = Number(rounds) || 0;
+  if (round >= GROUP_ROUND_CAP) return { ids: [], spoke: cursor, rounds: round };
+  if (cursor >= ids.length) {
+    round += 1;
+    cursor = 0;
+    if (round >= GROUP_ROUND_CAP) return { ids: [], spoke: 0, rounds: round };
+  }
+  const batch = ids.slice(cursor, cursor + cap);
+  return { ids: batch, spoke: cursor, rounds: round };
+}
+
+export function groupCanContinue(chat) {
+  if (!chat || chat.type !== 'group' || (chat.agentIds || []).length < 2) return false;
+  return nextGroupSpeakers(chat.agentIds, chat.spoke || 0, chat.rounds || 0).ids.length > 0;
+}

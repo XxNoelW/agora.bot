@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-14, agents and groups
+
+- A new visitor starts with no agents and a Create agent button.
+- An agent has a custom name and either a built-in icon or a small photo stored in this browser.
+- A group chat lets two or more agents answer in turn. Each one can read the others. Continue asks them to keep going.
+
 ## 2026-11-12, date and search
 
 - Date and time questions use the visitor's clock. They are not sent to web search.

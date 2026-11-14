@@ -6,8 +6,8 @@ The site stays at `https://xxnoelw.github.io/agora.bot/`.
 
 ## What it does
 
-- A dark chat workspace. The left side lists the agents, and each agent has its own chats.
-- Nine characters: Panna, Kata, Bence, Tünde, Lilla, Dóri, Sári, Enci, and Dani. Chats stay in this browser.
+- A dark chat workspace. You create the agents, give each a name and an icon, and open chats or groups.
+- Chats stay in this browser. A group lets the agents read each other and answer in turn.
 - One model in the interface, Agora AI. On a computer with WebGPU it runs locally. A key in Settings can connect online. The key stays in this browser.
 - Web search from the page itself, with links in the reply. Sources are Wikipedia, DuckDuckGo quick answers, and public pages read through the Jina reader. No search key is required.
 
