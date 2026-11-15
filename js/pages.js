@@ -4,6 +4,8 @@ import { readOpenRouterKey } from './openrouter.js';
 import { extractSources } from './tools.js';
 import { listAgentChats, listGroupChats } from './chats.js';
 import { iconMarkup, iconSVG, SHAPES, ICON_COLORS, safeHex } from './icons.js';
+import { CONNECTORS, connectorView } from './connectors.js';
+import { GITHUB_OAUTH_NOTE } from './oauth.js';
 
 const TOOL_LABEL = {
   web_search: 'looked on the web',
@@ -26,8 +28,29 @@ function sourcesHTML(message) {
   return `<p class="src-label">Sources</p><ul class="sources">${sources.map((item) => `<li><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title || item.url)}</a></li>`).join('')}</ul>`;
 }
 
+function connectCardHTML(message) {
+  const spec = CONNECTORS.find((item) => item.id === message.connector);
+  const name = spec?.name || 'Account';
+  if (message.state === 'connected') {
+    return `<div class="connect-card" data-mid="${esc(message.id)}"><p><b>${esc(name)}</b></p><p>${esc(message.detail || 'Connected.')}</p></div>`;
+  }
+  if (message.connector === 'mastodon') {
+    return `<div class="connect-card" data-mid="${esc(message.id)}"><p><b>Sign in to Mastodon</b></p><p class="small">${esc(spec?.hint || '')}</p><button type="button" data-act="mastodon-start">Sign in with Mastodon</button></div>`;
+  }
+  const failed = message.state === 'failed' && message.detail ? `<p class="small">${esc(message.detail)}</p>` : '';
+  return `<div class="connect-card" data-mid="${esc(message.id)}">
+    <p><b>Connect ${esc(name)}</b></p>
+    <p class="small">${esc(spec?.hint || '')}</p>
+    ${failed}
+    <label class="sr-only" for="key-${esc(message.id)}">${esc(name)} key</label>
+    <input id="key-${esc(message.id)}" type="password" autocomplete="off" spellcheck="false" placeholder="${esc(spec?.placeholder || 'Paste the key')}">
+    <div class="row"><button type="button" data-act="test-connector" data-connector="${esc(message.connector)}" data-mid="${esc(message.id)}">Test and save</button></div>
+  </div>`;
+}
+
 export function messageHTML(message) {
   if (!message) return '';
+  if (message.role === 'connect') return connectCardHTML(message);
   if (message.role === 'user') {
     return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${rich(message.content)}</div></div></div>`;
   }
@@ -168,6 +191,51 @@ export function groupFormHTML() {
     <div class="member-picks">${boxes}</div>
     <p class="small muted">Pick at least two. They answer in turn and can read each other.</p>
     <div class="row"><button type="button" data-act="save-group">Create group</button><button type="button" class="ghost" data-act="close-modal">Cancel</button></div>`;
+}
+
+function agentChecks(id) {
+  if (!state.agents.length) return '<p class="small muted">Create an agent to let it use this account.</p>';
+  return `<div class="member-picks">${state.agents.map((agent) => `<label class="checkline"><input type="checkbox" data-allow="1" data-connector="${esc(id)}" data-id="${esc(agent.id)}" ${(agent.connectors || []).includes(id) ? 'checked' : ''}>${esc(agent.name)}</label>`).join('')}</div>`;
+}
+
+export function connectorsHTML() {
+  const tokenCards = CONNECTORS.filter((item) => item.auth === 'token').map((item) => {
+    const view = connectorView[item.id] || { state: 'unknown', detail: '' };
+    const label = view.state === 'connected' ? 'Connected' : view.state === 'failed' ? 'Failed' : 'Not connected';
+    return `<section class="connector-row">
+      <div class="row spread"><h2>${esc(item.name)}</h2><span class="model-pill">${esc(label)}</span></div>
+      <p class="small">${esc(view.detail || item.hint)}</p>
+      <label class="sr-only" for="token-${esc(item.id)}">${esc(item.name)} key</label>
+      <input id="token-${esc(item.id)}" type="password" autocomplete="off" spellcheck="false" placeholder="${esc(item.placeholder)}">
+      <div class="row">
+        <button type="button" data-act="test-connector" data-connector="${esc(item.id)}">Test and save</button>
+        <button type="button" class="danger" data-act="disconnect-connector" data-connector="${esc(item.id)}">Disconnect</button>
+      </div>
+      <p class="section-label">Agents that may use it</p>
+      ${agentChecks(item.id)}
+    </section>`;
+  }).join('');
+  const masto = connectorView.mastodon || { state: 'unknown', detail: '' };
+  return `<h2 id="modal-title">Connectors</h2>
+    <p class="small muted">Keys stay encrypted in this browser. Agora AI only sees whether an account is connected.</p>
+    ${tokenCards}
+    <section class="connector-row">
+      <div class="row spread"><h2>Mastodon</h2><span class="model-pill">${esc(masto.state === 'connected' ? 'Connected' : 'Sign in')}</span></div>
+      <p class="small">${esc(masto.detail || CONNECTORS.find((item) => item.id === 'mastodon').hint)}</p>
+      <label for="mastodon-host">Server</label>
+      <input id="mastodon-host" value="mastodon.social" autocomplete="off">
+      <div class="row">
+        <button type="button" data-act="mastodon-start">Sign in with Mastodon</button>
+        <button type="button" class="danger" data-act="disconnect-connector" data-connector="mastodon">Disconnect</button>
+      </div>
+      <p class="section-label">Agents that may use it</p>
+      ${agentChecks('mastodon')}
+    </section>
+    <section class="connector-row">
+      <h2>GitHub sign-in</h2>
+      <p class="small">${esc(GITHUB_OAUTH_NOTE)}</p>
+    </section>
+    <div class="row"><button type="button" class="ghost" data-act="close-modal">Close</button></div>`;
 }
 
 export function settingsHTML() {

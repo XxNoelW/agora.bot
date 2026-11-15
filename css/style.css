@@ -345,6 +345,11 @@ input, textarea, select {
 .composer { display: flex; flex-direction: column; align-items: center; }
 .continue-btn { align-self: center; width: auto; height: 36px; margin: 0 0 8px; border: 1px solid var(--border); padding: 0 14px; color: var(--text); background: var(--surface); }
 .who .quiet { margin-left: 4px; }
+.connect-card, .connector-row {
+  border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: var(--surface); margin: 8px 0;
+}
+.connect-card input, .connector-row input { margin-top: 6px; }
+.connector-row h2 { margin: 0; font-size: 16px; }
 
 @media (max-width: 800px) {
   #app { display: block; }

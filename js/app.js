@@ -12,8 +12,11 @@ import { session } from './session.js';
 import { $, closeModal, openModal, confirm, toast, announce } from './dom.js';
 import {
   agentListHTML, agentChatsHTML, groupListHTML, chatHeadHTML, threadHTML, settingsHTML,
-  renameChatHTML, agentFormHTML, groupFormHTML, patchThread,
+  renameChatHTML, agentFormHTML, groupFormHTML, connectorsHTML, patchThread,
 } from './pages.js';
+import { testConnector, writeConnectorMeta } from './connectors.js';
+import { saveSecret, deleteSecret } from './secrets.js';
+import { beginMastodonLogin, finishMastodonLogin } from './oauth.js';
 import { ensureAgentChats, listAgentChats, createAgentChat, renameAgentChat, deleteAgentChat, createGroupChat, groupCanContinue } from './chats.js';
 import { createAgentRecord, applyAgentEdits, removeAgent } from './agents.js';
 import { ICON_COLORS } from './icons.js';
@@ -395,6 +398,50 @@ const actions = {
       paint(false);
     }
   },
+  'open-connectors'() { openModal(connectorsHTML(), null, closeModal); },
+  async 'test-connector'(btn) {
+    const root = btn.closest('.connect-card, .connector-row');
+    const input = root?.querySelector('input[type="password"]');
+    const key = String(input?.value || '').trim();
+    if (input) input.value = '';
+    const id = btn.dataset.connector;
+    const result = await testConnector(id, key);
+    if (result.ok) {
+      await saveSecret(id, key);
+      if (btn.closest('.connect-card')) {
+        const agent = currentAgent();
+        if (agent && !(agent.connectors || []).includes(id)) agent.connectors = [...(agent.connectors || []), id];
+      }
+    }
+    writeConnectorMeta(id, { state: result.ok ? 'connected' : 'failed', detail: result.detail });
+    const chat = currentChat();
+    if (chat) {
+      for (const message of chat.messages) {
+        if (message.role === 'connect' && message.connector === id) {
+          message.state = result.ok ? 'connected' : 'failed';
+          message.detail = result.detail;
+        }
+      }
+    }
+    save();
+    toast(result.detail);
+    if ($('#modal-title')?.textContent === 'Connectors') openModal(connectorsHTML(), null, closeModal);
+    else paint(false);
+  },
+  async 'disconnect-connector'(btn) {
+    const id = btn.dataset.connector;
+    await deleteSecret(id);
+    if (id === 'mastodon') await deleteSecret('mastodon-host');
+    writeConnectorMeta(id, { state: 'unknown', detail: 'Disconnected.' });
+    save();
+    toast('Disconnected on this computer.');
+    openModal(connectorsHTML(), null, closeModal);
+  },
+  async 'mastodon-start'() {
+    const host = $('#mastodon-host')?.value || 'mastodon.social';
+    toast('Opening Mastodon…');
+    await beginMastodonLogin(host);
+  },
   'open-settings'() { openModal(settingsHTML(), null, closeModal); },
   stop() { runCtl?.abort(); toast('Stopped.'); },
   'forget-key'() {
@@ -443,6 +490,22 @@ async function onClick(event) {
 
 teachers.register(createOpenRouterAdapter());
 applyChrome();
+const oauthParams = new URLSearchParams(location.search);
+const oauthCode = oauthParams.get('code');
+const oauthError = oauthParams.get('error');
+if (oauthCode || oauthError) {
+  history.replaceState(null, '', location.pathname + location.hash);
+  if (oauthError) toast('Mastodon sign-in was cancelled.');
+  else {
+    finishMastodonLogin(oauthCode).then((profile) => {
+      toast(`Mastodon connected as @${profile.username}.`);
+      paint(false);
+    }).catch((err) => toast(scrubOauth(err)));
+  }
+}
+function scrubOauth(err) {
+  return redactSecrets(err?.message || 'Mastodon sign-in failed.');
+}
 session.view = state.settings.activeGroupId ? 'group' : (state.settings.activeAgentId ? 'agent' : 'empty');
 session.agentId = state.settings.activeAgentId || '';
 session.chatId = state.settings.activeChatId || '';
@@ -460,6 +523,17 @@ document.addEventListener('submit', (event) => {
   else if (form.id === 'settings-form') saveSettings();
 });
 document.addEventListener('change', async (event) => {
+  if (event.target?.dataset?.allow) {
+    const agent = agentById(event.target.dataset.id);
+    const id = event.target.dataset.connector;
+    if (!agent || !id) return;
+    const set = new Set(agent.connectors || []);
+    if (event.target.checked) set.add(id);
+    else set.delete(id);
+    agent.connectors = [...set];
+    save();
+    return;
+  }
   if (event.target?.id !== 'agent-photo') return;
   const file = event.target.files?.[0];
   if (!file) return;

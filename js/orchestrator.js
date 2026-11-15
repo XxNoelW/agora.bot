@@ -7,6 +7,10 @@ import {
   toolPrompt, parseToolCall, execTool, needsWebSearch, gatherSources, formatSources,
   answerFromSources, extractSources, localDateAnswer, clockPrompt, sourcesUsed, isDateTimeQuestion,
 } from './tools.js';
+import {
+  connectorPrompt, connectorDecidePrompt, isConnectorTool, executeConnectorTool, fulfillConnectorIntent,
+  matchConnectorIntent,
+} from './connectors.js';
 
 const MAX_TOOL_LOOPS = 2;
 const HISTORY_LIMIT = 12;
@@ -60,7 +64,8 @@ function allowedTools(agent) {
 function systemFor(agent, conv, mode, clockLine = '') {
   const tools = allowedTools(agent);
   if (mode === 'decide') {
-    return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}`;
+    const extra = connectorDecidePrompt(agent);
+    return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}${extra ? `\n${extra}` : ''}`;
   }
   const others = (conv.agentIds || []).filter((id) => id !== agent.id).map(agentById).filter(Boolean);
   let group;
@@ -77,6 +82,7 @@ function systemFor(agent, conv, mode, clockLine = '') {
     'Do not start with your own name. Do not mention internal model names, training, or tools.',
     'If they ask the date or the time, answer from the visitor clock above. Never say a date was not provided.',
     'Ignore a tool result that is about a different topic. Cite a page as [Title](url) only when you used that page. If you did not use one, do not add a sources list.',
+    connectorPrompt(agent),
   ].filter(Boolean).join(' ');
   if (mode === 'react') {
     return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf you have nothing new, reply with exactly PASS.`;
@@ -155,7 +161,22 @@ function lookingText(call) {
   if (call.name === 'write_file') return 'Saving a note…';
   if (call.name === 'read_file' || call.name === 'list_files') return 'Checking the notes…';
   if (call.name === 'run_js') return 'Working it out…';
+  if (isConnectorTool(call.name)) return 'Using a connected account…';
   return 'One moment…';
+}
+
+function ensureConnectCard(conv, msg, connector) {
+  if (!connector) return;
+  if (conv.messages.some((item) => item.role === 'connect' && item.connector === connector && item.state !== 'connected')) return;
+  insertAfterTurn(conv, msg, {
+    id: uid('c_'),
+    role: 'connect',
+    connector,
+    state: 'needed',
+    detail: '',
+    agentId: msg.agentId,
+    ts: Date.now(),
+  });
 }
 
 function isNone(text) {
@@ -400,6 +421,34 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
       onUpdate?.();
       return;
     }
+    const intent = !react ? matchConnectorIntent(userText) : null;
+    if (intent) {
+      const outcome = await fulfillConnectorIntent(agent, intent);
+      if (outcome.connect) ensureConnectCard(conv, msg, outcome.connect);
+      if (!modelOn || !outcome.ran) {
+        msg.content = outcome.text;
+        msg.pending = false;
+        msg.loading = false;
+        msg.answered = true;
+        msg.error = false;
+        state.usage.agentMessages++;
+        onPhase?.('done');
+        save();
+        onUpdate?.();
+        return;
+      }
+      insertAfterTurn(conv, msg, {
+        id: uid('m_'),
+        role: 'tool',
+        agentId: agent.id,
+        wave,
+        tool: intent.tool,
+        args: {},
+        content: outcome.text,
+        ts: Date.now(),
+      });
+      usedTool = true;
+    }
     const skipTools = react || isSmallTalk(userText) || isDateTimeQuestion(userText) || (tools && tools.length === 0);
     const allowSearch = !tools || tools.includes('web_search');
     const factual = !skipTools && allowSearch && needsWebSearch(userText);
@@ -454,6 +503,18 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
         }
         if (call.name === 'web_search' || call.name === 'fetch_wikipedia_page') continue;
         if (call.name === 'read_page' && !/https?:\/\//i.test(userText)) continue;
+        if (isConnectorTool(call.name)) {
+          const outcome = await executeConnectorTool(agent, call.name, call.args || {});
+          if (outcome.connect) ensureConnectCard(conv, msg, outcome.connect);
+          insertAfterTurn(conv, msg, {
+            id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: {}, content: outcome.text, ts: Date.now(),
+          });
+          usedTool = true;
+          direct = '';
+          save();
+          onUpdate?.();
+          continue;
+        }
         if (tools && !tools.includes(call.name)) {
           insertAfterTurn(conv, msg, {
             id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: call.args,

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-15, connectors
+
+- Agents can use GitHub, OpenAI, and Notion keys that stay encrypted in the browser. The chat model only sees whether the account is connected.
+- A connect card can appear in the chat. Test checks the key with a real call. Disconnect deletes it.
+- Mastodon sign-in runs in the browser. GitHub's device-code sign-in does not, because that host blocks browser requests, so GitHub uses a personal access token.
+
 ## 2026-11-14, agents and groups
 
 - A new visitor starts with no agents and a Create agent button.
