@@ -29,6 +29,7 @@ export function createAgentRecord({ name, icon, id } = {}) {
     icon: face,
     prompt: agentPrompt(clean),
     tools: SEARCH_TOOLS.slice(),
+    connectors: [],
     status: 'idle',
     paused: false,
     error: '',

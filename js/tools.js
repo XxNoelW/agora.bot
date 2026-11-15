@@ -530,6 +530,11 @@ export const TOOLS = {
   read_file: { fn: read_file, sig: '{"path":"/notes.txt"}', desc: 'read a note on the shared computer' },
   list_files: { fn: list_files, sig: '{}', desc: 'list shared notes' },
   run_js: { fn: run_js, sig: '{"code":"console.log(2+2)"}', desc: 'run JavaScript in a sandbox (no page access, 3s limit)' },
+  github_list_repos: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list repos on the connected GitHub account' },
+  github_create_gist: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{"filename":"note.md","content":"hello"}', desc: 'create a private gist on the connected GitHub account' },
+  notion_search: { fn: async () => 'Notion is handled by the connector, not the model.', sig: '{"query":"notes"}', desc: 'search the connected Notion workspace' },
+  openai_list_models: { fn: async () => 'OpenAI is handled by the connector, not the model.', sig: '{}', desc: 'list model ids on the connected OpenAI account' },
+  mastodon_profile: { fn: async () => 'Mastodon is handled by the connector, not the model.', sig: '{}', desc: 'read the connected Mastodon profile' },
 };
 
 const PROMPT_TOOLS = ['web_search', 'read_page', 'write_file', 'read_file', 'list_files', 'run_js'];

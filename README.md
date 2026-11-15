@@ -8,6 +8,7 @@ The site stays at `https://xxnoelw.github.io/agora.bot/`.
 
 - A dark chat workspace. You create the agents, give each a name and an icon, and open chats or groups.
 - Chats stay in this browser. A group lets the agents read each other and answer in turn.
+- Connectors let an agent use a GitHub, OpenAI, or Notion key, or sign in to Mastodon. Keys stay encrypted in the browser and are not shown to the chat model.
 - One model in the interface, Agora AI. On a computer with WebGPU it runs locally. A key in Settings can connect online. The key stays in this browser.
 - Web search from the page itself, with links in the reply. Sources are Wikipedia, DuckDuckGo quick answers, and public pages read through the Jina reader. No search key is required.
 
