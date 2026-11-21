@@ -1,6 +1,7 @@
 // localStorage-backed state for the static Agona site.
 import { ROLE_DEFS } from './roles.js';
 import { normalizeIcon } from './icons.js';
+import { CONNECTOR_IDS } from './connectors.js';
 import { clampParallel, DEFAULT_PARALLEL } from './scheduler.js';
 import { forgetOpenRouterKey, redactSecrets } from './openrouter.js';
 
@@ -120,7 +121,7 @@ function normalizeAgent(agent) {
     prompt,
     tools: withSearch(Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['web_search', 'read_page', 'read_file', 'list_files', 'write_file'])),
     icon: normalizeIcon(agent.icon, role?.color || agent.color),
-    connectors: Array.isArray(agent.connectors) ? agent.connectors.filter((id) => ['github', 'openai', 'notion', 'mastodon'].includes(id)) : [],
+    connectors: Array.isArray(agent.connectors) ? agent.connectors.filter((id) => CONNECTOR_IDS.includes(id)) : [],
     status: agent.paused ? 'paused' : (agent.status || 'idle'),
     paused: !!agent.paused,
     error: agent.error || '',

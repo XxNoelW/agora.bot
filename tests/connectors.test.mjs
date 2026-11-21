@@ -110,3 +110,59 @@ test('Mastodon sign-in builds an authorize URL and stores the token off to the s
   assert.equal(view.mastodon.detail.includes('masto-token-value'), false);
   assert.match(oauth.GITHUB_OAUTH_NOTE, /personal access token/);
 });
+
+test('the gallery only offers connectors with a setup link and a real action', () => {
+  const ids = connectors.CONNECTORS.map((item) => item.id);
+  for (const id of ['gemini', 'openrouter', 'mistral', 'groq', 'huggingface', 'stability', 'elevenlabs', 'gitlab', 'bitbucket', 'discord', 'slack', 'telegram', 'bluesky', 'trello', 'todoist', 'airtable', 'linear', 'asana', 'clickup', 'pexels', 'unsplash', 'openweather', 'stripe', 'spotify', 'dropbox', 'gdrive']) {
+    assert.ok(ids.includes(id), id);
+  }
+  for (const spec of connectors.CONNECTORS) {
+    assert.ok(spec.setupUrl, spec.id);
+    assert.ok(spec.tools.length >= 1, spec.id);
+  }
+  assert.ok(connectors.UNAVAILABLE.some((item) => item.name === 'Anthropic'));
+  assert.ok(connectors.UNAVAILABLE.some((item) => item.name === 'NewsAPI'));
+});
+
+test('unsafe keys are refused before a request, and a GitLab result hides the token', async () => {
+  let called = false;
+  const live = await connectors.testConnector('stripe', 'sk_live_notallowed123456', async () => { called = true; });
+  assert.equal(live.ok, false);
+  assert.equal(called, false);
+  assert.match(live.detail, /test key/i);
+
+  const discord = await connectors.testConnector('discord', 'https://evil.example/hook', async () => { throw new Error('fetched'); });
+  assert.equal(discord.ok, false);
+  assert.match(discord.detail, /Discord webhook/);
+
+  const token = 'glpat-supersecretvalue';
+  let header = '';
+  const listed = await connectors.runConnectorAction('gitlab', 'gitlab_projects', {}, token, async (url, opts = {}) => {
+    header = opts.headers?.['PRIVATE-TOKEN'] || '';
+    return jsonResponse(200, [{ path_with_namespace: 'acme/app', web_url: 'https://gitlab.com/acme/app' }]);
+  });
+  assert.equal(header, token);
+  assert.match(listed, /acme\/app/);
+  assert.equal(listed.includes('supersecret'), false);
+});
+
+test('a Bluesky profile does not echo the app password or session token', async () => {
+  const password = 'app-password-value';
+  const text = await connectors.runConnectorAction('bluesky', 'bluesky_profile', {}, { handle: 'ada.bsky.social', key: password }, async (url) => {
+    if (String(url).includes('createSession')) return jsonResponse(200, { handle: 'ada.bsky.social', accessJwt: 'jwt-secret-value' });
+    return jsonResponse(200, { handle: 'ada.bsky.social', displayName: 'Ada' });
+  });
+  assert.match(text, /Ada/);
+  assert.equal(text.includes(password), false);
+  assert.equal(text.includes('jwt-secret-value'), false);
+});
+
+test('Spotify sign-in uses PKCE and does not put a client secret in the URL', async () => {
+  let opened = '';
+  await oauth.beginPkce('spotify', 'public-client-id', { assign: (url) => { opened = url; } });
+  assert.match(opened, /https:\/\/accounts\.spotify\.com\/authorize/);
+  assert.match(opened, /code_challenge=/);
+  assert.match(opened, /code_challenge_method=S256/);
+  assert.equal(opened.includes('client_secret'), false);
+  assert.equal(opened.includes('public-client-id'), true);
+});

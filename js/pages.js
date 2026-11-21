@@ -4,8 +4,8 @@ import { readOpenRouterKey } from './openrouter.js';
 import { extractSources } from './tools.js';
 import { listAgentChats, listGroupChats } from './chats.js';
 import { iconMarkup, iconSVG, SHAPES, ICON_COLORS, safeHex } from './icons.js';
-import { CONNECTORS, connectorView } from './connectors.js';
-import { GITHUB_OAUTH_NOTE } from './oauth.js';
+import { CONNECTORS, connectorView, UNAVAILABLE } from './connectors.js';
+import { GITHUB_OAUTH_NOTE, readClientId, redirectUri } from './oauth.js';
 
 const TOOL_LABEL = {
   web_search: 'looked on the web',
@@ -28,22 +28,46 @@ function sourcesHTML(message) {
   return `<p class="src-label">Sources</p><ul class="sources">${sources.map((item) => `<li><a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title || item.url)}</a></li>`).join('')}</ul>`;
 }
 
+function fieldInputs(spec, prefix) {
+  const fields = spec?.fields?.length ? spec.fields : [{ id: 'key', secret: true, label: 'Key', placeholder: spec?.placeholder || '' }];
+  return fields.map((field) => {
+    const type = field.secret ? 'password' : 'text';
+    const value = field.id === 'clientId' ? readClientId(spec.id) : (field.value || '');
+    const id = `${prefix}-${field.id}`;
+    return `<label for="${esc(id)}">${esc(field.label || spec.name)}</label>
+      <input id="${esc(id)}" data-field="${esc(field.id)}" type="${type}" autocomplete="off" spellcheck="false" placeholder="${esc(field.placeholder || '')}" value="${field.secret ? '' : esc(value)}">`;
+  }).join('');
+}
+
+function setupLine(spec) {
+  if (!spec?.setupUrl) return spec?.setup ? `<p class="small">${esc(spec.setup)}</p>` : '';
+  return `<p class="small"><a href="${esc(spec.setupUrl)}" target="_blank" rel="noopener noreferrer">${esc(spec.setup || 'Where to get a key')}</a></p>`;
+}
+
 function connectCardHTML(message) {
   const spec = CONNECTORS.find((item) => item.id === message.connector);
   const name = spec?.name || 'Account';
   if (message.state === 'connected') {
     return `<div class="connect-card" data-mid="${esc(message.id)}"><p><b>${esc(name)}</b></p><p>${esc(message.detail || 'Connected.')}</p></div>`;
   }
-  if (message.connector === 'mastodon') {
-    return `<div class="connect-card" data-mid="${esc(message.id)}"><p><b>Sign in to Mastodon</b></p><p class="small">${esc(spec?.hint || '')}</p><button type="button" data-act="mastodon-start">Sign in with Mastodon</button></div>`;
-  }
   const failed = message.state === 'failed' && message.detail ? `<p class="small">${esc(message.detail)}</p>` : '';
+  if (spec?.auth === 'oauth') {
+    const act = spec.id === 'mastodon' ? 'mastodon-start' : 'oauth-start';
+    const extra = spec.id === 'mastodon' ? '' : ` data-oauth="${esc(spec.id)}"`;
+    return `<div class="connect-card" data-mid="${esc(message.id)}">
+      <p><b>Connect ${esc(name)}</b></p>
+      <p class="small">${esc(spec.hint || '')}</p>
+      ${setupLine(spec)}
+      ${fieldInputs(spec, `card-${message.id}`)}
+      <div class="row"><button type="button" data-act="${act}" data-connector="${esc(spec.id)}"${extra}>Sign in</button></div>
+    </div>`;
+  }
   return `<div class="connect-card" data-mid="${esc(message.id)}">
     <p><b>Connect ${esc(name)}</b></p>
     <p class="small">${esc(spec?.hint || '')}</p>
+    ${setupLine(spec)}
     ${failed}
-    <label class="sr-only" for="key-${esc(message.id)}">${esc(name)} key</label>
-    <input id="key-${esc(message.id)}" type="password" autocomplete="off" spellcheck="false" placeholder="${esc(spec?.placeholder || 'Paste the key')}">
+    ${fieldInputs(spec, `card-${message.id}`)}
     <div class="row"><button type="button" data-act="test-connector" data-connector="${esc(message.connector)}" data-mid="${esc(message.id)}">Test and save</button></div>
   </div>`;
 }
@@ -198,42 +222,48 @@ function agentChecks(id) {
   return `<div class="member-picks">${state.agents.map((agent) => `<label class="checkline"><input type="checkbox" data-allow="1" data-connector="${esc(id)}" data-id="${esc(agent.id)}" ${(agent.connectors || []).includes(id) ? 'checked' : ''}>${esc(agent.name)}</label>`).join('')}</div>`;
 }
 
+function connectorCard(item) {
+  const view = connectorView[item.id] || { state: 'unknown', detail: '' };
+  const label = view.state === 'connected' ? 'Connected' : view.state === 'failed' ? 'Failed' : (item.auth === 'oauth' ? 'Sign in' : 'Not connected');
+  const act = item.id === 'mastodon' ? 'mastodon-start' : 'oauth-start';
+  const extra = item.auth === 'oauth' && item.id !== 'mastodon' ? ` data-oauth="${esc(item.id)}"` : '';
+  const action = item.auth === 'oauth'
+    ? `<button type="button" data-act="${act}" data-connector="${esc(item.id)}"${extra}>Sign in</button>`
+    : `<button type="button" data-act="test-connector" data-connector="${esc(item.id)}">Test and save</button>`;
+  const redirect = item.auth === 'oauth' && item.id !== 'mastodon'
+    ? `<p class="small">Redirect URI: ${esc(redirectUri())}</p>`
+    : '';
+  return `<section class="connector-row" data-connector-card data-hay="${esc(`${item.group} ${item.name} ${item.hint}`.toLowerCase())}">
+    <p class="section-label">${esc(item.group)}</p>
+    <div class="row spread"><h2>${esc(item.name)}</h2><span class="model-pill">${esc(label)}</span></div>
+    <p class="small">${esc(view.detail || item.hint)}</p>
+    ${setupLine(item)}
+    ${redirect}
+    ${fieldInputs(item, `panel-${item.id}`)}
+    <div class="row">
+      ${action}
+      <button type="button" class="danger" data-act="disconnect-connector" data-connector="${esc(item.id)}">Disconnect</button>
+    </div>
+    <p class="section-label">Agents that may use it</p>
+    ${agentChecks(item.id)}
+  </section>`;
+}
+
 export function connectorsHTML() {
-  const tokenCards = CONNECTORS.filter((item) => item.auth === 'token').map((item) => {
-    const view = connectorView[item.id] || { state: 'unknown', detail: '' };
-    const label = view.state === 'connected' ? 'Connected' : view.state === 'failed' ? 'Failed' : 'Not connected';
-    return `<section class="connector-row">
-      <div class="row spread"><h2>${esc(item.name)}</h2><span class="model-pill">${esc(label)}</span></div>
-      <p class="small">${esc(view.detail || item.hint)}</p>
-      <label class="sr-only" for="token-${esc(item.id)}">${esc(item.name)} key</label>
-      <input id="token-${esc(item.id)}" type="password" autocomplete="off" spellcheck="false" placeholder="${esc(item.placeholder)}">
-      <div class="row">
-        <button type="button" data-act="test-connector" data-connector="${esc(item.id)}">Test and save</button>
-        <button type="button" class="danger" data-act="disconnect-connector" data-connector="${esc(item.id)}">Disconnect</button>
-      </div>
-      <p class="section-label">Agents that may use it</p>
-      ${agentChecks(item.id)}
-    </section>`;
+  const groups = ['Models', 'Code', 'Work', 'Chat', 'Media', 'Sign-in'];
+  const cards = groups.map((group) => {
+    const items = CONNECTORS.filter((item) => item.group === group).map(connectorCard).join('');
+    return items ? `<div data-connector-group="${esc(group)}">${items}</div>` : '';
   }).join('');
-  const masto = connectorView.mastodon || { state: 'unknown', detail: '' };
+  const skipped = UNAVAILABLE.map((item) => `<li><b>${esc(item.name)}.</b> ${esc(item.why)}</li>`).join('');
   return `<h2 id="modal-title">Connectors</h2>
     <p class="small muted">Keys stay encrypted in this browser. Agora AI only sees whether an account is connected.</p>
-    ${tokenCards}
-    <section class="connector-row">
-      <div class="row spread"><h2>Mastodon</h2><span class="model-pill">${esc(masto.state === 'connected' ? 'Connected' : 'Sign in')}</span></div>
-      <p class="small">${esc(masto.detail || CONNECTORS.find((item) => item.id === 'mastodon').hint)}</p>
-      <label for="mastodon-host">Server</label>
-      <input id="mastodon-host" value="mastodon.social" autocomplete="off">
-      <div class="row">
-        <button type="button" data-act="mastodon-start">Sign in with Mastodon</button>
-        <button type="button" class="danger" data-act="disconnect-connector" data-connector="mastodon">Disconnect</button>
-      </div>
-      <p class="section-label">Agents that may use it</p>
-      ${agentChecks('mastodon')}
-    </section>
-    <section class="connector-row">
-      <h2>GitHub sign-in</h2>
-      <p class="small">${esc(GITHUB_OAUTH_NOTE)}</p>
+    <label for="connector-filter">Find a connector</label>
+    <input id="connector-filter" type="search" placeholder="Search connectors" autocomplete="off">
+    ${cards}
+    <section class="connector-row" data-connector-card data-hay="unavailable skipped">
+      <h2>Not available from this site</h2>
+      <ul class="small">${skipped}<li><b>GitHub sign-in.</b> ${esc(GITHUB_OAUTH_NOTE)}</li></ul>
     </section>
     <div class="row"><button type="button" class="ghost" data-act="close-modal">Close</button></div>`;
 }

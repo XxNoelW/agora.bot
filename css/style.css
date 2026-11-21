@@ -232,7 +232,7 @@ input, textarea, select {
 }
 .modal.hidden { display: none; }
 .modal-box {
-  width: min(480px, 100%); max-height: min(86dvh, 720px); overflow: auto;
+  width: min(560px, 100%); max-height: min(86dvh, 760px); overflow: auto;
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
   padding: 18px; box-shadow: var(--shadow);
 }
@@ -350,6 +350,7 @@ input, textarea, select {
 }
 .connect-card input, .connector-row input { margin-top: 6px; }
 .connector-row h2 { margin: 0; font-size: 16px; }
+.connector-row ul { margin: 8px 0 0; padding-left: 18px; }
 
 @media (max-width: 800px) {
   #app { display: block; }

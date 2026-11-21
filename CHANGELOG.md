@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-21, more connectors
+
+- Added browser connectors for Gemini, OpenRouter, Mistral, Groq, Hugging Face, Stability, ElevenLabs, GitLab, Bitbucket, Discord, Slack, Telegram, Bluesky, Trello, Todoist, Airtable, Linear, Asana, ClickUp, Pexels, Unsplash, OpenWeather, and Stripe test reads.
+- Spotify, Dropbox, and Google Drive sign in with PKCE. The client ID is typed in the page and is not stored in the repo.
+- Anthropic, Replicate, NewsAPI, Reddit, Supabase, and Firebase stay listed as unavailable because a browser cannot use them from this static site.
+
 ## 2026-11-15, connectors
 
 - Agents can use GitHub, OpenAI, and Notion keys that stay encrypted in the browser. The chat model only sees whether the account is connected.
