@@ -124,7 +124,7 @@ export function scrubSecrets(text, extras = []) {
   for (const secret of extras) {
     if (secret && String(secret).length > 6) out = out.split(String(secret)).join('••••');
   }
-  out = out.replace(/\b(?:ghp_|gho_|github_pat_|sk-|sk-or-v1-|hf_|ntn_|secret_)[A-Za-z0-9_-]{8,}\b/g, '••••');
+  out = out.replace(/\b(?:ghp_|gho_|github_pat_|sk-or-v1-|sk-|glpat-|gsk_|hf_|ntn_|secret_|sk_test_|sk_live_|rk_test_|rk_live_|r8_)[A-Za-z0-9_-]{8,}\b/g, '••••');
   out = out.replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer ••••');
   return out;
 }

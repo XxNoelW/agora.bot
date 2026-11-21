@@ -14,9 +14,9 @@ import {
   agentListHTML, agentChatsHTML, groupListHTML, chatHeadHTML, threadHTML, settingsHTML,
   renameChatHTML, agentFormHTML, groupFormHTML, connectorsHTML, patchThread,
 } from './pages.js';
-import { testConnector, writeConnectorMeta } from './connectors.js';
+import { testConnector, writeConnectorMeta, packCred } from './connectors.js';
 import { saveSecret, deleteSecret } from './secrets.js';
-import { beginMastodonLogin, finishMastodonLogin } from './oauth.js';
+import { beginMastodonLogin, finishMastodonLogin, beginPkce, finishPkce } from './oauth.js';
 import { ensureAgentChats, listAgentChats, createAgentChat, renameAgentChat, deleteAgentChat, createGroupChat, groupCanContinue } from './chats.js';
 import { createAgentRecord, applyAgentEdits, removeAgent } from './agents.js';
 import { ICON_COLORS } from './icons.js';
@@ -401,13 +401,11 @@ const actions = {
   'open-connectors'() { openModal(connectorsHTML(), null, closeModal); },
   async 'test-connector'(btn) {
     const root = btn.closest('.connect-card, .connector-row');
-    const input = root?.querySelector('input[type="password"]');
-    const key = String(input?.value || '').trim();
-    if (input) input.value = '';
+    const cred = readConnectorCred(root);
     const id = btn.dataset.connector;
-    const result = await testConnector(id, key);
+    const result = await testConnector(id, cred);
     if (result.ok) {
-      await saveSecret(id, key);
+      await saveSecret(id, packCred(cred));
       if (btn.closest('.connect-card')) {
         const agent = currentAgent();
         if (agent && !(agent.connectors || []).includes(id)) agent.connectors = [...(agent.connectors || []), id];
@@ -437,10 +435,17 @@ const actions = {
     toast('Disconnected on this computer.');
     openModal(connectorsHTML(), null, closeModal);
   },
-  async 'mastodon-start'() {
-    const host = $('#mastodon-host')?.value || 'mastodon.social';
+  async 'mastodon-start'(btn) {
+    const root = btn.closest('.connect-card, .connector-row');
+    const host = root?.querySelector('[data-field="host"]')?.value || 'mastodon.social';
     toast('Opening Mastodon…');
     await beginMastodonLogin(host);
+  },
+  async 'oauth-start'(btn) {
+    const root = btn.closest('.connect-card, .connector-row');
+    const clientId = root?.querySelector('[data-field="clientId"]')?.value || '';
+    toast('Opening the sign-in page…');
+    await beginPkce(btn.dataset.oauth, clientId);
   },
   'open-settings'() { openModal(settingsHTML(), null, closeModal); },
   stop() { runCtl?.abort(); toast('Stopped.'); },
@@ -493,10 +498,17 @@ applyChrome();
 const oauthParams = new URLSearchParams(location.search);
 const oauthCode = oauthParams.get('code');
 const oauthError = oauthParams.get('error');
+const oauthState = oauthParams.get('state') || '';
+const oauthProvider = oauthState.split('.')[0];
 if (oauthCode || oauthError) {
   history.replaceState(null, '', location.pathname + location.hash);
-  if (oauthError) toast('Mastodon sign-in was cancelled.');
-  else {
+  if (oauthError) toast('Sign-in was cancelled.');
+  else if (oauthProvider === 'spotify' || oauthProvider === 'dropbox' || oauthProvider === 'gdrive') {
+    finishPkce(oauthProvider, oauthCode, oauthState).then((result) => {
+      toast(result.detail);
+      paint(false);
+    }).catch((err) => toast(scrubOauth(err)));
+  } else {
     finishMastodonLogin(oauthCode).then((profile) => {
       toast(`Mastodon connected as @${profile.username}.`);
       paint(false);
@@ -514,7 +526,34 @@ if (session.view === 'group' && currentGroup()) activateGroup(session.groupId);
 else if (currentAgent()) activateAgent(session.agentId, session.chatId);
 else paint(false);
 
+function readConnectorCred(root) {
+  const fields = [...(root?.querySelectorAll('[data-field]') || [])];
+  if (!fields.length) {
+    const input = root?.querySelector('input[type="password"]');
+    const key = String(input?.value || '').trim();
+    if (input) input.value = '';
+    return key;
+  }
+  const cred = {};
+  for (const el of fields) {
+    cred[el.dataset.field] = el.value.trim();
+    if (el.type === 'password') el.value = '';
+  }
+  return cred;
+}
+
 document.addEventListener('click', onClick);
+document.addEventListener('input', (event) => {
+  if (event.target?.id !== 'connector-filter') return;
+  const query = event.target.value.trim().toLowerCase();
+  document.querySelectorAll('[data-connector-card]').forEach((card) => {
+    card.hidden = !!query && !(card.dataset.hay || '').includes(query);
+  });
+  document.querySelectorAll('[data-connector-group]').forEach((group) => {
+    const cards = [...group.querySelectorAll('[data-connector-card]')];
+    group.hidden = cards.length > 0 && cards.every((card) => card.hidden);
+  });
+});
 document.addEventListener('submit', (event) => {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;

@@ -1,5 +1,6 @@
 // Tools that work from a static page: no API key and no backend.
 import { state, save } from './store.js';
+import { isConnectorTool } from './connectors.js';
 
 const clip = (s, n = 1500) => (s.length > n ? s.slice(0, n) + '… [truncated]' : s);
 
@@ -629,7 +630,7 @@ function parseJsonEnvelope(text) {
   const parsed = parseJsonLoose(jsonText);
   if (!parsed) return null;
   const name = normalizeTool(parsed.name || parsed.tool || parsed.tool_name);
-  if (!name || !TOOLS[name]) return null;
+  if (!name || (!TOOLS[name] && !isConnectorTool(name))) return null;
   let args = parsed.arguments ?? parsed.args ?? parsed.parameters ?? null;
   if (args == null) {
     args = { ...parsed };
@@ -649,7 +650,7 @@ export function parseToolCall(text) {
   let match;
   while ((match = toolRe.exec(cleaned))) {
     const name = normalizeTool(match[1]);
-    if (!TOOLS[name]) continue;
+    if (!TOOLS[name] && !isConnectorTool(name)) continue;
     const after = cleaned.slice(match.index + match[0].length);
     const args = argsFromAfter(name, after);
     return { name, args, raw: cleaned.slice(match.index, match.index + match[0].length + Math.min(after.length, 400)).split('\n')[0] };
