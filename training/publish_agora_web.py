@@ -9,7 +9,7 @@ Typical Kaggle use, after training/agona_student_lora.ipynb:
 
     python publish_agora_web.py --adapter agona-output/agona-student-lora
 
-Then upload agona-output/agora-student-mlc to the repo root, so
+The published model is named Agora 1.0. Upload agona-output/agora-student-mlc to the repo root, so
 mlc-chat-config.json is at the top of the repo.
 """
 
@@ -26,7 +26,7 @@ BASE_ID = "Qwen/Qwen2.5-1.5B-Instruct"
 DEFAULT_ADAPTER = "agona-output/agona-student-lora"
 DEFAULT_MERGED = "agona-output/agora-merged"
 DEFAULT_MLC = "agona-output/agora-student-mlc"
-DEFAULT_REPO = "XxNoelW/agora-student"
+DEFAULT_REPO = "XxNoelW/Agora-1.0"
 
 
 def run(cmd):

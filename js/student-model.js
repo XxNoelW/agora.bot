@@ -2,7 +2,8 @@
 // The wasm library is the prebuilt Qwen2 1.5B library from WebLLM 0.2.87.
 // Only the weights come from the visitor's Hugging Face repo.
 
-export const DEFAULT_STUDENT_REPO = 'XxNoelW/agora-student';
+export const DEFAULT_STUDENT_REPO = 'XxNoelW/Agora-1.0';
+export const TRAINED_MODEL_NAME = 'Agora 1.0';
 export const STUDENT_MODEL_ID = 'agora-student-q4f16_1';
 export const STUDENT_WASM = 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_87/base/Qwen2-1.5B-Instruct-q4f16_1_cs1k-webgpu.wasm';
 
@@ -60,9 +61,9 @@ export function builtinName(modelId) {
 export function answerLine({ kind, repo, builtin, reason, busy, progress, online, gpuOk }) {
   const pct = progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : '';
   if (online && !busy) return 'Answering online';
-  if (busy && kind === 'trained') return `Downloading the trained model${pct}`;
+  if (busy && kind === 'trained') return `Downloading ${TRAINED_MODEL_NAME}${pct}`;
   if (busy) return `Downloading the built-in model${pct}`;
-  if (kind === 'trained') return `Answering with the trained model (${repo || DEFAULT_STUDENT_REPO})`;
+  if (kind === 'trained') return `Answering with ${TRAINED_MODEL_NAME}`;
   if (kind === 'builtin') {
     const name = builtin || 'built-in model';
     return reason ? `Answering with the built-in ${name}. ${reason}` : `Answering with the built-in ${name}.`;

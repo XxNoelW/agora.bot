@@ -4,7 +4,7 @@ import { normalizeIcon } from './icons.js';
 import { CONNECTOR_IDS } from './connectors.js';
 import { clampParallel, DEFAULT_PARALLEL } from './scheduler.js';
 import { forgetOpenRouterKey, redactSecrets } from './openrouter.js';
-import { DEFAULT_STUDENT_REPO, cleanRepo } from './student-model.js';
+import { DEFAULT_STUDENT_REPO, STUDENT_MODEL_ID, TRAINED_MODEL_NAME, cleanRepo } from './student-model.js';
 
 const KEY = 'agona:v1';
 const OLD_KEY = 'agentcloud:v1';
@@ -287,5 +287,6 @@ export function workspaceChat() {
 }
 
 export function modelLabel(id) {
+  if (id === STUDENT_MODEL_ID) return TRAINED_MODEL_NAME;
   return MODELS.find((model) => model.id === id)?.label || id;
 }

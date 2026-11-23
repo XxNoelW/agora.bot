@@ -235,7 +235,7 @@ async function saveSettings() {
   if (repoField) {
     const repo = cleanRepo(repoField.value);
     if (!repo) {
-      toast('Use a Hugging Face repo id like XxNoelW/agora-student.');
+      toast('Use a Hugging Face repo id like XxNoelW/Agora-1.0.');
       return;
     }
     state.settings.studentRepo = repo;

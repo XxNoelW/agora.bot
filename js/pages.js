@@ -281,8 +281,8 @@ export function settingsHTML() {
     <form id="settings-form" autocomplete="off">
       <label for="theme">Theme</label>
       <select id="theme">${option('dark', 'Dark')}${option('light', 'Light')}${option('system', 'Match this device')}</select>
-      <h2>Trained model</h2>
-      <p class="small">Agora looks in this Hugging Face repo for the q4 trained weights. If they are not published, the built-in model answers instead.</p>
+      <h2>Agora 1.0</h2>
+      <p class="small">Agora 1.0 is the trained model. This page loads it from the Hugging Face repo below. If the weights are not published, the built-in model answers instead.</p>
       <label for="student-repo">Hugging Face repo</label>
       <input id="student-repo" value="${esc(state.settings.studentRepo || DEFAULT_STUDENT_REPO)}" autocomplete="off" spellcheck="false" placeholder="${esc(DEFAULT_STUDENT_REPO)}">
       <h2>Online connection</h2>

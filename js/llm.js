@@ -323,7 +323,7 @@ async function pickAndLoad(repo) {
         kind: 'builtin',
         repo,
         builtin: builtinName(state.settings?.model),
-        reason: 'The trained model did not start, so this is the fallback.',
+        reason: 'Agora 1.0 did not start, so this is the fallback.',
       });
     }
   } else {
@@ -331,7 +331,7 @@ async function pickAndLoad(repo) {
       kind: 'builtin',
       repo,
       builtin: builtinName(state.settings?.model),
-      reason: 'Trained weights are not published yet.',
+      reason: 'Agora 1.0 is not published yet.',
     });
   }
   return loadModel(state.settings.model);
