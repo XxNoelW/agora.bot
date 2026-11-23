@@ -5,6 +5,7 @@ import { extractSources } from './tools.js';
 import { listAgentChats, listGroupChats } from './chats.js';
 import { iconMarkup, iconSVG, SHAPES, ICON_COLORS, safeHex } from './icons.js';
 import { CONNECTORS, connectorView, UNAVAILABLE } from './connectors.js';
+import { DEFAULT_STUDENT_REPO } from './student-model.js';
 import { GITHUB_OAUTH_NOTE, readClientId, redirectUri } from './oauth.js';
 
 const TOOL_LABEL = {
@@ -276,10 +277,14 @@ export function settingsHTML() {
   const theme = state.settings.theme || 'dark';
   const option = (id, label) => `<option value="${id}" ${theme === id ? 'selected' : ''}>${label}</option>`;
   return `<h2 id="modal-title">Settings</h2>
-    <p class="small muted">Chats stay in this browser. Agora AI is the only model here.</p>
+    <p class="small muted">Chats stay in this browser. The sidebar says which model is answering.</p>
     <form id="settings-form" autocomplete="off">
       <label for="theme">Theme</label>
       <select id="theme">${option('dark', 'Dark')}${option('light', 'Light')}${option('system', 'Match this device')}</select>
+      <h2>Agora 1.0</h2>
+      <p class="small">Agora 1.0 is the trained model. This page loads it from the Hugging Face repo below. If the weights are not published, the built-in model answers instead.</p>
+      <label for="student-repo">Hugging Face repo</label>
+      <input id="student-repo" value="${esc(state.settings.studentRepo || DEFAULT_STUDENT_REPO)}" autocomplete="off" spellcheck="false" placeholder="${esc(DEFAULT_STUDENT_REPO)}">
       <h2>Online connection</h2>
       <p class="warn-note">A key is optional. It stays only in this browser and is sent only to openrouter.ai. Do not type it on a shared computer.</p>
       <p>${saved ? 'A key is saved on this computer.' : 'No key yet. Agora AI can still search the web.'}</p>
