@@ -1,5 +1,10 @@
 // In-browser model via WebLLM. The CDN URL is pinned so a new release
 // cannot silently change model ids or hang the import.
+import { state } from './store.js';
+import {
+  DEFAULT_STUDENT_REPO, STUDENT_MODEL_ID, answerLine, builtinName, cleanRepo, studentAppConfig, studentWeightsReady,
+} from './student-model.js';
+
 export const WEBLLM_VERSION = '0.2.87';
 export const WEBLLM_URL = `https://esm.run/@mlc-ai/web-llm@${WEBLLM_VERSION}`;
 
@@ -170,7 +175,7 @@ async function dropEngine() {
   try { await current.unload?.(); } catch { /* best effort */ }
 }
 
-async function doLoad(modelId) {
+async function doLoad(modelId, { appConfig } = {}) {
   const my = ++loadEpoch;
   const chk = await checkWebGPU();
   if (!chk.ok) {
@@ -189,7 +194,8 @@ async function doLoad(modelId) {
   if (my !== loadEpoch) throw new LlmError('Stopped.', { friendly: 'Stopped.', code: 'abort' });
 
   const known = lib.prebuiltAppConfig?.model_list;
-  if (Array.isArray(known) && known.length && !known.some((m) => m.model_id === modelId)) {
+  const custom = appConfig?.model_list?.some((item) => item.model_id === modelId);
+  if (!custom && Array.isArray(known) && known.length && !known.some((m) => m.model_id === modelId)) {
     const friendly = 'That helper is not available. Pick another one in Settings.';
     setStatus({ text: friendly, detail: modelId, progress: 0, ready: false, error: true, busy: false });
     throw new LlmError('unknown model ' + modelId, { friendly, code: 'model' });
@@ -220,9 +226,12 @@ async function doLoad(modelId) {
     });
   };
   const task = (async () => {
-    if (engine && loadedModel !== modelId) await engine.reload(modelId);
-    else if (!engine) {
-      const created = await lib.CreateMLCEngine(modelId, { initProgressCallback: onProgress });
+    if (engine && loadedModel !== modelId) await dropEngine();
+    if (!engine) {
+      const created = await lib.CreateMLCEngine(modelId, {
+        initProgressCallback: onProgress,
+        ...(appConfig ? { appConfig } : {}),
+      });
       if (my !== loadEpoch) {
         try { await created.unload?.(); } catch { /* abandoned */ }
         return null;
@@ -252,14 +261,14 @@ async function doLoad(modelId) {
   }
 }
 
-export function loadModel(modelId) {
-  if (engine && loadedModel === modelId) return Promise.resolve(engine);
-  if (loading && loadingModelId === modelId) return loading;
+export function loadModel(modelId, opts) {
+  if (engine && loadedModel === modelId && !opts?.appConfig) return Promise.resolve(engine);
+  if (loading && loadingModelId === modelId && !opts?.appConfig) return loading;
   const previous = loading;
   const run = (async () => {
     if (previous) { try { await previous; } catch { /* start a fresh load */ } }
     if (engine && loadedModel === modelId) return engine;
-    return doLoad(modelId);
+    return doLoad(modelId, opts);
   })();
   loading = run;
   loadingModelId = modelId;
@@ -271,7 +280,80 @@ export function loadModel(modelId) {
   return run;
 }
 
-export function isReady(modelId) { return !!engine && loadedModel === modelId && status.ready; }
+export let answerSource = {
+  kind: 'checking',
+  repo: DEFAULT_STUDENT_REPO,
+  builtin: '',
+  reason: '',
+};
+
+function noteAnswer(patch) {
+  answerSource = { ...answerSource, ...patch };
+  setStatus({});
+}
+
+let answerPromise = null;
+let answerKey = '';
+
+export function ensureAnswerModel() {
+  const repo = cleanRepo(state.settings?.studentRepo) || DEFAULT_STUDENT_REPO;
+  const key = `${repo}|${state.settings?.model || ''}`;
+  if (!answerPromise || answerKey !== key) {
+    answerKey = key;
+    const run = pickAndLoad(repo);
+    answerPromise = run;
+    run.catch(() => {
+      if (answerPromise === run) answerPromise = null;
+    });
+  }
+  return answerPromise;
+}
+
+async function pickAndLoad(repo) {
+  noteAnswer({ kind: 'checking', repo, builtin: builtinName(state.settings?.model), reason: '' });
+  let trained = false;
+  try { trained = await studentWeightsReady(repo); }
+  catch { trained = false; }
+  if (trained) {
+    noteAnswer({ kind: 'trained', repo, reason: '' });
+    try {
+      return await loadModel(STUDENT_MODEL_ID, { appConfig: studentAppConfig(repo) });
+    } catch {
+      noteAnswer({
+        kind: 'builtin',
+        repo,
+        builtin: builtinName(state.settings?.model),
+        reason: 'The trained model did not start, so this is the fallback.',
+      });
+    }
+  } else {
+    noteAnswer({
+      kind: 'builtin',
+      repo,
+      builtin: builtinName(state.settings?.model),
+      reason: 'Trained weights are not published yet.',
+    });
+  }
+  return loadModel(state.settings.model);
+}
+
+export function currentAnswerLine(extra = {}) {
+  return answerLine({
+    kind: answerSource.kind,
+    repo: answerSource.repo,
+    builtin: answerSource.builtin || builtinName(state.settings?.model),
+    reason: answerSource.reason,
+    busy: status.busy,
+    progress: status.progress,
+    ...extra,
+  });
+}
+
+export function isReady(modelId) {
+  if (!engine || !status.ready) return false;
+  if (!modelId || loadedModel === modelId || loadedModel === STUDENT_MODEL_ID) return true;
+  return false;
+}
 
 function locked(fn) {
   const run = genChain.then(() => fn(), () => fn());
@@ -308,7 +390,7 @@ async function complete(modelId, messages, { temperature, maxTokens, onToken, si
     throw new LlmError('Stopped.', { friendly: 'Stopped.', code: signal?.aborted ? 'abort' : 'skip' });
   }
   // Stop must unblock the chat even while a big download continues in the background.
-  const eng = await (signal ? Promise.race([loadModel(modelId), abortPromise(signal)]) : loadModel(modelId));
+  const eng = await (signal ? Promise.race([ensureAnswerModel(), abortPromise(signal)]) : ensureAnswerModel());
   if (signal?.aborted || shouldStop?.()) {
     try { eng.interruptGenerate(); } catch { /* idle */ }
     throw new LlmError('Stopped.', { friendly: 'Stopped.', code: signal?.aborted ? 'abort' : 'skip' });

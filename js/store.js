@@ -4,6 +4,7 @@ import { normalizeIcon } from './icons.js';
 import { CONNECTOR_IDS } from './connectors.js';
 import { clampParallel, DEFAULT_PARALLEL } from './scheduler.js';
 import { forgetOpenRouterKey, redactSecrets } from './openrouter.js';
+import { DEFAULT_STUDENT_REPO, cleanRepo } from './student-model.js';
 
 const KEY = 'agona:v1';
 const OLD_KEY = 'agentcloud:v1';
@@ -85,6 +86,7 @@ function blank(nav) {
       welcomed: false,
       replySource: 'auto',
       openrouterChatModel: '',
+      studentRepo: DEFAULT_STUDENT_REPO,
       orPerRun: 8,
       orGlobal: 40,
     },
@@ -151,6 +153,7 @@ export function migrateState(data, nav = globalThis.navigator) {
   settings.welcomed = !!settings.welcomed;
   if (!['auto', 'local', 'openrouter'].includes(settings.replySource)) settings.replySource = 'auto';
   settings.openrouterChatModel = String(settings.openrouterChatModel || '');
+  settings.studentRepo = cleanRepo(settings.studentRepo) || DEFAULT_STUDENT_REPO;
   settings.orPerRun = clamp(settings.orPerRun, 1, 30, 8);
   settings.orGlobal = clamp(settings.orGlobal, 1, 500, 40);
   delete settings.openrouterKey;

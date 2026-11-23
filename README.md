@@ -9,7 +9,7 @@ The site stays at `https://xxnoelw.github.io/agora.bot/`.
 - A dark chat workspace. You create the agents, give each a name and an icon, and open chats or groups.
 - Chats stay in this browser. A group lets the agents read each other and answer in turn.
 - Connectors let an agent use keys or sign-in for GitHub, GitLab, Bitbucket, OpenAI, Gemini, OpenRouter, Mistral, Groq, Hugging Face, Stability, ElevenLabs, Notion, Trello, Todoist, Airtable, Linear, Asana, ClickUp, Discord, Slack, Telegram, Bluesky, Mastodon, Spotify, Dropbox, Google Drive, Pexels, Unsplash, OpenWeather, and Stripe test reads. Keys stay encrypted in the browser and are not shown to the chat model.
-- One model in the interface, Agora AI. On a computer with WebGPU it runs locally. A key in Settings can connect online. The key stays in this browser.
+- One chat brand, Agora AI. On a computer with WebGPU it tries your trained model first, then the built-in local model. A key in Settings can connect online when WebGPU is missing. The key stays in this browser. The sidebar says which one is answering.
 - Web search from the page itself, with links in the reply. Sources are Wikipedia, DuckDuckGo quick answers, and public pages read through the Jina reader. No search key is required.
 
 The Kaggle notebook and `scripts/kaggle-push.sh` stay in the repo for the owner. They are not part of the page.
@@ -33,6 +33,26 @@ node --test tests/*.mjs
 ```
 
 The web search test uses the network. `scripts/smoke-openrouter.mjs` is a live check. It reads `OPENROUTER_API_KEY` from the environment, tries up to four free models, and does not print the key.
+
+## Trained model
+
+The chat does not ship the trained weights. It looks for a public Hugging Face repo, default `XxNoelW/agora-student`, and loads it in the browser with WebLLM `0.2.87`. The wasm library is the prebuilt Qwen2.5 1.5B q4 library. Only the weights come from that repo. If `mlc-chat-config.json` is missing, or it is not a `qwen2` model quantized as `q4f16_1`, the page uses the built-in model instead:
+
+- Desktop: `Qwen2.5-Coder-7B-Instruct-q4f16_1-MLC`
+- Phone or a device that reports 4 GB or less: `Qwen2.5-0.5B-Instruct-q4f16_1-MLC`
+
+If the browser has no WebGPU, those local models do not start. A saved OpenRouter key is used when there is one. Otherwise the reply comes from web search. Settings can change the repo id. No token is stored in this repo.
+
+To publish the weights after the training notebook:
+
+1. On Kaggle, with a GPU, open `training/publish_agora_web.ipynb`. It expects the adapter at `agona-output/agona-student-lora` from `training/agona_student_lora.ipynb`.
+2. The notebook merges that adapter into `Qwen/Qwen2.5-1.5B-Instruct`, installs the MLC nightly (`mlc-llm-nightly-cu128` when CUDA is present, otherwise the CPU wheel), and writes `agona-output/agora-student-mlc`.
+3. Create a public model repo. The site's default id is `XxNoelW/agora-student`. Another id works if you type it in Settings.
+4. Upload the files inside `agora-student-mlc` to the root of that repo. `mlc-chat-config.json` must sit next to the weight shards and the tokenizer files.
+5. Optional: `python training/publish_agora_web.py --upload` after `HF_TOKEN` is set in the environment. The script refuses to upload without that token, and the token is not written into the repo.
+6. Reload the site. The sidebar should say `Answering with the trained model (XxNoelW/agora-student)`. Until the file is public, it says the trained weights are not published and names the built-in model.
+
+The same steps are in `training/publish_agora_web.py`.
 
 ## Pages
 

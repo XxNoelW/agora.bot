@@ -1,5 +1,6 @@
 import { state, save, agentById, resetAll, exportState, uid } from './store.js';
-import { onStatus, status, loadModel, checkWebGPU } from './llm.js';
+import { onStatus, status, ensureAnswerModel, currentAnswerLine, checkWebGPU } from './llm.js';
+import { cleanRepo } from './student-model.js';
 import {
   readOpenRouterKey, writeOpenRouterKey, forgetOpenRouterKey, redactSecrets, listModels,
   pickTeacherCandidates, pickDefaultTeacherIds, createOpenRouterAdapter,
@@ -54,15 +55,11 @@ function currentChat() {
 }
 
 function statusLine() {
-  if (usingOpenRouter() && !status.busy) return 'Agora AI is ready';
-  if (status.error) return 'Agora AI could not start here. Questions can still search the web.';
-  if (status.ready) return 'Agora AI is ready on this device';
-  if (status.busy) {
-    const pct = status.progress > 0 && status.progress < 1 ? ` ${Math.round(status.progress * 100)}%` : '';
-    return `Getting Agora AI ready${pct}`;
-  }
-  if (session.gpu && session.gpu.ok === false && !session.gpu.pending) return 'Agora AI will search the web on this device';
-  return 'Agora AI';
+  if (status.error && !status.busy) return 'The model could not start. Questions can still search the web.';
+  return currentAnswerLine({
+    online: usingOpenRouter(),
+    gpuOk: session.gpu?.pending ? undefined : session.gpu?.ok,
+  });
 }
 
 function paintStatus() {
@@ -234,6 +231,15 @@ async function submitText(text) {
 async function saveSettings() {
   const theme = $('#theme')?.value;
   if (theme === 'dark' || theme === 'light' || theme === 'system') state.settings.theme = theme;
+  const repoField = $('#student-repo');
+  if (repoField) {
+    const repo = cleanRepo(repoField.value);
+    if (!repo) {
+      toast('Use a Hugging Face repo id like XxNoelW/agora-student.');
+      return;
+    }
+    state.settings.studentRepo = repo;
+  }
   const key = $('#or-key')?.value || '';
   if (key.trim()) writeOpenRouterKey(key);
   const field = $('#or-key');
@@ -244,6 +250,7 @@ async function saveSettings() {
   toast(key.trim() ? 'Saved on this computer. The key stays in this browser.' : 'Saved on this computer.');
   paint(false);
   await ensureOnline();
+  if (session.gpu?.ok) ensureAnswerModel().catch(() => {});
   paintStatus();
 }
 
@@ -604,6 +611,6 @@ gpuPromise = checkWebGPU();
 gpuPromise.then((result) => {
   session.gpu = { ...result, pending: false };
   paintStatus();
-  if (result.ok) loadModel(state.settings.model).catch(() => {});
+  if (result.ok) ensureAnswerModel().catch(() => {});
 });
 ensureOnline();

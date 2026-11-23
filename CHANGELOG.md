@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-23, trained model
+
+- The page tries a public Hugging Face repo of the trained Qwen2.5 1.5B model before the built-in WebLLM model. The default repo is `XxNoelW/agora-student`. The wasm library stays the prebuilt Qwen2 1.5B q4 library.
+- If those weights are not published, or the browser has no WebGPU, the previous model still answers. The sidebar names which one is answering.
+- `training/publish_agora_web.py` merges the QLoRA adapter and writes q4f16_1 weights. It does not upload them unless `HF_TOKEN` is set.
+
 ## 2026-11-23, new look
 
 - Calmer, simpler interface: round agent avatars, cleaner sidebar, plain assistant replies, rounded user bubbles and composer, softer modals, and better light theme.
