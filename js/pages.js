@@ -150,7 +150,7 @@ export function chatHeadHTML(chat, agent) {
       </div>
     </div>`;
   }
-  if (!agent) return '<div class="who"><div><h1>Agona</h1><p class="model-pill">Agora AI</p></div></div>';
+  if (!agent) return '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora AI</p></div></div>';
   return `<div class="who">
     ${iconMarkup(agent)}
     <div>
@@ -163,7 +163,10 @@ export function chatHeadHTML(chat, agent) {
 }
 
 export function emptyHomeHTML() {
+  const faces = [['robot', ICON_COLORS[0]], ['cat', ICON_COLORS[1]], ['spark', ICON_COLORS[2]]]
+    .map(([shape, color]) => `<span class="avatar shape" style="--agent:${color}">${iconSVG(shape)}</span>`).join('');
   return `<div class="empty-home">
+    <div class="hero-faces" aria-hidden="true">${faces}</div>
     <h1>Create an agent</h1>
     <p>You start with an empty workspace. Give an agent a name and an icon, then chat. Agora AI is the only model, and it can search the web when a question needs it.</p>
     <button type="button" data-act="open-create">Create agent</button>

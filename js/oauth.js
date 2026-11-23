@@ -24,7 +24,7 @@ export async function registerMastodonApp(host, redirect, fetchImpl = fetch) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
-      client_name: 'Agona',
+      client_name: 'Agora',
       redirect_uris: redirect,
       scopes: 'read',
       website: redirect,

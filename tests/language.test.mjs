@@ -26,5 +26,5 @@ test('the pages and scripts do not keep Hungarian UI text', () => {
   assert.deepEqual(hits, []);
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   assert.match(html, /lang="en"/);
-  assert.match(html, /<title>Agona<\/title>/);
+  assert.match(html, /<title>Agora<\/title>/);
 });

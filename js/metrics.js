@@ -26,7 +26,7 @@ export function parseMetrics(data) {
     return { ok: false, error: 'That file is not a metrics file.' };
   }
   if (data.schema !== METRICS_SCHEMA) {
-    return { ok: false, error: 'This file is not an Agona metrics file.' };
+    return { ok: false, error: 'This file is not an Agora metrics file.' };
   }
   const baseline = side(data.baseline);
   const trained = side(data.trained);

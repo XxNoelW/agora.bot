@@ -122,7 +122,7 @@ export const CONNECTOR_SPECS = [
       const filename = String(args.filename || args.name || 'note.md').replace(/[^\w.\- ]/g, '').slice(0, 80) || 'note.md';
       const created = await call('https://api.github.com/gists', {
         method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, secret: cred.key, fetchImpl,
-        body: { description: clip(args.description || 'Note from Agona', 200), public: false, files: { [filename]: { content } } },
+        body: { description: clip(args.description || 'Note from Agora', 200), public: false, files: { [filename]: { content } } },
       });
       return `Gist created: ${created.html_url}`;
     },
@@ -576,7 +576,7 @@ export const CONNECTOR_SPECS = [
     aliases: ['discord'],
     tools: [{ name: 'discord_send', sig: '{"content":"hello"}', desc: 'post a message to the connected Discord webhook' }],
     async test(cred, fetchImpl) {
-      await postDiscord(cred.key, 'Agona connected this webhook.', fetchImpl);
+      await postDiscord(cred.key, 'Agora connected this webhook.', fetchImpl);
       return { ok: true, detail: 'Discord accepted the webhook. A test line was posted.' };
     },
     async run(tool, args, cred, fetchImpl) {
@@ -596,7 +596,7 @@ export const CONNECTOR_SPECS = [
     aliases: ['slack'],
     tools: [{ name: 'slack_send', sig: '{"text":"hello"}', desc: 'post a message to the connected Slack webhook' }],
     async test(cred, fetchImpl) {
-      await postSlack(cred.key, 'Agona connected this webhook.', fetchImpl);
+      await postSlack(cred.key, 'Agora connected this webhook.', fetchImpl);
       return { ok: true, detail: 'Slack accepted the webhook. A test line was posted.' };
     },
     async run(tool, args, cred, fetchImpl) {
@@ -842,7 +842,7 @@ export const CONNECTOR_SPECS = [
   },
   {
     id: 'stripe', name: 'Stripe test', group: 'Media', auth: 'token',
-    hint: 'Paste a test secret key or a restricted test key. Live keys are refused. Agona only reads the balance and recent customers.',
+    hint: 'Paste a test secret key or a restricted test key. Live keys are refused. Agora only reads the balance and recent customers.',
     setup: 'Copy a test secret key from the Stripe dashboard.',
     setupUrl: 'https://dashboard.stripe.com/test/apikeys',
     placeholder: 'sk_test_…',
@@ -927,7 +927,7 @@ export function intentFor(text) {
   const lower = raw.toLowerCase();
   if (/\bgithub\b/.test(lower) && /\bgist\b/.test(lower) && /\b(create|make|new|save)\b/.test(lower)) {
     const content = raw.replace(/^[\s\S]*?\bgist\b[:\s-]*/i, '').trim().slice(0, 4000);
-    return { id: 'github', tool: 'github_create_gist', args: { content, filename: 'note.md', description: 'Note from Agona' } };
+    return { id: 'github', tool: 'github_create_gist', args: { content, filename: 'note.md', description: 'Note from Agora' } };
   }
   for (const spec of CONNECTOR_SPECS) {
     if (!spec.aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(lower))) continue;

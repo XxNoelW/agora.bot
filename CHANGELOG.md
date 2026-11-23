@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-23, new look
+
+- Calmer, simpler interface: round agent avatars, cleaner sidebar, plain assistant replies, rounded user bubbles and composer, softer modals, and better light theme.
+- Visible name is now Agora. Storage keys stay `agona:*`, so saved agents and chats are kept.
+
 ## 2026-11-21, more connectors
 
 - Added browser connectors for Gemini, OpenRouter, Mistral, Groq, Hugging Face, Stability, ElevenLabs, GitLab, Bitbucket, Discord, Slack, Telegram, Bluesky, Trello, Todoist, Airtable, Linear, Asana, ClickUp, Pexels, Unsplash, OpenWeather, and Stripe test reads.

@@ -92,7 +92,7 @@ function paint(patch) {
     if (agents) agents.innerHTML = agentListHTML(session.view === 'agent' ? agent?.id : '');
     if (chats) chats.innerHTML = agentChatsHTML(session.view === 'agent' ? agent?.id : '', chat?.id);
     if (groups) groups.innerHTML = groupListHTML(session.view === 'group' ? chat?.id : '');
-    if (head) head.innerHTML = chat ? chatHeadHTML(chat, agent) : '<div class="who"><div><h1>Agona</h1><p class="model-pill">Agora AI</p></div></div>';
+    if (head) head.innerHTML = chat ? chatHeadHTML(chat, agent) : '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora AI</p></div></div>';
     if (thread) {
       thread.innerHTML = `<div class="column">${chat ? threadHTML(chat, agent) : threadHTML(null, null)}</div>`;
       const start = thread.querySelector('.bubble-row.user:last-of-type, .welcome, .empty-home');
@@ -105,7 +105,7 @@ function paint(patch) {
     }
     const label = $('#chats-label');
     if (label) label.textContent = agent ? `${agent.name}'s chats` : 'Chats';
-    document.title = `${chat?.name || agent?.name || 'Agona'} · Agona`;
+    document.title = `${chat?.name || agent?.name || 'Agora'} · Agora`;
   }
   paintStatus();
   setBusy(isRunning());
