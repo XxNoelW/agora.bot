@@ -170,6 +170,25 @@ export async function removeMemory(id) {
   return cache;
 }
 
+export async function replaceMemories(rows) {
+  const now = Date.now();
+  const next = [];
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const text = cleanText(row?.text);
+    if (!text) continue;
+    next.push({
+      id: String(row.id || `mem_${now.toString(36)}_${next.length}`).slice(0, 40),
+      text,
+      kind: row.kind === 'name' ? 'name' : 'fact',
+      created: Number(row.created) || now,
+      updated: Number(row.updated) || now,
+    });
+  }
+  cache = next.sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 200);
+  await replaceRows('memories', cache);
+  return cache;
+}
+
 export async function addMemory(text, kind = 'fact') {
   cache = upsertMemory(cache, { text, kind });
   const saved = cache[0];

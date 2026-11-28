@@ -7,6 +7,8 @@ import { iconMarkup, iconSVG, SHAPES, ICON_COLORS, safeHex } from './icons.js';
 import { CONNECTORS, connectorView, UNAVAILABLE } from './connectors.js';
 import { DEFAULT_STUDENT_REPO } from './student-model.js';
 import { GITHUB_OAUTH_NOTE, readClientId, redirectUri } from './oauth.js';
+import { DEFAULT_CLOUD_URL, cloudCode, cloudUrl, syncConflict, ui } from './cloud.js';
+import { qrSvg } from './qr.js';
 
 const TOOL_LABEL = {
   web_search: 'looked on the web',
@@ -303,12 +305,45 @@ export function connectorsHTML(opts = {}) {
     <div class="row"><button type="button" class="ghost" data-act="close-modal">Close</button></div>`;
 }
 
+function accountSyncHTML() {
+  const code = cloudCode();
+  const conflict = syncConflict();
+  let qr = '';
+  if (code) {
+    try { qr = `<div class="sync-qr">${qrSvg(code)}</div>`; } catch { qr = ''; }
+  }
+  const conflictHtml = conflict ? `<p class="warn-note">${ui(
+    'This device and the other one both changed the synced copy.',
+    'Ez az eszk\u00f6z \u00e9s a m\u00e1sik is megv\u00e1ltoztatta a szinkroniz\u00e1lt m\u00e1solatot.',
+  )}</p>
+    <div class="row">
+      <button type="button" data-act="sync-keep-local">${ui('Keep this device', 'Maradjon ez az eszk\u00f6z')}</button>
+      <button type="button" class="ghost" data-act="sync-use-server">${ui('Use the other device', 'A m\u00e1sik eszk\u00f6z')}</button>
+    </div>` : '';
+  const linked = code ? `<label for="sync-code">${ui('Sync code', 'Szinkronk\u00f3d')}</label>
+    <textarea id="sync-code" class="sync-code" readonly rows="3">${esc(code)}</textarea>
+    ${qr}
+    <div class="row">
+      <button type="button" data-act="copy-sync-code">${ui('Copy', 'M\u00e1sol\u00e1s')}</button>
+      <button type="button" data-act="sync-now">${ui('Sync now', 'Szinkron')}</button>
+    </div>
+    ${conflictHtml}` : `<div class="row"><button type="button" data-act="create-cloud-account">${ui('Create account', 'Fi\u00f3k l\u00e9trehoz\u00e1sa')}</button></div>`;
+  return `${linked}
+    <label for="cloud-link">${ui('Link another device', 'M\u00e1sik eszk\u00f6z csatol\u00e1sa')}</label>
+    <input id="cloud-link" autocomplete="off" spellcheck="false" placeholder="${ui('Paste a sync code', 'Illeszd be a k\u00f3dot')}">
+    <div class="row">
+      <button type="button" data-act="link-cloud">${ui('Link', 'Csatol\u00e1s')}</button>
+      ${code ? `<button type="button" class="ghost" data-act="forget-cloud">${ui('Remove from this device', 'Elt\u00e1vol\u00edt\u00e1s err\u0151l az eszk\u00f6zr\u0151l')}</button>
+      <button type="button" class="danger" data-act="delete-cloud-account">${ui('Delete account', 'Fi\u00f3k t\u00f6rl\u00e9se')}</button>` : ''}
+    </div>`;
+}
+
 export function settingsHTML() {
   const saved = !!readOpenRouterKey();
   const theme = state.settings.theme || 'dark';
   const option = (id, label) => `<option value="${id}" ${theme === id ? 'selected' : ''}>${label}</option>`;
   return `<h2 id="modal-title">Settings</h2>
-    <p class="small muted">Chats stay in this browser. The sidebar says which model is answering.</p>
+    <p class="small muted">Chats stay on this device until you turn on account sync. The sidebar says which model is answering.</p>
     <form id="settings-form" autocomplete="off">
       <label for="theme">Theme</label>
       <select id="theme">${option('dark', 'Dark')}${option('light', 'Light')}${option('system', 'Match this device')}</select>
@@ -327,6 +362,16 @@ export function settingsHTML() {
         <button type="button" class="danger" data-act="forget-key">Forget key</button>
       </div>
     </form>
+    <section class="settings-extra" id="account-sync">
+      <h2>${ui('Account', 'Fi\u00f3k')}</h2>
+      <p class="small">${ui(
+        'A sync code links this browser with another. Chats, memory, and settings are copied. The code is the password, so share it only with yourself. Routines stay on this device.',
+        'Egy szinkronk\u00f3d \u00f6sszek\u00f6ti ezt a b\u00f6ng\u00e9sz\u0151t egy m\u00e1sikkal. A cseveg\u00e9sek, a mem\u00f3ria \u00e9s a be\u00e1ll\u00edt\u00e1sok \u00e1tm\u00e1sol\u00f3dnak. A k\u00f3d a jelsz\u00f3, csak magadnak add \u00e1t. A rutinok ezen az eszk\u00f6z\u00f6n maradnak.',
+      )}</p>
+      <label for="cloud-url">${ui('Backend URL', 'Kiszolg\u00e1l\u00f3 c\u00edme')}</label>
+      <input id="cloud-url" value="${esc(cloudUrl())}" autocomplete="off" spellcheck="false" placeholder="${esc(DEFAULT_CLOUD_URL)}">
+      ${accountSyncHTML()}
+    </section>
     <section class="settings-extra">
       <h2>This browser</h2>
       <div class="row">

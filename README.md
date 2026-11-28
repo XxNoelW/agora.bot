@@ -56,7 +56,7 @@ The same steps are in `training/publish_agora_web.py`.
 
 ## Memory, feedback, and routines
 
-Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localStorage when that is missing). Nothing is uploaded.
+Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localStorage when that is missing). Nothing is uploaded until you create a sync account in Settings. That account copies chats, memory, and settings to the optional cloud Worker. Ratings and routines stay on this device.
 
 - Memory stores a name, preferences, and short facts. Relevant notes are added to the prompt in a short block. Turn it off in Memory. Say “remember that …” or “forget …”. The same actions are tools: `remember` and `forget`.
 - Chats can be searched from the sidebar or the Memory panel, then renamed or deleted.
@@ -78,11 +78,13 @@ What works in the browser, with no Cloudflare deploy:
 
 What waits on a Cloudflare deploy:
 
-- Feeds and MCP servers marked **Needs the proxy**. Their hosts block browser apps. The site still loads; those connectors say so and do not call the network until you paste a Worker URL.
+- Feeds and MCP servers marked **Needs the proxy**. Their hosts block browser apps. The proxy URL is already filled in with `https://agora-connectors.knoel99-morcik.workers.dev`. Paste another URL to use your own Worker.
 
 To add a connector by hand, open Connectors and paste a Streamable HTTP MCP URL. You can attach a bearer token, a named API-key header, or OAuth. OAuth uses PKCE and dynamic client registration when the server publishes it. Nothing in the repo is a secret.
 
-The optional Worker lives in `workers/agora-connectors`. Its README has the deploy steps. After `npx wrangler deploy`, paste the `workers.dev` URL into **Proxy URL**. That Worker only fetches hosts generated into `src/allow.js`. A token sent through **mcp-proxy** goes to your own Worker and then to the official host.
+The connectors Worker lives in `workers/agora-connectors`. Its README has the deploy steps. The site's default proxy URL is the deployed Worker. A token sent through **mcp-proxy** goes to that Worker and then to the official host.
+
+Account sync is separate. Settings can create a sync code, show it as text and a QR code, and paste it on another device. The Worker in `workers/agora-cloud` stores the code as a hash and keeps the chats, memory, and settings copy. Its README lists the file to upload.
 
 Agora 1.0 sees a short list of enabled tools in the decision prompt. A clear request such as “weather in Paris” or “list my GitHub sites” runs the tool even when the model does not emit a tool call. Tool calls are collapsible in the chat. **Max tool steps** caps the loop.
 

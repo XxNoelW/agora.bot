@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The connector proxy URL defaults to the deployed connectors Worker. Settings can create a sync account, show the code as text and a QR code, and copy chats, memory, and settings to another device. Routines still run only while Agora is open.
 - The connector catalog is a curated set of assistant services. Per-language Wikipedia copies, novelty APIs, and unused MCP servers are gone. Official remote MCP entries were added where a live server answered, including Discord, Dropbox, X, Shopify, Trello, Zoom, Calendly, Make, AgentMail, Kaggle, Twilio, Salesforce, and Zendesk.
 
 ## 2026-11-28, memory and routines
