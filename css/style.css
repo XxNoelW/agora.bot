@@ -190,6 +190,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
   font-size: 14px;
 }
 .sys-line p, .tool-line p { margin: 0; white-space: pre-wrap; }
+.tool-line summary { cursor: pointer; }
+.tool-line[open] p, .tool-line[open] .sources { margin-top: 8px; }
 .sources { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .sources a { font-weight: 600; }
 .snip, .src-label { display: block; color: var(--muted); font-size: 12px; }
@@ -231,6 +233,7 @@ input, textarea, select {
   display: flex; align-items: center; justify-content: center; z-index: 70; padding: 18px;
 }
 .modal.hidden { display: none; }
+.modal-box.wide { width: min(920px, 100%); }
 .modal-box {
   width: min(560px, 100%); max-height: min(86dvh, 760px); overflow: auto;
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
@@ -349,7 +352,13 @@ input, textarea, select {
   border: 1px solid var(--border); border-radius: 14px; padding: 12px; background: var(--surface); margin: 8px 0;
 }
 .connect-card input, .connector-row input { margin-top: 6px; }
-.connector-row h2 { margin: 0; font-size: 16px; }
+.connector-row h2, .plugin-card h3 { margin: 0; font-size: 16px; }
+.plugin-grid { display: grid; gap: 8px; }
+.plugin-card { border: 1px solid var(--border); border-radius: 14px; padding: 12px; margin: 8px 0; background: var(--surface); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.chip { border: 1px solid var(--border); background: transparent; border-radius: 999px; padding: 4px 10px; color: var(--text); }
+.chip.on { background: var(--text); color: var(--bg); }
+.row.spread { justify-content: space-between; width: 100%; }
 .connector-row ul { margin: 8px 0 0; padding-left: 18px; }
 
 @media (max-width: 800px) {

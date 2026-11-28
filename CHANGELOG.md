@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Connectors is a searchable catalog in `data/plugins.json`. Ready connectors run in the browser. Entries that need a key, sign-in, or the optional Cloudflare proxy say so.
+- GitHub “list my sites” calls the GitHub API for repositories and Pages URLs instead of repeating the connection status.
+- A remote MCP URL can be added from the store. Sign-in uses OAuth 2.1 with PKCE when the server supports dynamic registration.
+
 ## 2026-11-23, trained model
 
 - The page tries a public Hugging Face repo of Agora 1.0 before the built-in WebLLM model. The default repo is `XxNoelW/Agora-1.0`. The wasm library stays the prebuilt 1.5B q4 library. The sidebar calls the trained model Agora 1.0.

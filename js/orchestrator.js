@@ -9,8 +9,10 @@ import {
 } from './tools.js';
 import {
   connectorPrompt, connectorDecidePrompt, isConnectorTool, executeConnectorTool, fulfillConnectorIntent,
-  matchConnectorIntent,
+  matchConnectorIntent, isConnectionEcho,
 } from './connectors.js';
+import { pluginToolPrompt, matchPluginIntent, runPluginTool, isPluginTool } from './plugin-run.js';
+import { loadPluginConfig } from './plugin-store.js';
 
 const MAX_TOOL_LOOPS = 2;
 const HISTORY_LIMIT = 12;
@@ -65,7 +67,9 @@ function systemFor(agent, conv, mode, clockLine = '') {
   const tools = allowedTools(agent);
   if (mode === 'decide') {
     const extra = connectorDecidePrompt(agent);
-    return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}${extra ? `\n${extra}` : ''}`;
+    const asked = [...(conv.messages || [])].reverse().find((item) => item.role === 'user');
+    const plugins = pluginToolPrompt(asked?.content || '');
+    return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}${extra ? `\n${extra}` : ''}${plugins ? `\n${plugins}` : ''}`;
   }
   const others = (conv.agentIds || []).filter((id) => id !== agent.id).map(agentById).filter(Boolean);
   let group;
@@ -421,11 +425,31 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
       onUpdate?.();
       return;
     }
-    const intent = !react ? matchConnectorIntent(userText) : null;
+    const prior = seed.messages
+      .slice(-8)
+      .map((item) => String(item.content || item.brief || ''))
+      .filter((item) => item && item !== userText)
+      .join('\n')
+      .slice(-1200);
+    const intent = !react ? matchConnectorIntent(userText, prior) : null;
     if (intent) {
       const outcome = await fulfillConnectorIntent(agent, intent);
       if (outcome.connect) ensureConnectCard(conv, msg, outcome.connect);
-      if (!modelOn || !outcome.ran) {
+      if (outcome.ran) {
+        insertAfterTurn(conv, msg, {
+          id: uid('m_'),
+          role: 'tool',
+          agentId: agent.id,
+          wave,
+          tool: intent.tool,
+          args: intent.args || {},
+          content: outcome.text,
+          ts: Date.now(),
+        });
+        usedTool = true;
+      }
+      // A clear account request answers from the API. The small model otherwise repeats "signed in as".
+      if (!modelOn || !outcome.ran || outcome.direct) {
         msg.content = outcome.text;
         msg.pending = false;
         msg.loading = false;
@@ -437,17 +461,33 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
         onUpdate?.();
         return;
       }
+    }
+    const pluginIntent = !react && !usedTool ? matchPluginIntent(userText) : null;
+    if (pluginIntent) {
+      msg.toolCall = pluginIntent.name;
+      msg.loading = false;
+      msg.content = 'Using a connector…';
+      onPhase?.('working');
+      onUpdate?.(true);
+      let result;
+      try { result = await runPluginTool(pluginIntent.name, pluginIntent.args, { signal }); }
+      catch (err) {
+        if (aborted() || err?.name === 'AbortError') throw err;
+        result = err.message || 'The connector failed.';
+      }
       insertAfterTurn(conv, msg, {
-        id: uid('m_'),
-        role: 'tool',
-        agentId: agent.id,
-        wave,
-        tool: intent.tool,
-        args: {},
-        content: outcome.text,
-        ts: Date.now(),
+        id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: pluginIntent.name, args: pluginIntent.args, content: result, ts: Date.now(),
       });
-      usedTool = true;
+      msg.content = result;
+      msg.pending = false;
+      msg.loading = false;
+      msg.answered = true;
+      msg.error = false;
+      state.usage.agentMessages++;
+      onPhase?.('done');
+      save();
+      onUpdate?.();
+      return;
     }
     const skipTools = react || isSmallTalk(userText) || isDateTimeQuestion(userText) || (tools && tools.length === 0);
     const allowSearch = !tools || tools.includes('web_search');
@@ -486,8 +526,9 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
       return;
     }
 
+    const stepCap = Math.max(MAX_TOOL_LOOPS, loadPluginConfig().maxSteps || MAX_TOOL_LOOPS);
     if (!skipTools && !factual) {
-      for (let loop = 0; loop < MAX_TOOL_LOOPS; loop++) {
+      for (let loop = 0; loop < stepCap; loop++) {
         if (aborted() || stopCheck()) break;
         const decision = await generateReliable(prefs.model, buildMessages(agent, contextFor(agent, conv, msg), { mode: 'decide' }), {
           temperature: 0,
@@ -496,7 +537,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           shouldStop: stopCheck,
         });
         if (aborted() || stopCheck()) break;
-        const call = parseToolCall(decision);
+        const call = parseToolCall(decision, isPluginTool);
         if (!call) {
           if (!usedTool && decision && !isNone(decision) && !/\bTOOL\s*:/i.test(decision)) direct = decision;
           break;
@@ -508,6 +549,28 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           if (outcome.connect) ensureConnectCard(conv, msg, outcome.connect);
           insertAfterTurn(conv, msg, {
             id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: {}, content: outcome.text, ts: Date.now(),
+          });
+          usedTool = true;
+          direct = '';
+          save();
+          onUpdate?.();
+          continue;
+        }
+        if (isPluginTool(call.name)) {
+          const args = call.args || {};
+          msg.toolCall = call.name;
+          msg.loading = false;
+          msg.content = 'Using a connector…';
+          onPhase?.('working');
+          onUpdate?.(true);
+          let result;
+          try { result = await runPluginTool(call.name, args, { signal }); }
+          catch (err) {
+            if (aborted() || err?.name === 'AbortError') break;
+            result = err.message || 'The connector failed.';
+          }
+          insertAfterTurn(conv, msg, {
+            id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args, content: result, ts: Date.now(),
           });
           usedTool = true;
           direct = '';
@@ -580,7 +643,13 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     if (stopCheck()) { removeMsg(conv, msg); onUpdate?.(); return; }
     if (aborted()) { finishAbort(); return; }
 
-    const cleaned = replyWithSources(conv, agent, wave, text);
+    let cleaned = replyWithSources(conv, agent, wave, text);
+    if (usedTool && isConnectionEcho(cleaned)) {
+      const toolMsg = [...conv.messages].reverse().find((item) => (
+        item.role === 'tool' && item.agentId === agent.id && item.wave === wave && item.content
+      ));
+      if (toolMsg?.content) cleaned = toolMsg.content;
+    }
     if (react && isPass(cleaned)) {
       removeMsg(conv, msg);
       save();

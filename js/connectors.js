@@ -2,9 +2,10 @@
 import { hasSecret, readSecret, scrubSecrets } from './secrets.js';
 import {
   CONNECTOR_SPECS, UNAVAILABLE, asCred, packCred, secretValues, specById, specForTool, intentFor,
+  isConnectionEcho,
 } from './connector-api.js';
 
-export { UNAVAILABLE, asCred, packCred };
+export { UNAVAILABLE, asCred, packCred, isConnectionEcho };
 
 export const CONNECTORS = CONNECTOR_SPECS;
 export const CONNECTOR_IDS = CONNECTOR_SPECS.map((item) => item.id);
@@ -85,8 +86,8 @@ export function agentAllows(agent, id) {
   return Array.isArray(agent?.connectors) && agent.connectors.includes(id);
 }
 
-export function matchConnectorIntent(text) {
-  return intentFor(text);
+export function matchConnectorIntent(text, context = '') {
+  return intentFor(text, context);
 }
 
 export function connectorPrompt(agent) {
@@ -97,7 +98,7 @@ export function connectorPrompt(agent) {
     const name = connectorById(id).name;
     return `${name} is ${view.state === 'connected' ? 'connected' : 'not connected'}.`;
   });
-  return `${bits.join(' ')} Never ask the user to paste a token into the chat. You only know the connector name and whether it is connected.`;
+  return `${bits.join(' ')} Never ask the user to paste a token into the chat. You only know the connector name and whether it is connected. If a tool result is already in the chat, answer from that result.`;
 }
 
 export function connectorDecidePrompt(agent) {
@@ -141,7 +142,7 @@ export async function fulfillConnectorIntent(agent, intent, fetchImpl = fetch) {
     return { text: `${label} is ${view?.state === 'connected' ? 'connected' : 'available'}. ${view?.detail || ''}`.trim(), connect: '', ran: false };
   }
   const outcome = await executeConnectorTool(agent, intent.tool, intent.args, fetchImpl);
-  return { ...outcome, ran: !outcome.connect };
+  return { ...outcome, ran: !outcome.connect, direct: !outcome.connect };
 }
 
 loadConnectorMeta();

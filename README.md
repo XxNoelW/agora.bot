@@ -54,6 +54,34 @@ To publish the weights after the training notebook:
 
 The same steps are in `training/publish_agora_web.py`.
 
+## Connectors
+
+Connectors is the store in the sidebar. It is a JSON catalog at `data/plugins.json`, so a new connector is one object in that list. The page searches it by name, category, and whether it needs a key.
+
+What works in the browser, with no Cloudflare deploy:
+
+- Local tools such as the calculator, unit conversion, and the clock.
+- Public APIs that allow browser calls, including weather, Wikipedia, currency, dictionaries, and the other entries marked Ready.
+- Remote MCP servers that allow this site’s origin. DeepWiki, Microsoft Learn, Context7, and GitMCP docs connect with no key. GitHub, Notion, Linear, Google, and the other sign-in entries need you to sign in or paste your own token. The token stays encrypted in this browser.
+
+What waits on a Cloudflare deploy:
+
+- Feeds and MCP servers marked **Needs the proxy**. Their hosts block browser apps. The site still loads; those connectors say so and do not call the network until you paste a Worker URL.
+
+To add a connector by hand, open Connectors and paste a Streamable HTTP MCP URL. You can attach a bearer token, a named API-key header, or OAuth. OAuth uses PKCE and dynamic client registration when the server publishes it. Nothing in the repo is a secret.
+
+The optional Worker lives in `workers/agora-connectors`. Its README has the deploy steps. After `npx wrangler deploy`, paste the `workers.dev` URL into **Proxy URL**. That Worker only fetches hosts generated into `src/allow.js`. A token sent through **mcp-proxy** goes to your own Worker and then to the official host.
+
+Agora 1.0 sees a short list of enabled tools in the decision prompt. A clear request such as “weather in Paris” or “list my GitHub sites” runs the tool even when the model does not emit a tool call. Tool calls are collapsible in the chat. **Max tool steps** caps the loop.
+
+The GitHub account on the Accounts tab lists repositories and GitHub Pages sites from the GitHub API. “List my GitHub sites” uses that API. It does not answer with the connection status.
+
+Rebuild the catalog after editing `scripts/build-plugins.mjs`:
+
+```bash
+node scripts/build-plugins.mjs
+```
+
 ## Pages
 
 The files live at the repo root. GitHub Pages serves the `main` branch root. `.nojekyll` keeps the files as they are.

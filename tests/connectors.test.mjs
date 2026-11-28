@@ -82,6 +82,38 @@ test('connector intent asks for repos without putting a key in the plan', () => 
   assert.equal(intent.id, 'github');
   assert.equal(intent.tool, 'github_list_repos');
   assert.equal(connectors.matchConnectorIntent('What is the date?'), null);
+  assert.equal(connectors.matchConnectorIntent('List my github sites').tool, 'github_list_pages');
+  assert.equal(connectors.matchConnectorIntent('List my github websites all of them').tool, 'github_list_pages');
+  const follow = connectors.matchConnectorIntent('List them', 'GitHub is connected. Signed in as XxNoelW.\nList my github websites');
+  assert.equal(follow.tool, 'github_list_pages');
+  assert.equal(connectors.matchConnectorIntent('Is GitHub connected?').tool, '');
+  assert.equal(connectors.isConnectionEcho('GitHub is connected. Signed in as XxNoelW.'), true);
+  assert.equal(connectors.isConnectionEcho('GitHub Pages sites:\n- a/b — https://a.github.io/b/'), false);
+});
+
+test('GitHub Pages sites come from the API, not the connection status', async () => {
+  const token = 'github_pat_supersecretvalue';
+  const seen = [];
+  const text = await connectors.runConnectorAction('github', 'github_list_pages', { all: true }, token, async (url) => {
+    seen.push(String(url));
+    if (String(url).includes('/user/repos')) {
+      return jsonResponse(200, [
+        { full_name: 'XxNoelW/agora.bot', name: 'agora.bot', owner: { login: 'XxNoelW' }, html_url: 'https://github.com/XxNoelW/agora.bot', has_pages: true },
+        { full_name: 'XxNoelW/notes', name: 'notes', owner: { login: 'XxNoelW' }, html_url: 'https://github.com/XxNoelW/notes', has_pages: false },
+      ]);
+    }
+    if (String(url).endsWith('/pages')) {
+      return jsonResponse(200, { html_url: 'https://xxnoelw.github.io/agora.bot/', cname: null });
+    }
+    return jsonResponse(404, { message: 'nope' });
+  });
+  assert.equal(seen.some((url) => url.includes('/user/repos')), true);
+  assert.equal(seen.some((url) => url.includes('/pages')), true);
+  assert.match(text, /https:\/\/xxnoelw\.github\.io\/agora\.bot\//);
+  assert.match(text, /XxNoelW\/agora\.bot/);
+  assert.equal(text.includes('notes'), false);
+  assert.equal(text.includes(token), false);
+  assert.equal(text.includes('Signed in as'), false);
 });
 
 test('Mastodon sign-in builds an authorize URL and stores the token off to the side', async () => {

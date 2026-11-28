@@ -104,6 +104,8 @@ export const CONNECTOR_SPECS = [
     aliases: ['github'],
     tools: [
       { name: 'github_list_repos', sig: '{}', desc: 'list repos on the connected GitHub account' },
+      { name: 'github_list_pages', sig: '{}', desc: 'list GitHub Pages sites on the connected account' },
+      { name: 'github_list_gists', sig: '{}', desc: 'list gists on the connected GitHub account' },
       { name: 'github_create_gist', sig: '{"filename":"note.md","content":"hello"}', desc: 'create a private gist' },
     ],
     async test(cred, fetchImpl) {
@@ -112,10 +114,24 @@ export const CONNECTOR_SPECS = [
     },
     async run(tool, args, cred, fetchImpl) {
       const headers = { ...bearer(cred.key), 'User-Agent': 'Agona', 'X-GitHub-Api-Version': '2022-11-28' };
-      if (tool === 'github_list_repos') {
-        const repos = await call('https://api.github.com/user/repos?per_page=8&sort=updated&affiliation=owner', { headers, secret: cred.key, fetchImpl });
-        const list = lines((Array.isArray(repos) ? repos : []).map((repo) => `- ${repo.full_name} — ${repo.html_url}`));
-        return list.length ? `GitHub repos:\n${list.join('\n')}` : 'No repositories were returned.';
+      if (tool === 'github_list_repos' || tool === 'github_list_pages') {
+        const repos = await githubRepos(headers, cred, fetchImpl);
+        if (tool === 'github_list_pages') return githubPagesText(repos, headers, cred, fetchImpl);
+        const cap = args.all ? 100 : 40;
+        const shown = repos.slice(0, cap);
+        const list = shown.map((repo) => `- ${repo.full_name} — ${repo.html_url || ''}`);
+        const more = repos.length > shown.length ? `\n…and ${repos.length - shown.length} more.` : '';
+        const repoText = list.length ? `GitHub repos:\n${list.join('\n')}${more}` : 'No repositories were returned.';
+        if (!pagesCandidates(repos).length) return repoText;
+        return `${repoText}\n\n${await githubPagesText(repos, headers, cred, fetchImpl)}`;
+      }
+      if (tool === 'github_list_gists') {
+        const gists = await call('https://api.github.com/gists?per_page=30', { headers, secret: cred.key, fetchImpl });
+        const list = (Array.isArray(gists) ? gists : []).slice(0, 30).map((gist) => {
+          const file = gist.files ? Object.keys(gist.files)[0] : '';
+          return `- ${gist.description || file || 'gist'} — ${gist.html_url || ''}`;
+        });
+        return list.length ? `GitHub gists:\n${list.join('\n')}` : 'No gists were returned.';
       }
       const content = String(args.content || args.text || '').slice(0, 20000);
       if (!content.trim()) throw new Error('Say what the gist should contain.');
@@ -922,14 +938,97 @@ export function specForTool(name) {
   return CONNECTOR_SPECS.find((item) => item.tools.some((tool) => tool.name === name)) || null;
 }
 
-export function intentFor(text) {
+function isFollowUpList(text) {
+  const s = String(text || '').trim();
+  if (!s || s.length > 80) return false;
+  return /^(please\s+)?(list|show|give me|what are|tell me)\s+(them|those|all( of them)?|everything|my sites|my websites|all of my sites)\b/i.test(s)
+    || /^(all of them|list them|show them)\b/i.test(s);
+}
+
+function githubIntent(text, context) {
   const raw = String(text || '').trim();
   const lower = raw.toLowerCase();
-  if (/\bgithub\b/.test(lower) && /\bgist\b/.test(lower) && /\b(create|make|new|save)\b/.test(lower)) {
+  const ctx = String(context || '').toLowerCase();
+  const follow = isFollowUpList(raw);
+  const aboutGithub = /\bgithub\b/.test(lower) || (follow && /\bgithub\b/.test(ctx));
+  if (!aboutGithub) return null;
+  if (/\bgist\b/.test(lower) && /\b(create|make|new|save|write)\b/.test(lower)) {
     const content = raw.replace(/^[\s\S]*?\bgist\b[:\s-]*/i, '').trim().slice(0, 4000);
     return { id: 'github', tool: 'github_create_gist', args: { content, filename: 'note.md', description: 'Note from Agora' } };
   }
+  if (/\bgists?\b/.test(lower) && /\b(list|show|what|my|all)\b/.test(lower)) {
+    return { id: 'github', tool: 'github_list_gists', args: {} };
+  }
+  const sites = /\b(sites?|websites?|web\s*sites?|pages?|github\.io)\b/.test(lower)
+    || (follow && /\b(sites?|websites?|web\s*sites?|pages?|github\.io)\b/.test(ctx));
+  const repos = /\b(repos?|repositories|projects?)\b/.test(lower);
+  const asksList = follow || /\b(list|show|which|what are|all of them|them all)\b/.test(lower);
+  if (sites && !repos) return { id: 'github', tool: 'github_list_pages', args: { all: true } };
+  if (repos || asksList || sites) return { id: 'github', tool: 'github_list_repos', args: { all: /\b(all|every|each|them)\b/.test(lower) } };
+  return { id: 'github', tool: '', args: {} };
+}
+
+function guessPagesUrl(repo) {
+  const owner = repo.owner?.login || String(repo.full_name || '').split('/')[0];
+  const name = repo.name || String(repo.full_name || '').split('/')[1] || '';
+  if (!owner || !name) return '';
+  if (name.toLowerCase() === `${owner}.github.io`.toLowerCase()) return `https://${owner}.github.io/`;
+  return `https://${owner}.github.io/${name}/`;
+}
+
+function pagesCandidates(repos) {
+  return repos.filter((repo) => repo.has_pages || /\.github\.io$/i.test(repo.name || ''));
+}
+
+async function githubRepos(headers, cred, fetchImpl) {
+  const repos = [];
+  for (let page = 1; page <= 3; page += 1) {
+    const batch = await call(
+      `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated&affiliation=owner,organization`,
+      { headers, secret: cred.key, fetchImpl },
+    );
+    const rows = Array.isArray(batch) ? batch : [];
+    repos.push(...rows);
+    if (rows.length < 100) break;
+  }
+  return repos;
+}
+
+async function githubPagesText(repos, headers, cred, fetchImpl) {
+  const chosen = pagesCandidates(repos).slice(0, 50);
+  if (!chosen.length) return 'No GitHub Pages sites were found on this account.';
+  const rows = [];
+  for (const repo of chosen) {
+    const fallback = guessPagesUrl(repo);
+    let url = fallback;
+    let note = '';
+    try {
+      const info = await call(`https://api.github.com/repos/${encodeURIComponent(repo.full_name.split('/')[0])}/${encodeURIComponent(repo.full_name.split('/')[1])}/pages`, {
+        headers, secret: cred.key, fetchImpl,
+      });
+      url = info.html_url || fallback;
+      if (info.cname) note = ` (${info.cname})`;
+    } catch { /* the public Pages URL still answers when this call is blocked */ }
+    if (url) rows.push(`- ${repo.full_name} — ${url}${note}`);
+  }
+  const hidden = pagesCandidates(repos).length - chosen.length;
+  const extra = hidden > 0 ? `\n…and ${hidden} more.` : '';
+  return rows.length ? `GitHub Pages sites:\n${rows.join('\n')}${extra}` : 'No GitHub Pages sites were found on this account.';
+}
+
+export function isConnectionEcho(text) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t || /https?:\/\//i.test(t)) return false;
+  return /\b(is connected|signed in as)\b/i.test(t) && t.length < 220;
+}
+
+export function intentFor(text, context = '') {
+  const github = githubIntent(text, context);
+  if (github) return github;
+  const raw = String(text || '').trim();
+  const lower = raw.toLowerCase();
   for (const spec of CONNECTOR_SPECS) {
+    if (spec.id === 'github') continue;
     if (!spec.aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(lower))) continue;
     let tool = spec.tools.find((item) => {
       if (item.name.endsWith('_send')) return /\b(send|post|message)\b/i.test(lower);

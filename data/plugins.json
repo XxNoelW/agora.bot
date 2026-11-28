@@ -1,0 +1,6714 @@
+[
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia",
+      "wiki"
+    ],
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read English Wikipedia. No key.",
+    "homepage": "https://en.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_en_search",
+        "description": "Search English Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_en_summary",
+        "description": "Read a English Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://en.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia simple",
+      "Simple English wikipedia"
+    ],
+    "id": "wiki-simple",
+    "name": "Wikipedia · Simple English",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Simple English Wikipedia. No key.",
+    "homepage": "https://simple.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_simple_search",
+        "description": "Search Simple English Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://simple.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_simple_summary",
+        "description": "Read a Simple English Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://simple.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia es",
+      "Spanish wikipedia"
+    ],
+    "id": "wiki-es",
+    "name": "Wikipedia · Spanish",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Spanish Wikipedia. No key.",
+    "homepage": "https://es.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_es_search",
+        "description": "Search Spanish Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://es.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_es_summary",
+        "description": "Read a Spanish Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://es.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia fr",
+      "French wikipedia"
+    ],
+    "id": "wiki-fr",
+    "name": "Wikipedia · French",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read French Wikipedia. No key.",
+    "homepage": "https://fr.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_fr_search",
+        "description": "Search French Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://fr.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_fr_summary",
+        "description": "Read a French Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://fr.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia de",
+      "German wikipedia"
+    ],
+    "id": "wiki-de",
+    "name": "Wikipedia · German",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read German Wikipedia. No key.",
+    "homepage": "https://de.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_de_search",
+        "description": "Search German Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://de.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_de_summary",
+        "description": "Read a German Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://de.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia ja",
+      "Japanese wikipedia"
+    ],
+    "id": "wiki-ja",
+    "name": "Wikipedia · Japanese",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Japanese Wikipedia. No key.",
+    "homepage": "https://ja.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_ja_search",
+        "description": "Search Japanese Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://ja.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_ja_summary",
+        "description": "Read a Japanese Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://ja.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia zh",
+      "Chinese wikipedia"
+    ],
+    "id": "wiki-zh",
+    "name": "Wikipedia · Chinese",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Chinese Wikipedia. No key.",
+    "homepage": "https://zh.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_zh_search",
+        "description": "Search Chinese Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://zh.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_zh_summary",
+        "description": "Read a Chinese Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://zh.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia ru",
+      "Russian wikipedia"
+    ],
+    "id": "wiki-ru",
+    "name": "Wikipedia · Russian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Russian Wikipedia. No key.",
+    "homepage": "https://ru.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_ru_search",
+        "description": "Search Russian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://ru.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_ru_summary",
+        "description": "Read a Russian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://ru.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia pt",
+      "Portuguese wikipedia"
+    ],
+    "id": "wiki-pt",
+    "name": "Wikipedia · Portuguese",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Portuguese Wikipedia. No key.",
+    "homepage": "https://pt.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_pt_search",
+        "description": "Search Portuguese Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://pt.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_pt_summary",
+        "description": "Read a Portuguese Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://pt.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia it",
+      "Italian wikipedia"
+    ],
+    "id": "wiki-it",
+    "name": "Wikipedia · Italian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Italian Wikipedia. No key.",
+    "homepage": "https://it.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_it_search",
+        "description": "Search Italian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://it.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_it_summary",
+        "description": "Read a Italian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://it.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia ar",
+      "Arabic wikipedia"
+    ],
+    "id": "wiki-ar",
+    "name": "Wikipedia · Arabic",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Arabic Wikipedia. No key.",
+    "homepage": "https://ar.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_ar_search",
+        "description": "Search Arabic Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://ar.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_ar_summary",
+        "description": "Read a Arabic Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://ar.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia hi",
+      "Hindi wikipedia"
+    ],
+    "id": "wiki-hi",
+    "name": "Wikipedia · Hindi",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Hindi Wikipedia. No key.",
+    "homepage": "https://hi.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_hi_search",
+        "description": "Search Hindi Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://hi.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_hi_summary",
+        "description": "Read a Hindi Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://hi.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia ko",
+      "Korean wikipedia"
+    ],
+    "id": "wiki-ko",
+    "name": "Wikipedia · Korean",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Korean Wikipedia. No key.",
+    "homepage": "https://ko.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_ko_search",
+        "description": "Search Korean Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://ko.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_ko_summary",
+        "description": "Read a Korean Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://ko.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia nl",
+      "Dutch wikipedia"
+    ],
+    "id": "wiki-nl",
+    "name": "Wikipedia · Dutch",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Dutch Wikipedia. No key.",
+    "homepage": "https://nl.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_nl_search",
+        "description": "Search Dutch Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://nl.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_nl_summary",
+        "description": "Read a Dutch Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://nl.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia pl",
+      "Polish wikipedia"
+    ],
+    "id": "wiki-pl",
+    "name": "Wikipedia · Polish",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Polish Wikipedia. No key.",
+    "homepage": "https://pl.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_pl_search",
+        "description": "Search Polish Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://pl.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_pl_summary",
+        "description": "Read a Polish Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://pl.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia sv",
+      "Swedish wikipedia"
+    ],
+    "id": "wiki-sv",
+    "name": "Wikipedia · Swedish",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Swedish Wikipedia. No key.",
+    "homepage": "https://sv.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_sv_search",
+        "description": "Search Swedish Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://sv.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_sv_summary",
+        "description": "Read a Swedish Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://sv.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia tr",
+      "Turkish wikipedia"
+    ],
+    "id": "wiki-tr",
+    "name": "Wikipedia · Turkish",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Turkish Wikipedia. No key.",
+    "homepage": "https://tr.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_tr_search",
+        "description": "Search Turkish Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://tr.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_tr_summary",
+        "description": "Read a Turkish Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://tr.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia id",
+      "Indonesian wikipedia"
+    ],
+    "id": "wiki-id",
+    "name": "Wikipedia · Indonesian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Indonesian Wikipedia. No key.",
+    "homepage": "https://id.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_id_search",
+        "description": "Search Indonesian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://id.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_id_summary",
+        "description": "Read a Indonesian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://id.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia vi",
+      "Vietnamese wikipedia"
+    ],
+    "id": "wiki-vi",
+    "name": "Wikipedia · Vietnamese",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Vietnamese Wikipedia. No key.",
+    "homepage": "https://vi.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_vi_search",
+        "description": "Search Vietnamese Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://vi.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_vi_summary",
+        "description": "Read a Vietnamese Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://vi.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia uk",
+      "Ukrainian wikipedia"
+    ],
+    "id": "wiki-uk",
+    "name": "Wikipedia · Ukrainian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Ukrainian Wikipedia. No key.",
+    "homepage": "https://uk.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_uk_search",
+        "description": "Search Ukrainian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://uk.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_uk_summary",
+        "description": "Read a Ukrainian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://uk.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia fa",
+      "Persian wikipedia"
+    ],
+    "id": "wiki-fa",
+    "name": "Wikipedia · Persian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Persian Wikipedia. No key.",
+    "homepage": "https://fa.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_fa_search",
+        "description": "Search Persian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://fa.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_fa_summary",
+        "description": "Read a Persian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://fa.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia he",
+      "Hebrew wikipedia"
+    ],
+    "id": "wiki-he",
+    "name": "Wikipedia · Hebrew",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Hebrew Wikipedia. No key.",
+    "homepage": "https://he.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_he_search",
+        "description": "Search Hebrew Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://he.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_he_summary",
+        "description": "Read a Hebrew Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://he.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia th",
+      "Thai wikipedia"
+    ],
+    "id": "wiki-th",
+    "name": "Wikipedia · Thai",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Thai Wikipedia. No key.",
+    "homepage": "https://th.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_th_search",
+        "description": "Search Thai Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://th.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_th_summary",
+        "description": "Read a Thai Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://th.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia el",
+      "Greek wikipedia"
+    ],
+    "id": "wiki-el",
+    "name": "Wikipedia · Greek",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Greek Wikipedia. No key.",
+    "homepage": "https://el.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_el_search",
+        "description": "Search Greek Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://el.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_el_summary",
+        "description": "Read a Greek Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://el.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia cs",
+      "Czech wikipedia"
+    ],
+    "id": "wiki-cs",
+    "name": "Wikipedia · Czech",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Czech Wikipedia. No key.",
+    "homepage": "https://cs.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_cs_search",
+        "description": "Search Czech Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://cs.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_cs_summary",
+        "description": "Read a Czech Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://cs.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia hu",
+      "Hungarian wikipedia"
+    ],
+    "id": "wiki-hu",
+    "name": "Wikipedia · Hungarian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Hungarian Wikipedia. No key.",
+    "homepage": "https://hu.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_hu_search",
+        "description": "Search Hungarian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://hu.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_hu_summary",
+        "description": "Read a Hungarian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://hu.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia fi",
+      "Finnish wikipedia"
+    ],
+    "id": "wiki-fi",
+    "name": "Wikipedia · Finnish",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Finnish Wikipedia. No key.",
+    "homepage": "https://fi.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_fi_search",
+        "description": "Search Finnish Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://fi.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_fi_summary",
+        "description": "Read a Finnish Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://fi.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia da",
+      "Danish wikipedia"
+    ],
+    "id": "wiki-da",
+    "name": "Wikipedia · Danish",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Danish Wikipedia. No key.",
+    "homepage": "https://da.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_da_search",
+        "description": "Search Danish Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://da.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_da_summary",
+        "description": "Read a Danish Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://da.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia no",
+      "Norwegian wikipedia"
+    ],
+    "id": "wiki-no",
+    "name": "Wikipedia · Norwegian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Norwegian Wikipedia. No key.",
+    "homepage": "https://no.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_no_search",
+        "description": "Search Norwegian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://no.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_no_summary",
+        "description": "Read a Norwegian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://no.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia ro",
+      "Romanian wikipedia"
+    ],
+    "id": "wiki-ro",
+    "name": "Wikipedia · Romanian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Romanian Wikipedia. No key.",
+    "homepage": "https://ro.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_ro_search",
+        "description": "Search Romanian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://ro.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_ro_summary",
+        "description": "Read a Romanian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://ro.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia bg",
+      "Bulgarian wikipedia"
+    ],
+    "id": "wiki-bg",
+    "name": "Wikipedia · Bulgarian",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Bulgarian Wikipedia. No key.",
+    "homepage": "https://bg.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_bg_search",
+        "description": "Search Bulgarian Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://bg.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_bg_summary",
+        "description": "Read a Bulgarian Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://bg.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia ca",
+      "Catalan wikipedia"
+    ],
+    "id": "wiki-ca",
+    "name": "Wikipedia · Catalan",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read Catalan Wikipedia. No key.",
+    "homepage": "https://ca.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_ca_search",
+        "description": "Search Catalan Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://ca.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_ca_summary",
+        "description": "Read a Catalan Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://ca.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wiktionary"
+    ],
+    "id": "wiktionary",
+    "name": "Wiktionary",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wiktionary page. No key.",
+    "homepage": "https://en.wiktionary.org/",
+    "tools": [
+      {
+        "name": "wiktionary_summary",
+        "description": "Read a Wiktionary summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wiktionary.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikiquote"
+    ],
+    "id": "wikiquote",
+    "name": "Wikiquote",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikiquote page. No key.",
+    "homepage": "https://en.wikiquote.org/",
+    "tools": [
+      {
+        "name": "wikiquote_summary",
+        "description": "Read a Wikiquote summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wikiquote.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikivoyage"
+    ],
+    "id": "wikivoyage",
+    "name": "Wikivoyage",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikivoyage page. No key.",
+    "homepage": "https://en.wikivoyage.org/",
+    "tools": [
+      {
+        "name": "wikivoyage_summary",
+        "description": "Read a Wikivoyage summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wikivoyage.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikinews"
+    ],
+    "id": "wikinews",
+    "name": "Wikinews",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikinews page. No key.",
+    "homepage": "https://en.wikinews.org/",
+    "tools": [
+      {
+        "name": "wikinews_summary",
+        "description": "Read a Wikinews summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wikinews.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikibooks"
+    ],
+    "id": "wikibooks",
+    "name": "Wikibooks",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikibooks page. No key.",
+    "homepage": "https://en.wikibooks.org/",
+    "tools": [
+      {
+        "name": "wikibooks_summary",
+        "description": "Read a Wikibooks summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wikibooks.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikisource"
+    ],
+    "id": "wikisource",
+    "name": "Wikisource",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikisource page. No key.",
+    "homepage": "https://en.wikisource.org/",
+    "tools": [
+      {
+        "name": "wikisource_summary",
+        "description": "Read a Wikisource summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wikisource.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikiversity"
+    ],
+    "id": "wikiversity",
+    "name": "Wikiversity",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikiversity page. No key.",
+    "homepage": "https://en.wikiversity.org/",
+    "tools": [
+      {
+        "name": "wikiversity_summary",
+        "description": "Read a Wikiversity summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://en.wikiversity.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikispecies"
+    ],
+    "id": "wikispecies",
+    "name": "Wikispecies",
+    "category": "Reference",
+    "icon": "📖",
+    "summary": "Read a Wikispecies page. No key.",
+    "homepage": "https://species.wikimedia.org/",
+    "tools": [
+      {
+        "name": "wikispecies_summary",
+        "description": "Read a Wikispecies summary",
+        "params": {
+          "title": "Page title"
+        },
+        "get": "https://species.wikimedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikidata"
+    ],
+    "id": "wikidata",
+    "name": "Wikidata",
+    "category": "Reference",
+    "icon": "🗃️",
+    "summary": "Search Wikidata entities. No key.",
+    "homepage": "https://www.wikidata.org/",
+    "tools": [
+      {
+        "name": "wikidata_search",
+        "description": "Search Wikidata",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://www.wikidata.org/w/api.php?action=wbsearchentities&search={query}&language=en&format=json&limit=5&origin=*",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "commons",
+      "wikimedia"
+    ],
+    "id": "commons",
+    "name": "Wikimedia Commons",
+    "category": "Reference",
+    "icon": "🖼️",
+    "summary": "Search free media on Wikimedia Commons. No key.",
+    "homepage": "https://commons.wikimedia.org/",
+    "tools": [
+      {
+        "name": "commons_search",
+        "description": "Search Wikimedia Commons",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch={query}&srlimit=5&format=json&origin=*",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "define",
+      "definition",
+      "dictionary"
+    ],
+    "id": "dictionary",
+    "name": "Dictionary",
+    "category": "Language",
+    "icon": "📘",
+    "summary": "English definitions from Wiktionary. No key.",
+    "homepage": "https://en.wiktionary.org/",
+    "tools": [
+      {
+        "name": "define_word",
+        "description": "Define an English word",
+        "params": {
+          "word": "Word to define"
+        },
+        "get": "https://en.wiktionary.org/api/rest_v1/page/definition/{word}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "synonym",
+      "rhyme",
+      "thesaurus"
+    ],
+    "id": "thesaurus",
+    "name": "Thesaurus",
+    "category": "Language",
+    "icon": "🔤",
+    "summary": "Synonyms and rhymes from Datamuse. No key.",
+    "homepage": "https://www.datamuse.com/api/",
+    "tools": [
+      {
+        "name": "synonyms",
+        "description": "Words with a similar meaning",
+        "params": {
+          "word": "Word"
+        },
+        "get": "https://api.datamuse.com/words?rel_syn={word}&max=12",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "rhyme",
+      "rhymes"
+    ],
+    "id": "rhymes",
+    "name": "Rhymes",
+    "category": "Language",
+    "icon": "🎵",
+    "summary": "Rhymes from Datamuse. No key.",
+    "homepage": "https://www.datamuse.com/api/",
+    "tools": [
+      {
+        "name": "find_rhymes",
+        "description": "Words that rhyme",
+        "params": {
+          "word": "Word"
+        },
+        "get": "https://api.datamuse.com/words?rel_rhy={word}&max=12",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "translate",
+      "translation"
+    ],
+    "id": "translate",
+    "name": "Translate",
+    "category": "Language",
+    "icon": "🌐",
+    "summary": "Short translations through the public Google translate endpoint. No key.",
+    "homepage": "https://translate.googleapis.com/",
+    "tools": [
+      {
+        "name": "translate_text",
+        "description": "Translate a short phrase. Use language codes such as en and es.",
+        "params": {
+          "text": "Text",
+          "to": "Target language code",
+          "from": "Source language code"
+        },
+        "get": "https://translate.googleapis.com/translate_a/single?client=gtx&sl={from}&tl={to}&dt=t&q={text}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "weather",
+      "forecast",
+      "temperature"
+    ],
+    "id": "weather",
+    "name": "Weather",
+    "category": "Weather",
+    "icon": "☀️",
+    "summary": "Current weather from Open-Meteo. No key.",
+    "homepage": "https://open-meteo.com/",
+    "tools": [
+      {
+        "name": "weather_now",
+        "description": "Current weather for a city",
+        "params": {
+          "city": "City name"
+        },
+        "steps": [
+          {
+            "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+            "as": "geo"
+          },
+          {
+            "url": "https://api.open-meteo.com/v1/forecast?latitude={geo.results.0.latitude}&longitude={geo.results.0.longitude}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto",
+            "as": "wx"
+          }
+        ],
+        "present": "weather"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "air quality"
+    ],
+    "id": "air-quality",
+    "name": "Air quality",
+    "category": "Weather",
+    "icon": "🌬️",
+    "summary": "Air quality from Open-Meteo. No key.",
+    "homepage": "https://open-meteo.com/",
+    "tools": [
+      {
+        "name": "air_quality_city",
+        "description": "Air quality for a city",
+        "params": {
+          "city": "City name"
+        },
+        "steps": [
+          {
+            "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+            "as": "geo"
+          },
+          {
+            "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude={geo.results.0.latitude}&longitude={geo.results.0.longitude}&current=us_aqi,pm2_5,pm10,ozone",
+            "as": "out"
+          }
+        ],
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "waves"
+    ],
+    "id": "marine",
+    "name": "Marine weather",
+    "category": "Weather",
+    "icon": "🌊",
+    "summary": "Marine weather from Open-Meteo. No key.",
+    "homepage": "https://open-meteo.com/",
+    "tools": [
+      {
+        "name": "marine_city",
+        "description": "Marine weather for a city",
+        "params": {
+          "city": "City name"
+        },
+        "steps": [
+          {
+            "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+            "as": "geo"
+          },
+          {
+            "url": "https://marine-api.open-meteo.com/v1/marine?latitude={geo.results.0.latitude}&longitude={geo.results.0.longitude}&current=wave_height",
+            "as": "out"
+          }
+        ],
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "historical weather"
+    ],
+    "id": "archive-weather",
+    "name": "Past weather",
+    "category": "Weather",
+    "icon": "📆",
+    "summary": "Past weather from Open-Meteo. No key.",
+    "homepage": "https://open-meteo.com/",
+    "tools": [
+      {
+        "name": "archive_weather_city",
+        "description": "Past weather for a city",
+        "params": {
+          "city": "City name"
+        },
+        "steps": [
+          {
+            "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+            "as": "geo"
+          },
+          {
+            "url": "https://archive-api.open-meteo.com/v1/archive?latitude={geo.results.0.latitude}&longitude={geo.results.0.longitude}&start_date=2024-01-01&end_date=2024-01-02&daily=temperature_2m_max",
+            "as": "out"
+          }
+        ],
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "geocode",
+      "coordinates",
+      "latitude"
+    ],
+    "id": "geocode",
+    "name": "Geocoding",
+    "category": "Maps",
+    "icon": "📍",
+    "summary": "Find a place with Open-Meteo geocoding. No key.",
+    "homepage": "https://open-meteo.com/en/docs/geocoding-api",
+    "tools": [
+      {
+        "name": "geocode_place",
+        "description": "Latitude and longitude for a place name",
+        "params": {
+          "place": "Place name"
+        },
+        "get": "https://geocoding-api.open-meteo.com/v1/search?name={place}&count=3&language=en&format=json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "photon",
+      "openstreetmap place"
+    ],
+    "id": "photon",
+    "name": "Photon places",
+    "category": "Maps",
+    "icon": "🗺️",
+    "summary": "Search places with Photon / OpenStreetMap. No key.",
+    "homepage": "https://photon.komoot.io/",
+    "tools": [
+      {
+        "name": "photon_search",
+        "description": "Search OpenStreetMap places",
+        "params": {
+          "query": "Place"
+        },
+        "get": "https://photon.komoot.io/api/?q={query}&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "postcode",
+      "post code"
+    ],
+    "id": "postcodes",
+    "name": "UK postcodes",
+    "category": "Maps",
+    "icon": "📮",
+    "summary": "Look up a UK postcode. No key.",
+    "homepage": "https://postcodes.io/",
+    "tools": [
+      {
+        "name": "uk_postcode",
+        "description": "Look up a UK postcode",
+        "params": {
+          "postcode": "Postcode such as SW1A1AA"
+        },
+        "get": "https://api.postcodes.io/postcodes/{postcode}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "zip code",
+      "zipcode"
+    ],
+    "id": "zippopotam",
+    "name": "ZIP codes",
+    "category": "Maps",
+    "icon": "🏷️",
+    "summary": "US ZIP code lookup. No key.",
+    "homepage": "https://zippopotam.us/",
+    "tools": [
+      {
+        "name": "us_zip",
+        "description": "Look up a US ZIP code",
+        "params": {
+          "zip": "ZIP code"
+        },
+        "get": "https://api.zippopotam.us/us/{zip}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "currency",
+      "exchange rate",
+      "convert money"
+    ],
+    "id": "currency",
+    "name": "Currency",
+    "category": "Money",
+    "icon": "💱",
+    "summary": "Exchange rates from the European Central Bank via Frankfurter. No key.",
+    "homepage": "https://www.frankfurter.app/",
+    "tools": [
+      {
+        "name": "exchange_rate",
+        "description": "Latest rate between two currency codes",
+        "params": {
+          "from": "From code such as USD",
+          "to": "To code such as EUR"
+        },
+        "get": "https://api.frankfurter.app/latest?from={from}&to={to}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "currency codes"
+    ],
+    "id": "currency-list",
+    "name": "Currency codes",
+    "category": "Money",
+    "icon": "💶",
+    "summary": "List currency codes from Frankfurter. No key.",
+    "homepage": "https://www.frankfurter.app/",
+    "tools": [
+      {
+        "name": "list_currencies",
+        "description": "List currency codes",
+        "params": {},
+        "get": "https://api.frankfurter.app/currencies",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "vat"
+    ],
+    "id": "vat",
+    "name": "VAT rates",
+    "category": "Money",
+    "icon": "🧾",
+    "summary": "VAT rates from VATComply. No key.",
+    "homepage": "https://www.vatcomply.com/",
+    "tools": [
+      {
+        "name": "vat_rates",
+        "description": "VAT rates for a base currency",
+        "params": {
+          "base": "Currency code such as EUR"
+        },
+        "get": "https://api.vatcomply.com/rates?base={base}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "ecb",
+      "euro rate"
+    ],
+    "id": "ecb",
+    "name": "ECB rates",
+    "category": "Money",
+    "icon": "🏦",
+    "summary": "A recent ECB dollar rate. No key.",
+    "homepage": "https://data.ecb.europa.eu/",
+    "tools": [
+      {
+        "name": "ecb_usd",
+        "description": "Latest ECB USD rate",
+        "params": {},
+        "get": "https://data-api.ecb.europa.eu/service/data/EXR/D.USD.EUR.SP00.A?lastNObservations=1&format=jsondata",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "bitcoin",
+      "crypto"
+    ],
+    "id": "price-bitcoin",
+    "name": "Bitcoin price",
+    "category": "Money",
+    "icon": "₿",
+    "summary": "Bitcoin spot price from CoinGecko. No key.",
+    "homepage": "https://www.coingecko.com/en/api",
+    "tools": [
+      {
+        "name": "bitcoin_price",
+        "description": "Bitcoin price in USD",
+        "params": {},
+        "get": "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "bitcoin ticker"
+    ],
+    "id": "paprika-bitcoin",
+    "name": "Bitcoin ticker",
+    "category": "Money",
+    "icon": "📈",
+    "summary": "Bitcoin ticker from CoinPaprika. No key.",
+    "homepage": "https://api.coinpaprika.com/",
+    "tools": [
+      {
+        "name": "bitcoin_ticker",
+        "description": "Bitcoin ticker",
+        "params": {},
+        "get": "https://api.coinpaprika.com/v1/tickers/btc-bitcoin",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "coinbase bitcoin"
+    ],
+    "id": "coinbase-bitcoin",
+    "name": "Coinbase Bitcoin",
+    "category": "Money",
+    "icon": "🪙",
+    "summary": "Bitcoin spot price from Coinbase. No key.",
+    "homepage": "https://docs.cloud.coinbase.com/sign-in-with-coinbase/docs/api-prices",
+    "tools": [
+      {
+        "name": "coinbase_bitcoin",
+        "description": "Coinbase Bitcoin spot price",
+        "params": {},
+        "get": "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "ethereum",
+      "ethereum price"
+    ],
+    "id": "price-ethereum",
+    "name": "Ethereum price",
+    "category": "Money",
+    "icon": "₿",
+    "summary": "Ethereum spot price from CoinGecko. No key.",
+    "homepage": "https://www.coingecko.com/en/api",
+    "tools": [
+      {
+        "name": "ethereum_price",
+        "description": "Ethereum price in USD",
+        "params": {},
+        "get": "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "ethereum ticker"
+    ],
+    "id": "paprika-ethereum",
+    "name": "Ethereum ticker",
+    "category": "Money",
+    "icon": "📈",
+    "summary": "Ethereum ticker from CoinPaprika. No key.",
+    "homepage": "https://api.coinpaprika.com/",
+    "tools": [
+      {
+        "name": "ethereum_ticker",
+        "description": "Ethereum ticker",
+        "params": {},
+        "get": "https://api.coinpaprika.com/v1/tickers/eth-ethereum",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "coinbase ethereum"
+    ],
+    "id": "coinbase-ethereum",
+    "name": "Coinbase Ethereum",
+    "category": "Money",
+    "icon": "🪙",
+    "summary": "Ethereum spot price from Coinbase. No key.",
+    "homepage": "https://docs.cloud.coinbase.com/sign-in-with-coinbase/docs/api-prices",
+    "tools": [
+      {
+        "name": "coinbase_ethereum",
+        "description": "Coinbase Ethereum spot price",
+        "params": {},
+        "get": "https://api.coinbase.com/v2/prices/ETH-USD/spot",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "mempool",
+      "bitcoin height"
+    ],
+    "id": "mempool",
+    "name": "Bitcoin chain",
+    "category": "Money",
+    "icon": "⛓️",
+    "summary": "Bitcoin tip height from mempool.space. No key.",
+    "homepage": "https://mempool.space/",
+    "tools": [
+      {
+        "name": "bitcoin_tip",
+        "description": "Current Bitcoin block height",
+        "params": {},
+        "get": "https://mempool.space/api/blocks/tip/height",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "country",
+      "capital",
+      "population"
+    ],
+    "id": "countries",
+    "name": "Countries",
+    "category": "Reference",
+    "icon": "🏳️",
+    "summary": "Country facts from REST Countries. No key.",
+    "homepage": "https://restcountries.com/",
+    "tools": [
+      {
+        "name": "country_facts",
+        "description": "Facts for a country code",
+        "params": {
+          "code": "ISO code such as JP"
+        },
+        "get": "https://restcountries.com/v3.1/alpha/{code}?fields=name,capital,population,region,languages,currencies",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "holiday",
+      "holidays"
+    ],
+    "id": "holidays",
+    "name": "Public holidays",
+    "category": "Time",
+    "icon": "🎉",
+    "summary": "Public holidays from Nager.Date. No key.",
+    "homepage": "https://date.nager.at/",
+    "tools": [
+      {
+        "name": "public_holidays",
+        "description": "Public holidays for a country code and year",
+        "params": {
+          "country": "Country code such as US",
+          "year": "Year such as 2026"
+        },
+        "get": "https://date.nager.at/api/v3/PublicHolidays/{year}/{country}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "next holiday"
+    ],
+    "id": "next-holidays",
+    "name": "Next holidays",
+    "category": "Time",
+    "icon": "📅",
+    "summary": "The next public holidays worldwide. No key.",
+    "homepage": "https://date.nager.at/",
+    "tools": [
+      {
+        "name": "next_holidays_world",
+        "description": "Upcoming public holidays worldwide",
+        "params": {},
+        "get": "https://date.nager.at/api/v3/NextPublicHolidaysWorldwide",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "time zone",
+      "timezone",
+      "what time"
+    ],
+    "id": "clock",
+    "name": "Clock",
+    "category": "Time",
+    "icon": "🕒",
+    "summary": "Local time and time in a named time zone. No network.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat",
+    "local": "time",
+    "tools": [
+      {
+        "name": "time_now",
+        "description": "The current local date and time",
+        "params": {}
+      },
+      {
+        "name": "time_in",
+        "description": "The current time in a time zone",
+        "params": {
+          "zone": "Time zone such as Europe/Paris"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "calculate",
+      "calculator",
+      "math"
+    ],
+    "id": "calculator",
+    "name": "Calculator",
+    "category": "Utilities",
+    "icon": "🧮",
+    "summary": "Arithmetic in the browser. No network.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators",
+    "local": "calc",
+    "tools": [
+      {
+        "name": "calculate",
+        "description": "Evaluate a math expression",
+        "params": {
+          "expression": "Expression such as (2+3)*4"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "convert",
+      "unit",
+      "celsius",
+      "fahrenheit",
+      "kilometer"
+    ],
+    "id": "units",
+    "name": "Unit conversion",
+    "category": "Utilities",
+    "icon": "📏",
+    "summary": "Convert length, mass, temperature, and time. No network.",
+    "homepage": "https://en.wikipedia.org/wiki/Conversion_of_units",
+    "local": "units",
+    "tools": [
+      {
+        "name": "convert_units",
+        "description": "Convert a measurement",
+        "params": {
+          "amount": "Number",
+          "from": "From unit",
+          "to": "To unit"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "percent",
+      "percentage"
+    ],
+    "id": "percent",
+    "name": "Percent",
+    "category": "Utilities",
+    "icon": "%",
+    "summary": "Percent of a whole. No network.",
+    "homepage": "https://en.wikipedia.org/wiki/Percentage",
+    "local": "percent",
+    "tools": [
+      {
+        "name": "percent_of",
+        "description": "What percent one number is of another",
+        "params": {
+          "part": "Part",
+          "whole": "Whole"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "uuid",
+      "guid"
+    ],
+    "id": "uuid",
+    "name": "UUID",
+    "category": "Developer",
+    "icon": "🆔",
+    "summary": "Make a random UUID. No network.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Web/API/Crypto/randomUUID",
+    "local": "uuid",
+    "tools": [
+      {
+        "name": "make_uuid",
+        "description": "Create a random UUID",
+        "params": {}
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "base64"
+    ],
+    "id": "base64",
+    "name": "Base64",
+    "category": "Developer",
+    "icon": "🔤",
+    "summary": "Encode and decode Base64 in the browser.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Glossary/Base64",
+    "local": "base64",
+    "tools": [
+      {
+        "name": "encode_base64",
+        "description": "Encode text as Base64",
+        "params": {
+          "text": "Text"
+        }
+      },
+      {
+        "name": "decode_base64",
+        "description": "Decode Base64 text",
+        "params": {
+          "text": "Base64 text"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "sha256",
+      "hash"
+    ],
+    "id": "sha256",
+    "name": "SHA-256",
+    "category": "Developer",
+    "icon": "#️⃣",
+    "summary": "SHA-256 hash of text in the browser.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest",
+    "local": "hash",
+    "tools": [
+      {
+        "name": "sha256_text",
+        "description": "SHA-256 hex digest of text",
+        "params": {
+          "text": "Text"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "mathjs"
+    ],
+    "id": "mathjs",
+    "name": "MathJS",
+    "category": "Utilities",
+    "icon": "➗",
+    "summary": "Evaluate an expression with mathjs.org. No key.",
+    "homepage": "https://api.mathjs.org/",
+    "tools": [
+      {
+        "name": "mathjs_eval",
+        "description": "Evaluate a math expression on mathjs.org",
+        "params": {
+          "expression": "Expression"
+        },
+        "get": "https://api.mathjs.org/v4/?expr={expression}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "qr code",
+      "qr"
+    ],
+    "id": "qr",
+    "name": "QR code",
+    "category": "Utilities",
+    "icon": "▣",
+    "summary": "A QR code image URL from goqr.me. No key.",
+    "homepage": "https://goqr.me/api/",
+    "tools": [
+      {
+        "name": "qr_code",
+        "description": "QR code link for a short text",
+        "params": {
+          "text": "Text to encode"
+        },
+        "get": "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={text}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "shorten",
+      "short link"
+    ],
+    "id": "shorten",
+    "name": "Short link",
+    "category": "Utilities",
+    "icon": "🔗",
+    "summary": "Shorten a public https link with is.gd. No key.",
+    "homepage": "https://is.gd/developers.php",
+    "tools": [
+      {
+        "name": "shorten_url",
+        "description": "Make a short is.gd link",
+        "params": {
+          "url": "https link"
+        },
+        "get": "https://is.gd/create.php?format=json&url={url}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "hex color",
+      "color name"
+    ],
+    "id": "color",
+    "name": "Color",
+    "category": "Utilities",
+    "icon": "🎨",
+    "summary": "Name a hex color with thecolorapi. No key.",
+    "homepage": "https://www.thecolorapi.com/",
+    "tools": [
+      {
+        "name": "color_hex",
+        "description": "Describe a hex color without the hash mark",
+        "params": {
+          "hex": "Hex such as 0047AB"
+        },
+        "get": "https://www.thecolorapi.com/id?hex={hex}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "dns",
+      "nameserver"
+    ],
+    "id": "dns",
+    "name": "DNS lookup",
+    "category": "Developer",
+    "icon": "🔎",
+    "summary": "Public DNS lookup through Google DNS. No key.",
+    "homepage": "https://dns.google/",
+    "tools": [
+      {
+        "name": "dns_lookup",
+        "description": "DNS records for a hostname",
+        "params": {
+          "name": "Hostname"
+        },
+        "get": "https://dns.google/resolve?name={name}&type=A",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "rdap",
+      "whois",
+      "domain"
+    ],
+    "id": "rdap",
+    "name": "Domain RDAP",
+    "category": "Developer",
+    "icon": "🌐",
+    "summary": "Domain registration data from Verisign RDAP. No key.",
+    "homepage": "https://www.verisign.com/en_US/domain-names/registration-data-access-protocol/index.xhtml",
+    "tools": [
+      {
+        "name": "rdap_domain",
+        "description": "RDAP record for a .com domain",
+        "params": {
+          "domain": "Domain such as example.com"
+        },
+        "get": "https://rdap.verisign.com/com/v1/domain/{domain}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "ip address",
+      "my ip"
+    ],
+    "id": "ip-address",
+    "name": "IP address",
+    "category": "Developer",
+    "icon": "📡",
+    "summary": "This network’s public IP from ipify. No key.",
+    "homepage": "https://www.ipify.org/",
+    "tools": [
+      {
+        "name": "my_ip",
+        "description": "Public IP address",
+        "params": {},
+        "get": "https://api.ipify.org?format=json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "earthquake",
+      "quakes"
+    ],
+    "id": "earthquakes",
+    "name": "Earthquakes",
+    "category": "Science",
+    "icon": "🌋",
+    "summary": "Recent significant earthquakes from USGS. No key.",
+    "homepage": "https://earthquake.usgs.gov/fdsnws/event/1/",
+    "tools": [
+      {
+        "name": "recent_quakes",
+        "description": "Recent significant earthquakes",
+        "params": {},
+        "get": "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_month.geojson",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "sunrise",
+      "sunset"
+    ],
+    "id": "sunrise",
+    "name": "Sunrise",
+    "category": "Science",
+    "icon": "🌅",
+    "summary": "Sunrise and sunset for coordinates. No key.",
+    "homepage": "https://sunrise-sunset.org/api",
+    "tools": [
+      {
+        "name": "sunrise_sunset",
+        "description": "Sunrise and sunset for a latitude and longitude",
+        "params": {
+          "lat": "Latitude",
+          "lng": "Longitude"
+        },
+        "get": "https://api.sunrise-sunset.org/json?lat={lat}&lng={lng}&formatted=0",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "carbon intensity"
+    ],
+    "id": "carbon",
+    "name": "UK carbon",
+    "category": "Science",
+    "icon": "🍃",
+    "summary": "Great Britain carbon intensity. No key.",
+    "homepage": "https://carbonintensity.org.uk/",
+    "tools": [
+      {
+        "name": "uk_carbon",
+        "description": "Current GB carbon intensity",
+        "params": {},
+        "get": "https://api.carbonintensity.org.uk/intensity",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "space weather",
+      "aurora",
+      "kp index"
+    ],
+    "id": "space-weather",
+    "name": "Space weather",
+    "category": "Space",
+    "icon": "☀️",
+    "summary": "Planetary K index from NOAA SWPC. No key.",
+    "homepage": "https://www.swpc.noaa.gov/",
+    "tools": [
+      {
+        "name": "kp_index",
+        "description": "Recent planetary K index",
+        "params": {},
+        "get": "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "iss",
+      "space station"
+    ],
+    "id": "iss",
+    "name": "ISS location",
+    "category": "Space",
+    "icon": "🛰️",
+    "summary": "Where the International Space Station is. No key.",
+    "homepage": "https://wheretheiss.at/w/developer",
+    "tools": [
+      {
+        "name": "iss_now",
+        "description": "Current ISS position",
+        "params": {},
+        "get": "https://api.wheretheiss.at/v1/satellites/25544",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "astronaut",
+      "people in space"
+    ],
+    "id": "astronauts",
+    "name": "People in space",
+    "category": "Space",
+    "icon": "👨‍🚀",
+    "summary": "Who is in space, from Open Notify. No key.",
+    "homepage": "https://open-notify.org/Open-Notify-API/People-In-Space/",
+    "tools": [
+      {
+        "name": "people_in_space",
+        "description": "People currently in space",
+        "params": {},
+        "get": "https://api.open-notify.org/astros.json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "nasa",
+      "astronomy picture",
+      "apod"
+    ],
+    "id": "nasa-apod",
+    "name": "NASA picture",
+    "category": "Space",
+    "icon": "🌌",
+    "summary": "Astronomy Picture of the Day. Uses NASA’s public demo key.",
+    "homepage": "https://api.nasa.gov/",
+    "tools": [
+      {
+        "name": "nasa_apod",
+        "description": "Today’s NASA astronomy picture",
+        "params": {},
+        "get": "https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "nasa image",
+      "nasa images"
+    ],
+    "id": "nasa-images",
+    "name": "NASA images",
+    "category": "Space",
+    "icon": "🖼️",
+    "summary": "Search NASA images. No key.",
+    "homepage": "https://images.nasa.gov/",
+    "tools": [
+      {
+        "name": "nasa_image_search",
+        "description": "Search NASA images",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://images-api.nasa.gov/search?q={query}&media_type=image",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "epic",
+      "earth from space"
+    ],
+    "id": "epic",
+    "name": "Earth from space",
+    "category": "Space",
+    "icon": "🌍",
+    "summary": "Latest EPIC Earth images from NASA. No key.",
+    "homepage": "https://epic.gsfc.nasa.gov/",
+    "tools": [
+      {
+        "name": "epic_latest",
+        "description": "Latest EPIC Earth image list",
+        "params": {},
+        "get": "https://epic.gsfc.nasa.gov/api/natural",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "launch",
+      "rocket launch"
+    ],
+    "id": "launches",
+    "name": "Space launches",
+    "category": "Space",
+    "icon": "🚀",
+    "summary": "Upcoming launches from The Space Devs. No key.",
+    "homepage": "https://thespacedevs.com/llapi",
+    "tools": [
+      {
+        "name": "upcoming_launches",
+        "description": "Upcoming space launches",
+        "params": {},
+        "get": "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "openalex",
+      "paper",
+      "scholarly"
+    ],
+    "id": "openalex",
+    "name": "OpenAlex",
+    "category": "Science",
+    "icon": "📄",
+    "summary": "Search scholarly works. No key.",
+    "homepage": "https://openalex.org/",
+    "tools": [
+      {
+        "name": "openalex_search",
+        "description": "Search scholarly works",
+        "params": {
+          "query": "Topic"
+        },
+        "get": "https://api.openalex.org/works?search={query}&per-page=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "crossref",
+      "doi"
+    ],
+    "id": "crossref",
+    "name": "Crossref",
+    "category": "Science",
+    "icon": "🔬",
+    "summary": "Search DOI metadata. No key.",
+    "homepage": "https://www.crossref.org/documentation/retrieve-metadata/rest-api/",
+    "tools": [
+      {
+        "name": "crossref_search",
+        "description": "Search Crossref works",
+        "params": {
+          "query": "Topic"
+        },
+        "get": "https://api.crossref.org/works?query={query}&rows=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "pubmed",
+      "medical paper"
+    ],
+    "id": "pubmed",
+    "name": "PubMed",
+    "category": "Science",
+    "icon": "🩺",
+    "summary": "Search PubMed. No key.",
+    "homepage": "https://www.ncbi.nlm.nih.gov/home/develop/api/",
+    "tools": [
+      {
+        "name": "pubmed_search",
+        "description": "Search PubMed ids",
+        "params": {
+          "query": "Topic"
+        },
+        "get": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term={query}&retmode=json&retmax=5",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "openfda",
+      "drug label"
+    ],
+    "id": "openfda",
+    "name": "OpenFDA",
+    "category": "Science",
+    "icon": "💊",
+    "summary": "Search drug labels. No key.",
+    "homepage": "https://open.fda.gov/apis/",
+    "tools": [
+      {
+        "name": "drug_label",
+        "description": "Search OpenFDA drug labels",
+        "params": {
+          "query": "Drug name"
+        },
+        "get": "https://api.fda.gov/drug/label.json?search={query}&limit=1",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "clinical trial",
+      "clinical trials"
+    ],
+    "id": "clinical",
+    "name": "Clinical trials",
+    "category": "Science",
+    "icon": "🧪",
+    "summary": "Search ClinicalTrials.gov. No key.",
+    "homepage": "https://clinicaltrials.gov/data-api/api",
+    "tools": [
+      {
+        "name": "trial_search",
+        "description": "Search clinical trials",
+        "params": {
+          "query": "Condition or drug"
+        },
+        "get": "https://clinicaltrials.gov/api/v2/studies?query.term={query}&pageSize=2",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "species",
+      "gbif"
+    ],
+    "id": "gbif",
+    "name": "GBIF species",
+    "category": "Science",
+    "icon": "🐾",
+    "summary": "Match a species name. No key.",
+    "homepage": "https://www.gbif.org/developer/summary",
+    "tools": [
+      {
+        "name": "species_match",
+        "description": "Match a scientific or common species name",
+        "params": {
+          "name": "Species name"
+        },
+        "get": "https://api.gbif.org/v1/species/match?name={name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "inaturalist",
+      "observation"
+    ],
+    "id": "inaturalist",
+    "name": "iNaturalist",
+    "category": "Science",
+    "icon": "🌿",
+    "summary": "Recent observations of a taxon. No key.",
+    "homepage": "https://api.inaturalist.org/v1/docs/",
+    "tools": [
+      {
+        "name": "inat_observations",
+        "description": "Recent iNaturalist observations",
+        "params": {
+          "name": "Taxon name"
+        },
+        "get": "https://api.inaturalist.org/v1/observations?taxon_name={name}&per_page=2",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "book",
+      "books",
+      "open library"
+    ],
+    "id": "books",
+    "name": "Open Library",
+    "category": "Reference",
+    "icon": "📕",
+    "summary": "Search books. No key.",
+    "homepage": "https://openlibrary.org/developers/api",
+    "tools": [
+      {
+        "name": "search_books",
+        "description": "Search Open Library",
+        "params": {
+          "query": "Title or author"
+        },
+        "get": "https://openlibrary.org/search.json?q={query}&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "poem",
+      "poetry"
+    ],
+    "id": "poetry",
+    "name": "Poetry",
+    "category": "Reference",
+    "icon": "✒️",
+    "summary": "Find a poem by title. No key.",
+    "homepage": "https://poetrydb.org/",
+    "tools": [
+      {
+        "name": "poem_by_title",
+        "description": "Poems matching a title",
+        "params": {
+          "title": "Poem title"
+        },
+        "get": "https://poetrydb.org/title/{title}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "bible",
+      "verse"
+    ],
+    "id": "bible",
+    "name": "Bible verse",
+    "category": "Reference",
+    "icon": "✝️",
+    "summary": "A public-domain Bible passage. No key.",
+    "homepage": "https://bible-api.com/",
+    "tools": [
+      {
+        "name": "bible_passage",
+        "description": "Read a Bible reference such as john 3:16",
+        "params": {
+          "reference": "Reference"
+        },
+        "get": "https://bible-api.com/{reference}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "quran",
+      "ayah"
+    ],
+    "id": "quran",
+    "name": "Quran verse",
+    "category": "Reference",
+    "icon": "☪️",
+    "summary": "An English Quran ayah. No key.",
+    "homepage": "https://alquran.cloud/api",
+    "tools": [
+      {
+        "name": "quran_ayah",
+        "description": "Read an ayah such as 1:1",
+        "params": {
+          "ayah": "Ayah such as 1:1"
+        },
+        "get": "https://api.alquran.cloud/v1/ayah/{ayah}/en.asad",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "met museum",
+      "metropolitan"
+    ],
+    "id": "met-art",
+    "name": "The Met",
+    "category": "Art",
+    "icon": "🖼️",
+    "summary": "Search The Met collection. No key.",
+    "homepage": "https://metmuseum.github.io/",
+    "tools": [
+      {
+        "name": "met_search",
+        "description": "Search The Met",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://collectionapi.metmuseum.org/public/collection/v1/search?q={query}&hasImages=true",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "art institute",
+      "chicago art"
+    ],
+    "id": "artic",
+    "name": "Art Institute of Chicago",
+    "category": "Art",
+    "icon": "🎨",
+    "summary": "Search the Art Institute of Chicago. No key.",
+    "homepage": "https://api.artic.edu/docs/",
+    "tools": [
+      {
+        "name": "artic_search",
+        "description": "Search the Art Institute of Chicago",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://api.artic.edu/api/v1/artworks/search?q={query}&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "europeana"
+    ],
+    "id": "europeana",
+    "name": "Europeana",
+    "category": "Art",
+    "icon": "🏛️",
+    "summary": "Search Europeana with the public demo key.",
+    "homepage": "https://pro.europeana.eu/page/search",
+    "tools": [
+      {
+        "name": "europeana_search",
+        "description": "Search Europeana",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://api.europeana.eu/record/v2/search.json?query={query}&rows=2&wskey=api2demo",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "library of congress"
+    ],
+    "id": "library-congress",
+    "name": "Library of Congress",
+    "category": "Art",
+    "icon": "📚",
+    "summary": "Search the Library of Congress. No key.",
+    "homepage": "https://www.loc.gov/apis/",
+    "tools": [
+      {
+        "name": "loc_search",
+        "description": "Search the Library of Congress",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://www.loc.gov/search/?q={query}&fo=json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "recipe",
+      "meal",
+      "cook"
+    ],
+    "id": "meals",
+    "name": "Recipes",
+    "category": "Food",
+    "icon": "🍝",
+    "summary": "Search meals on TheMealDB. No key.",
+    "homepage": "https://www.themealdb.com/api.php",
+    "tools": [
+      {
+        "name": "search_meals",
+        "description": "Search recipes by name",
+        "params": {
+          "query": "Meal name"
+        },
+        "get": "https://www.themealdb.com/api/json/v1/1/search.php?s={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "cocktail",
+      "drink recipe"
+    ],
+    "id": "cocktails",
+    "name": "Cocktails",
+    "category": "Food",
+    "icon": "🍸",
+    "summary": "Search drinks on TheCocktailDB. No key.",
+    "homepage": "https://www.thecocktaildb.com/api.php",
+    "tools": [
+      {
+        "name": "search_cocktails",
+        "description": "Search cocktails by name",
+        "params": {
+          "query": "Drink name"
+        },
+        "get": "https://www.thecocktaildb.com/api/json/v1/1/search.php?s={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "barcode",
+      "food facts",
+      "nutrition"
+    ],
+    "id": "openfood",
+    "name": "Open Food Facts",
+    "category": "Food",
+    "icon": "🥫",
+    "summary": "Look up a food barcode. No key.",
+    "homepage": "https://openfoodfacts.github.io/openfoodfacts-server/api/",
+    "tools": [
+      {
+        "name": "food_barcode",
+        "description": "Product facts for a barcode",
+        "params": {
+          "barcode": "Barcode"
+        },
+        "get": "https://world.openfoodfacts.org/api/v2/product/{barcode}.json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "fruit",
+      "nutrition"
+    ],
+    "id": "fruit",
+    "name": "Fruit nutrition",
+    "category": "Food",
+    "icon": "🍌",
+    "summary": "Fruit nutrition from Fruityvice. No key.",
+    "homepage": "https://www.fruityvice.com/",
+    "tools": [
+      {
+        "name": "fruit_nutrition",
+        "description": "Nutrition for a fruit",
+        "params": {
+          "fruit": "Fruit name"
+        },
+        "get": "https://www.fruityvice.com/api/fruit/{fruit}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "tv show",
+      "television"
+    ],
+    "id": "tv",
+    "name": "TV shows",
+    "category": "Entertainment",
+    "icon": "📺",
+    "summary": "Search TV shows on TVmaze. No key.",
+    "homepage": "https://www.tvmaze.com/api",
+    "tools": [
+      {
+        "name": "search_shows",
+        "description": "Search TV shows",
+        "params": {
+          "query": "Show name"
+        },
+        "get": "https://api.tvmaze.com/search/shows?q={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "song",
+      "itunes",
+      "music"
+    ],
+    "id": "itunes-music",
+    "name": "Music search",
+    "category": "Entertainment",
+    "icon": "🎧",
+    "summary": "Search songs on the iTunes catalog. No key.",
+    "homepage": "https://performance-partners.apple.com/search-api",
+    "tools": [
+      {
+        "name": "search_songs",
+        "description": "Search songs",
+        "params": {
+          "query": "Song or artist"
+        },
+        "get": "https://itunes.apple.com/search?term={query}&entity=song&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "movie",
+      "film"
+    ],
+    "id": "itunes-movies",
+    "name": "Movie search",
+    "category": "Entertainment",
+    "icon": "🎬",
+    "summary": "Search movies on the iTunes catalog. No key.",
+    "homepage": "https://performance-partners.apple.com/search-api",
+    "tools": [
+      {
+        "name": "search_movies",
+        "description": "Search movies",
+        "params": {
+          "query": "Movie name"
+        },
+        "get": "https://itunes.apple.com/search?term={query}&entity=movie&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "podcast"
+    ],
+    "id": "podcasts",
+    "name": "Podcasts",
+    "category": "Entertainment",
+    "icon": "🎙️",
+    "summary": "Search podcasts on the iTunes catalog. No key.",
+    "homepage": "https://performance-partners.apple.com/search-api",
+    "tools": [
+      {
+        "name": "search_podcasts",
+        "description": "Search podcasts",
+        "params": {
+          "query": "Podcast name"
+        },
+        "get": "https://itunes.apple.com/search?term={query}&entity=podcast&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "musicbrainz",
+      "artist"
+    ],
+    "id": "musicbrainz",
+    "name": "MusicBrainz",
+    "category": "Entertainment",
+    "icon": "🎶",
+    "summary": "Search artists. No key.",
+    "homepage": "https://musicbrainz.org/doc/MusicBrainz_API",
+    "tools": [
+      {
+        "name": "musicbrainz_artist",
+        "description": "Search artists",
+        "params": {
+          "query": "Artist"
+        },
+        "get": "https://musicbrainz.org/ws/2/artist/?query={query}&fmt=json&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "lyrics"
+    ],
+    "id": "lyrics",
+    "name": "Lyrics",
+    "category": "Entertainment",
+    "icon": "🎤",
+    "summary": "Lyrics from lyrics.ovh. No key.",
+    "homepage": "https://lyricsovh.docs.apiary.io/",
+    "tools": [
+      {
+        "name": "song_lyrics",
+        "description": "Lyrics for an artist and title",
+        "params": {
+          "artist": "Artist",
+          "title": "Song title"
+        },
+        "get": "https://api.lyrics.ovh/v1/{artist}/{title}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "joke",
+      "jokes"
+    ],
+    "id": "jokes",
+    "name": "Jokes",
+    "category": "Entertainment",
+    "icon": "😄",
+    "summary": "A programming-safe joke. No key.",
+    "homepage": "https://jokeapi.dev/",
+    "tools": [
+      {
+        "name": "safe_joke",
+        "description": "A safe-mode joke",
+        "params": {},
+        "get": "https://v2.jokeapi.dev/joke/Programming?safe-mode",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "advice"
+    ],
+    "id": "advice",
+    "name": "Advice",
+    "category": "Entertainment",
+    "icon": "💡",
+    "summary": "A short piece of advice. No key.",
+    "homepage": "https://api.adviceslip.com/",
+    "tools": [
+      {
+        "name": "advice_slip",
+        "description": "Random advice",
+        "params": {},
+        "get": "https://api.adviceslip.com/advice",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "trivia",
+      "quiz"
+    ],
+    "id": "trivia",
+    "name": "Trivia",
+    "category": "Games",
+    "icon": "❓",
+    "summary": "A trivia question from Open Trivia DB. No key.",
+    "homepage": "https://opentdb.com/api_config.php",
+    "tools": [
+      {
+        "name": "trivia_question",
+        "description": "One trivia question",
+        "params": {},
+        "get": "https://opentdb.com/api.php?amount=1&type=multiple",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "pokemon",
+      "pokémon"
+    ],
+    "id": "pokemon",
+    "name": "Pokémon",
+    "category": "Games",
+    "icon": "🟡",
+    "summary": "Pokémon data from PokéAPI. No key.",
+    "homepage": "https://pokeapi.co/",
+    "tools": [
+      {
+        "name": "pokemon_lookup",
+        "description": "Look up a Pokémon by name",
+        "params": {
+          "name": "Pokémon name"
+        },
+        "get": "https://pokeapi.co/api/v2/pokemon/{name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "dnd",
+      "d&d",
+      "spell"
+    ],
+    "id": "dnd",
+    "name": "D&D 5e",
+    "category": "Games",
+    "icon": "🐉",
+    "summary": "D&D 5e spells and classes. No key.",
+    "homepage": "https://www.dnd5eapi.co/",
+    "tools": [
+      {
+        "name": "dnd_spell",
+        "description": "Look up a D&D 5e spell index name such as fireball",
+        "params": {
+          "name": "Spell index"
+        },
+        "get": "https://www.dnd5eapi.co/api/spells/{name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "magic card",
+      "scryfall",
+      "mtg"
+    ],
+    "id": "scryfall",
+    "name": "Magic cards",
+    "category": "Games",
+    "icon": "🃏",
+    "summary": "Magic: The Gathering cards from Scryfall. No key.",
+    "homepage": "https://scryfall.com/docs/api",
+    "tools": [
+      {
+        "name": "mtg_card",
+        "description": "Find a Magic card by fuzzy name",
+        "params": {
+          "name": "Card name"
+        },
+        "get": "https://api.scryfall.com/cards/named?fuzzy={name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "yugioh",
+      "yu-gi-oh"
+    ],
+    "id": "yugioh",
+    "name": "Yu-Gi-Oh",
+    "category": "Games",
+    "icon": "🎴",
+    "summary": "Yu-Gi-Oh cards. No key.",
+    "homepage": "https://ygoprodeck.com/api-guide/",
+    "tools": [
+      {
+        "name": "ygo_card",
+        "description": "Look up a Yu-Gi-Oh card",
+        "params": {
+          "name": "Card name"
+        },
+        "get": "https://db.ygoprodeck.com/api/v7/cardinfo.php?name={name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "playing card",
+      "deck of cards"
+    ],
+    "id": "deck",
+    "name": "Deck of cards",
+    "category": "Games",
+    "icon": "🂡",
+    "summary": "Draw a card. No key.",
+    "homepage": "https://deckofcardsapi.com/",
+    "tools": [
+      {
+        "name": "draw_card",
+        "description": "Draw one card",
+        "params": {},
+        "get": "https://deckofcardsapi.com/api/deck/new/draw/?count=1",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "chess.com",
+      "chess profile"
+    ],
+    "id": "chess",
+    "name": "Chess.com",
+    "category": "Games",
+    "icon": "♟️",
+    "summary": "A public Chess.com profile. No key.",
+    "homepage": "https://www.chess.com/news/view/published-data-api",
+    "tools": [
+      {
+        "name": "chess_player",
+        "description": "Read a public Chess.com player",
+        "params": {
+          "username": "Username"
+        },
+        "get": "https://api.chess.com/pub/player/{username}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "lichess"
+    ],
+    "id": "lichess",
+    "name": "Lichess",
+    "category": "Games",
+    "icon": "♟️",
+    "summary": "A public Lichess profile. No key.",
+    "homepage": "https://lichess.org/api",
+    "tools": [
+      {
+        "name": "lichess_player",
+        "description": "Read a public Lichess user",
+        "params": {
+          "username": "Username"
+        },
+        "get": "https://lichess.org/api/user/{username}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "game deal",
+      "cheapshark"
+    ],
+    "id": "cheapshark",
+    "name": "Game deals",
+    "category": "Games",
+    "icon": "🎮",
+    "summary": "PC game deals from CheapShark. No key.",
+    "homepage": "https://apidocs.cheapshark.com/",
+    "tools": [
+      {
+        "name": "game_deals",
+        "description": "Current PC game deals",
+        "params": {},
+        "get": "https://www.cheapshark.com/api/1.0/deals?pageSize=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "free game",
+      "free to play"
+    ],
+    "id": "free-games",
+    "name": "Free games",
+    "category": "Games",
+    "icon": "🕹️",
+    "summary": "Free-to-play games. No key.",
+    "homepage": "https://www.freetogame.com/api-doc",
+    "tools": [
+      {
+        "name": "free_games",
+        "description": "Free-to-play PC games",
+        "params": {},
+        "get": "https://www.freetogame.com/api/games?platform=pc",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "formula 1",
+      "f1"
+    ],
+    "id": "f1",
+    "name": "Formula 1",
+    "category": "Sports",
+    "icon": "🏎️",
+    "summary": "Latest Formula 1 results from Jolpica. No key.",
+    "homepage": "https://github.com/jolpica/jolpica-f1",
+    "tools": [
+      {
+        "name": "f1_last_race",
+        "description": "Latest Formula 1 race results",
+        "params": {},
+        "get": "https://api.jolpi.ca/ergast/f1/current/last/results.json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "mlb",
+      "baseball"
+    ],
+    "id": "mlb",
+    "name": "MLB teams",
+    "category": "Sports",
+    "icon": "⚾",
+    "summary": "Major League Baseball teams. No key.",
+    "homepage": "https://statsapi.mlb.com/",
+    "tools": [
+      {
+        "name": "mlb_teams",
+        "description": "List MLB teams",
+        "params": {},
+        "get": "https://statsapi.mlb.com/api/v1/teams?sportId=1",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "nba",
+      "basketball score"
+    ],
+    "id": "nba-scoreboard",
+    "name": "NBA scoreboard",
+    "category": "Sports",
+    "icon": "🏀",
+    "summary": "NBA scoreboard from the public ESPN site API. No key.",
+    "homepage": "https://www.espn.com/nba/",
+    "tools": [
+      {
+        "name": "nba_scoreboard",
+        "description": "Current NBA scoreboard",
+        "params": {},
+        "get": "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "duckduckgo",
+      "instant answer"
+    ],
+    "id": "duckduckgo",
+    "name": "Instant answer",
+    "category": "Reference",
+    "icon": "🦆",
+    "summary": "DuckDuckGo instant answer. No key. Many queries have no summary.",
+    "homepage": "https://duckduckgo.com/api",
+    "tools": [
+      {
+        "name": "ddg_instant",
+        "description": "DuckDuckGo instant answer",
+        "params": {
+          "query": "Query"
+        },
+        "get": "https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "read page",
+      "jina"
+    ],
+    "id": "url-reader",
+    "name": "Page reader",
+    "category": "Reference",
+    "icon": "📄",
+    "summary": "Read a public page through the Jina reader. No key.",
+    "homepage": "https://jina.ai/reader/",
+    "tools": [
+      {
+        "name": "read_url",
+        "description": "Read the text of a public https page",
+        "params": {
+          "url": "https link"
+        },
+        "get": "https://r.jina.ai/{url}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "hacker news"
+    ],
+    "id": "hacker-news",
+    "name": "Hacker News",
+    "category": "News",
+    "icon": "🟧",
+    "summary": "Search Hacker News. No key.",
+    "homepage": "https://hn.algolia.com/api",
+    "tools": [
+      {
+        "name": "hn_search",
+        "description": "Search Hacker News",
+        "params": {
+          "query": "Query"
+        },
+        "get": "https://hn.algolia.com/api/v1/search?query={query}&hitsPerPage=5",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "dev.to",
+      "dev community"
+    ],
+    "id": "devto",
+    "name": "DEV Community",
+    "category": "News",
+    "icon": "👩‍💻",
+    "summary": "Recent DEV articles. No key.",
+    "homepage": "https://developers.forem.com/api",
+    "tools": [
+      {
+        "name": "devto_articles",
+        "description": "Recent DEV articles",
+        "params": {},
+        "get": "https://dev.to/api/articles?per_page=5",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "npm package"
+    ],
+    "id": "npm",
+    "name": "npm",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a npm package. No key.",
+    "homepage": "https://github.com/npm/registry/blob/master/docs/REGISTRY-API.md",
+    "tools": [
+      {
+        "name": "npm_lookup",
+        "description": "Look up a npm package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://registry.npmjs.org/{name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "pypi"
+    ],
+    "id": "pypi",
+    "name": "PyPI",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a PyPI package. No key.",
+    "homepage": "https://warehouse.pypa.io/api-reference/json.html",
+    "tools": [
+      {
+        "name": "pypi_lookup",
+        "description": "Look up a PyPI package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://pypi.org/pypi/{name}/json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "rust crate"
+    ],
+    "id": "crates",
+    "name": "crates.io",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a crates.io package. No key.",
+    "homepage": "https://crates.io/data-access",
+    "tools": [
+      {
+        "name": "crates_lookup",
+        "description": "Look up a crates.io package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://crates.io/api/v1/crates?q={name}&per_page=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "rubygem"
+    ],
+    "id": "rubygems",
+    "name": "RubyGems",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a RubyGems package. No key.",
+    "homepage": "https://guides.rubygems.org/rubygems-org-api/",
+    "tools": [
+      {
+        "name": "rubygems_lookup",
+        "description": "Look up a RubyGems package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://rubygems.org/api/v1/gems/{name}.json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "hex package"
+    ],
+    "id": "hex",
+    "name": "Hex",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a Hex package. No key.",
+    "homepage": "https://hex.pm/api",
+    "tools": [
+      {
+        "name": "hex_lookup",
+        "description": "Look up a Hex package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://hex.pm/api/packages/{name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "nuget"
+    ],
+    "id": "nuget",
+    "name": "NuGet",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a NuGet package. No key.",
+    "homepage": "https://learn.microsoft.com/nuget/api/search-query-service-resource",
+    "tools": [
+      {
+        "name": "nuget_lookup",
+        "description": "Look up a NuGet package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://azuresearch-usnc.nuget.org/query?q={name}&take=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "packagist"
+    ],
+    "id": "packagist",
+    "name": "Packagist",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a Packagist package. No key.",
+    "homepage": "https://packagist.org/apidoc",
+    "tools": [
+      {
+        "name": "packagist_lookup",
+        "description": "Look up a Packagist package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://packagist.org/search.json?q={name}&per_page=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "pub.dev"
+    ],
+    "id": "pubdev",
+    "name": "pub.dev",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a pub.dev package. No key.",
+    "homepage": "https://pub.dev/help/api",
+    "tools": [
+      {
+        "name": "pubdev_lookup",
+        "description": "Look up a pub.dev package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://pub.dev/api/packages/{name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "public repo",
+      "github repo"
+    ],
+    "id": "github-public",
+    "name": "Public GitHub repo",
+    "category": "Developer",
+    "icon": "🐙",
+    "summary": "Read a public GitHub repository. No key. Your signed-in account is a separate connector.",
+    "homepage": "https://docs.github.com/rest",
+    "tools": [
+      {
+        "name": "public_github_repo",
+        "description": "Read a public repo such as mlc-ai/web-llm",
+        "params": {
+          "owner": "Owner",
+          "repo": "Repository"
+        },
+        "get": "https://api.github.com/repos/{owner}/{repo}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "stack overflow",
+      "stackoverflow"
+    ],
+    "id": "stackoverflow",
+    "name": "Stack Overflow",
+    "category": "Developer",
+    "icon": "📚",
+    "summary": "Search Stack Overflow. No key.",
+    "homepage": "https://api.stackexchange.com/docs",
+    "tools": [
+      {
+        "name": "so_search",
+        "description": "Search Stack Overflow",
+        "params": {
+          "query": "Query"
+        },
+        "get": "https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q={query}&site=stackoverflow&pagesize=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "cat fact"
+    ],
+    "id": "cat-fact",
+    "name": "Cat fact",
+    "category": "Animals",
+    "icon": "🐱",
+    "summary": "A cat fact. No key.",
+    "homepage": "https://catfact.ninja/",
+    "tools": [
+      {
+        "name": "cat_fact",
+        "description": "A random cat fact",
+        "params": {},
+        "get": "https://catfact.ninja/fact",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "dog photo",
+      "dog picture"
+    ],
+    "id": "dog-photo",
+    "name": "Dog photo",
+    "category": "Animals",
+    "icon": "🐶",
+    "summary": "A random dog photo. No key.",
+    "homepage": "https://dog.ceo/dog-api/",
+    "tools": [
+      {
+        "name": "dog_photo",
+        "description": "A random dog photo URL",
+        "params": {},
+        "get": "https://dog.ceo/api/breeds/image/random",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "fox"
+    ],
+    "id": "fox",
+    "name": "Fox photo",
+    "category": "Animals",
+    "icon": "🦊",
+    "summary": "A random fox photo. No key.",
+    "homepage": "https://randomfox.ca/",
+    "tools": [
+      {
+        "name": "fox_photo",
+        "description": "A random fox photo",
+        "params": {},
+        "get": "https://randomfox.ca/floof/",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "rick and morty"
+    ],
+    "id": "rick-morty",
+    "name": "Rick and Morty",
+    "category": "Entertainment",
+    "icon": "👽",
+    "summary": "Search characters. No key.",
+    "homepage": "https://rickandmortyapi.com/documentation",
+    "tools": [
+      {
+        "name": "rick_character",
+        "description": "Search Rick and Morty characters",
+        "params": {
+          "name": "Character name"
+        },
+        "get": "https://rickandmortyapi.com/api/character/?name={name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "ghibli"
+    ],
+    "id": "studio-ghibli",
+    "name": "Studio Ghibli",
+    "category": "Entertainment",
+    "icon": "🎬",
+    "summary": "Ghibli films. No key.",
+    "homepage": "https://ghibliapi.vercel.app/",
+    "tools": [
+      {
+        "name": "ghibli_films",
+        "description": "List Studio Ghibli films",
+        "params": {},
+        "get": "https://ghibliapi.vercel.app/films",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "star wars",
+      "swapi"
+    ],
+    "id": "star-wars",
+    "name": "Star Wars",
+    "category": "Entertainment",
+    "icon": "⭐",
+    "summary": "Star Wars people from SWAPI. No key.",
+    "homepage": "https://swapi.dev/documentation",
+    "tools": [
+      {
+        "name": "swapi_person",
+        "description": "Read a Star Wars person by number",
+        "params": {
+          "id": "Person number"
+        },
+        "get": "https://swapi.dev/api/people/{id}/",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "harry potter",
+      "potter"
+    ],
+    "id": "potter",
+    "name": "Harry Potter",
+    "category": "Entertainment",
+    "icon": "🪄",
+    "summary": "Characters from Potter DB. No key.",
+    "homepage": "https://potterdb.com/",
+    "tools": [
+      {
+        "name": "potter_characters",
+        "description": "List a page of Harry Potter characters",
+        "params": {},
+        "get": "https://api.potterdb.com/v1/characters?page[size]=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wayback",
+      "archive.org"
+    ],
+    "id": "wayback",
+    "name": "Wayback Machine",
+    "category": "Reference",
+    "icon": "🕰️",
+    "summary": "See if the Internet Archive has a snapshot. No key.",
+    "homepage": "https://archive.org/help/wayback_api.php",
+    "tools": [
+      {
+        "name": "wayback_available",
+        "description": "Latest Wayback snapshot for a URL",
+        "params": {
+          "url": "Site or URL"
+        },
+        "get": "https://archive.org/wayback/available?url={url}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "bike share",
+      "city bike"
+    ],
+    "id": "bikes",
+    "name": "Bike share",
+    "category": "Maps",
+    "icon": "🚲",
+    "summary": "City bike networks. No key.",
+    "homepage": "https://api.citybik.es/v2/",
+    "tools": [
+      {
+        "name": "bike_networks",
+        "description": "List bike-share networks",
+        "params": {},
+        "get": "https://api.citybik.es/v2/networks",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "river flow",
+      "stream gauge"
+    ],
+    "id": "usgs-water",
+    "name": "River flow",
+    "category": "Science",
+    "icon": "💧",
+    "summary": "A USGS stream gauge. No key.",
+    "homepage": "https://waterservices.usgs.gov/",
+    "tools": [
+      {
+        "name": "river_flow",
+        "description": "Latest discharge for a USGS site id",
+        "params": {
+          "site": "USGS site id"
+        },
+        "get": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites={site}&parameterCd=00060&siteStatus=all",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "tide",
+      "tides"
+    ],
+    "id": "noaa-tides",
+    "name": "Tides",
+    "category": "Science",
+    "icon": "🌊",
+    "summary": "Water level from a NOAA station. No key.",
+    "homepage": "https://api.tidesandcurrents.noaa.gov/api/prod/",
+    "tools": [
+      {
+        "name": "tide_level",
+        "description": "Latest water level for a NOAA station such as 8454000",
+        "params": {
+          "station": "Station id"
+        },
+        "get": "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=latest&station={station}&product=water_level&datum=MLLW&time_zone=gmt&units=metric&format=json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "police force",
+      "uk police"
+    ],
+    "id": "uk-police",
+    "name": "UK police forces",
+    "category": "Reference",
+    "icon": "🚓",
+    "summary": "List UK police forces. No key.",
+    "homepage": "https://data.police.uk/docs/",
+    "tools": [
+      {
+        "name": "uk_forces",
+        "description": "List UK police forces",
+        "params": {},
+        "get": "https://data.police.uk/api/forces",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "id": "feed-bbc-world",
+    "name": "BBC World",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from BBC World. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.bbc.com/news",
+    "keywords": [
+      "bbc",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_bbc_world",
+        "description": "Latest BBC World headlines",
+        "params": {},
+        "get": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-bbc-tech",
+    "name": "BBC Technology",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from BBC Technology. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.bbc.com/news/technology",
+    "keywords": [
+      "bbc technology",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_bbc_tech",
+        "description": "Latest BBC Technology headlines",
+        "params": {},
+        "get": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-bbc-science",
+    "name": "BBC Science",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from BBC Science. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.bbc.com/news/science_and_environment",
+    "keywords": [
+      "bbc science",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_bbc_science",
+        "description": "Latest BBC Science headlines",
+        "params": {},
+        "get": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-bbc-business",
+    "name": "BBC Business",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from BBC Business. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.bbc.com/news/business",
+    "keywords": [
+      "bbc business",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_bbc_business",
+        "description": "Latest BBC Business headlines",
+        "params": {},
+        "get": "https://feeds.bbci.co.uk/news/business/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-bbc-health",
+    "name": "BBC Health",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from BBC Health. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.bbc.com/news/health",
+    "keywords": [
+      "bbc health",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_bbc_health",
+        "description": "Latest BBC Health headlines",
+        "params": {},
+        "get": "https://feeds.bbci.co.uk/news/health/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-npr",
+    "name": "NPR News",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from NPR News. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.npr.org/",
+    "keywords": [
+      "npr",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_npr",
+        "description": "Latest NPR News headlines",
+        "params": {},
+        "get": "https://feeds.npr.org/1001/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-npr-science",
+    "name": "NPR Science",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from NPR Science. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.npr.org/sections/science/",
+    "keywords": [
+      "npr science",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_npr_science",
+        "description": "Latest NPR Science headlines",
+        "params": {},
+        "get": "https://feeds.npr.org/1007/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-guardian-world",
+    "name": "The Guardian World",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from The Guardian World. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.theguardian.com/world",
+    "keywords": [
+      "guardian",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_guardian_world",
+        "description": "Latest The Guardian World headlines",
+        "params": {},
+        "get": "https://www.theguardian.com/world/rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-guardian-science",
+    "name": "The Guardian Science",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from The Guardian Science. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.theguardian.com/science",
+    "keywords": [
+      "guardian science",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_guardian_science",
+        "description": "Latest The Guardian Science headlines",
+        "params": {},
+        "get": "https://www.theguardian.com/science/rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-guardian-tech",
+    "name": "The Guardian Technology",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from The Guardian Technology. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.theguardian.com/uk/technology",
+    "keywords": [
+      "guardian technology",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_guardian_tech",
+        "description": "Latest The Guardian Technology headlines",
+        "params": {},
+        "get": "https://www.theguardian.com/uk/technology/rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-ars",
+    "name": "Ars Technica",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from Ars Technica. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://arstechnica.com/",
+    "keywords": [
+      "ars technica",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_ars",
+        "description": "Latest Ars Technica headlines",
+        "params": {},
+        "get": "https://feeds.arstechnica.com/arstechnica/index",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-verge",
+    "name": "The Verge",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from The Verge. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.theverge.com/",
+    "keywords": [
+      "the verge",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_verge",
+        "description": "Latest The Verge headlines",
+        "params": {},
+        "get": "https://www.theverge.com/rss/index.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-techcrunch",
+    "name": "TechCrunch",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from TechCrunch. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://techcrunch.com/",
+    "keywords": [
+      "techcrunch",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_techcrunch",
+        "description": "Latest TechCrunch headlines",
+        "params": {},
+        "get": "https://techcrunch.com/feed/",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-nyt-world",
+    "name": "New York Times World",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from New York Times World. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.nytimes.com/section/world",
+    "keywords": [
+      "new york times",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_nyt_world",
+        "description": "Latest New York Times World headlines",
+        "params": {},
+        "get": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-nyt-science",
+    "name": "New York Times Science",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from New York Times Science. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.nytimes.com/section/science",
+    "keywords": [
+      "nyt science",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_nyt_science",
+        "description": "Latest New York Times Science headlines",
+        "params": {},
+        "get": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-nyt-tech",
+    "name": "New York Times Technology",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from New York Times Technology. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.nytimes.com/section/technology",
+    "keywords": [
+      "nyt technology",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_nyt_tech",
+        "description": "Latest New York Times Technology headlines",
+        "params": {},
+        "get": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-dw",
+    "name": "Deutsche Welle",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from Deutsche Welle. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.dw.com/",
+    "keywords": [
+      "deutsche welle",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_dw",
+        "description": "Latest Deutsche Welle headlines",
+        "params": {},
+        "get": "https://rss.dw.com/rdf/rss-en-all",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-wired",
+    "name": "WIRED",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from WIRED. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.wired.com/",
+    "keywords": [
+      "wired",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_wired",
+        "description": "Latest WIRED headlines",
+        "params": {},
+        "get": "https://www.wired.com/feed/rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-nhk",
+    "name": "NHK",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from NHK. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www3.nhk.or.jp/nhkworld/",
+    "keywords": [
+      "nhk",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_nhk",
+        "description": "Latest NHK headlines",
+        "params": {},
+        "get": "https://www3.nhk.or.jp/rss/news/cat0.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-nasa-news",
+    "name": "NASA news",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from NASA news. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.nasa.gov/news/",
+    "keywords": [
+      "nasa news",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_nasa_news",
+        "description": "Latest NASA news headlines",
+        "params": {},
+        "get": "https://www.nasa.gov/rss/dyn/breaking_news.rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-github-blog",
+    "name": "GitHub Blog",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from GitHub Blog. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://github.blog/",
+    "keywords": [
+      "github blog",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_github_blog",
+        "description": "Latest GitHub Blog headlines",
+        "params": {},
+        "get": "https://github.blog/feed/",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-python-blog",
+    "name": "Python blog",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from Python blog. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://blog.python.org/",
+    "keywords": [
+      "python blog",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_python_blog",
+        "description": "Latest Python blog headlines",
+        "params": {},
+        "get": "https://blog.python.org/feeds/posts/default?alt=rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-rust-blog",
+    "name": "Rust blog",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from Rust blog. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://blog.rust-lang.org/",
+    "keywords": [
+      "rust blog",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_rust_blog",
+        "description": "Latest Rust blog headlines",
+        "params": {},
+        "get": "https://blog.rust-lang.org/feed.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-theregister",
+    "name": "The Register",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from The Register. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.theregister.com/",
+    "keywords": [
+      "the register",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_theregister",
+        "description": "Latest The Register headlines",
+        "params": {},
+        "get": "https://www.theregister.com/headlines.atom",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "appid"
+    },
+    "keywords": [
+      "openweather"
+    ],
+    "id": "openweather",
+    "name": "OpenWeather",
+    "category": "Weather",
+    "icon": "🌦️",
+    "summary": "Current weather. Needs your OpenWeather key.",
+    "homepage": "https://openweathermap.org/api",
+    "setup": "Create a free OpenWeather key.",
+    "setupUrl": "https://home.openweathermap.org/api_keys",
+    "tools": [
+      {
+        "name": "openweather_now",
+        "description": "Current weather for a city",
+        "params": {
+          "city": "City name"
+        },
+        "get": "https://api.openweathermap.org/data/2.5/weather?q={city}&units=metric",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "key"
+    },
+    "keywords": [
+      "weatherapi"
+    ],
+    "id": "weatherapi",
+    "name": "WeatherAPI",
+    "category": "Weather",
+    "icon": "🌤️",
+    "summary": "Current weather. Needs your WeatherAPI key.",
+    "homepage": "https://www.weatherapi.com/docs/",
+    "setup": "Create a WeatherAPI key.",
+    "setupUrl": "https://www.weatherapi.com/signup.aspx",
+    "tools": [
+      {
+        "name": "weatherapi_now",
+        "description": "Current weather for a city",
+        "params": {
+          "city": "City name"
+        },
+        "get": "https://api.weatherapi.com/v1/current.json?q={city}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "api_key"
+    },
+    "keywords": [
+      "tmdb"
+    ],
+    "id": "tmdb",
+    "name": "TMDB",
+    "category": "Entertainment",
+    "icon": "🎥",
+    "summary": "Search movies. Needs your TMDB key.",
+    "homepage": "https://developer.themoviedb.org/docs",
+    "setup": "Create a TMDB API key.",
+    "setupUrl": "https://www.themoviedb.org/settings/api",
+    "tools": [
+      {
+        "name": "tmdb_search",
+        "description": "Search TMDB movies",
+        "params": {
+          "query": "Movie name"
+        },
+        "get": "https://api.themoviedb.org/3/search/movie?query={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "apikey"
+    },
+    "keywords": [
+      "omdb",
+      "imdb"
+    ],
+    "id": "omdb",
+    "name": "OMDb",
+    "category": "Entertainment",
+    "icon": "🎞️",
+    "summary": "Movie facts. Needs your OMDb key.",
+    "homepage": "https://www.omdbapi.com/",
+    "setup": "Request a free OMDb key.",
+    "setupUrl": "https://www.omdbapi.com/apikey.aspx",
+    "tools": [
+      {
+        "name": "omdb_title",
+        "description": "Look up a movie by title",
+        "params": {
+          "title": "Movie title"
+        },
+        "get": "https://www.omdbapi.com/?t={title}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "api_key"
+    },
+    "keywords": [
+      "giphy",
+      "gif"
+    ],
+    "id": "giphy",
+    "name": "Giphy",
+    "category": "Entertainment",
+    "icon": "GIF",
+    "summary": "Search GIFs. Needs your Giphy key.",
+    "homepage": "https://developers.giphy.com/docs/api",
+    "setup": "Create a Giphy API key.",
+    "setupUrl": "https://developers.giphy.com/dashboard/",
+    "tools": [
+      {
+        "name": "giphy_search",
+        "description": "Search Giphy",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://api.giphy.com/v1/gifs/search?q={query}&limit=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "header",
+      "name": "Authorization",
+      "prefix": "Client-ID "
+    },
+    "keywords": [
+      "unsplash"
+    ],
+    "id": "unsplash",
+    "name": "Unsplash",
+    "category": "Art",
+    "icon": "📷",
+    "summary": "Search photos. Needs your Unsplash access key.",
+    "homepage": "https://unsplash.com/documentation",
+    "setup": "Create an Unsplash access key.",
+    "setupUrl": "https://unsplash.com/oauth/applications",
+    "tools": [
+      {
+        "name": "unsplash_search",
+        "description": "Search Unsplash photos",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://api.unsplash.com/search/photos?query={query}&per_page=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "header",
+      "name": "Authorization",
+      "prefix": ""
+    },
+    "keywords": [
+      "pexels"
+    ],
+    "id": "pexels",
+    "name": "Pexels",
+    "category": "Art",
+    "icon": "📸",
+    "summary": "Search photos. Needs your Pexels key.",
+    "homepage": "https://www.pexels.com/api/documentation/",
+    "setup": "Create a Pexels API key.",
+    "setupUrl": "https://www.pexels.com/api/",
+    "tools": [
+      {
+        "name": "pexels_search",
+        "description": "Search Pexels photos",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://api.pexels.com/v1/search?query={query}&per_page=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "key"
+    },
+    "keywords": [
+      "pixabay"
+    ],
+    "id": "pixabay",
+    "name": "Pixabay",
+    "category": "Art",
+    "icon": "🖼️",
+    "summary": "Search images. Needs your Pixabay key.",
+    "homepage": "https://pixabay.com/api/docs/",
+    "setup": "Create a Pixabay API key.",
+    "setupUrl": "https://pixabay.com/api/docs/",
+    "tools": [
+      {
+        "name": "pixabay_search",
+        "description": "Search Pixabay",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://pixabay.com/api/?q={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "token"
+    },
+    "keywords": [
+      "finnhub",
+      "stock quote"
+    ],
+    "id": "finnhub",
+    "name": "Finnhub",
+    "category": "Money",
+    "icon": "📊",
+    "summary": "A stock quote. Needs your Finnhub key.",
+    "homepage": "https://finnhub.io/docs/api",
+    "setup": "Create a Finnhub key.",
+    "setupUrl": "https://finnhub.io/register",
+    "tools": [
+      {
+        "name": "stock_quote",
+        "description": "A stock quote by symbol",
+        "params": {
+          "symbol": "Ticker such as AAPL"
+        },
+        "get": "https://finnhub.io/api/v1/quote?symbol={symbol}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "apikey"
+    },
+    "keywords": [
+      "alpha vantage"
+    ],
+    "id": "alphavantage",
+    "name": "Alpha Vantage",
+    "category": "Money",
+    "icon": "📉",
+    "summary": "A stock quote. Needs your Alpha Vantage key.",
+    "homepage": "https://www.alphavantage.co/documentation/",
+    "setup": "Claim a free Alpha Vantage key.",
+    "setupUrl": "https://www.alphavantage.co/support/#api-key",
+    "tools": [
+      {
+        "name": "alpha_quote",
+        "description": "A global quote by symbol",
+        "params": {
+          "symbol": "Ticker such as IBM"
+        },
+        "get": "https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={symbol}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "apiKey"
+    },
+    "keywords": [
+      "spoonacular"
+    ],
+    "id": "spoonacular",
+    "name": "Spoonacular",
+    "category": "Food",
+    "icon": "🥗",
+    "summary": "Search recipes. Needs your Spoonacular key.",
+    "homepage": "https://spoonacular.com/food-api",
+    "setup": "Create a Spoonacular key.",
+    "setupUrl": "https://spoonacular.com/food-api/console",
+    "tools": [
+      {
+        "name": "spoon_recipes",
+        "description": "Search Spoonacular recipes",
+        "params": {
+          "query": "Food"
+        },
+        "get": "https://api.spoonacular.com/recipes/complexSearch?query={query}&number=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "api_key"
+    },
+    "keywords": [
+      "last.fm",
+      "lastfm"
+    ],
+    "id": "lastfm",
+    "name": "Last.fm",
+    "category": "Entertainment",
+    "icon": "🎵",
+    "summary": "Top tracks. Needs your Last.fm key.",
+    "homepage": "https://www.last.fm/api",
+    "setup": "Create a Last.fm API account.",
+    "setupUrl": "https://www.last.fm/api/account/create",
+    "tools": [
+      {
+        "name": "lastfm_top",
+        "description": "Charting tracks",
+        "params": {},
+        "get": "https://ws.audioscrobbler.com/2.0/?method=chart.gettoptracks&format=json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "key"
+    },
+    "keywords": [
+      "youtube"
+    ],
+    "id": "youtube",
+    "name": "YouTube Data",
+    "category": "Entertainment",
+    "icon": "▶️",
+    "summary": "Search videos. Needs your YouTube Data API key.",
+    "homepage": "https://developers.google.com/youtube/v3",
+    "setup": "Create a YouTube Data API key.",
+    "setupUrl": "https://console.cloud.google.com/apis/library/youtube.googleapis.com",
+    "tools": [
+      {
+        "name": "youtube_search",
+        "description": "Search YouTube videos",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&q={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "id": "mcp-deepwiki",
+    "name": "DeepWiki",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Ask about a public GitHub repo. No key.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://deepwiki.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.deepwiki.com/mcp",
+    "cors": true,
+    "keywords": [
+      "deepwiki"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-microsoft-learn",
+    "name": "Microsoft Learn",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Search Microsoft docs. No key.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://learn.microsoft.com/api/mcp",
+    "transport": "mcp",
+    "mcp": "https://learn.microsoft.com/api/mcp",
+    "cors": true,
+    "keywords": [
+      "microsoft learn"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-gitmcp",
+    "name": "GitMCP docs",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Library docs from GitMCP. No key.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://gitmcp.io/",
+    "transport": "mcp",
+    "mcp": "https://gitmcp.io/docs",
+    "cors": true,
+    "keywords": [
+      "gitmcp docs"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-context7",
+    "name": "Context7",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Library docs from Context7. No key for the public tools.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://context7.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.context7.com/mcp",
+    "cors": true,
+    "keywords": [
+      "context7"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-huggingface",
+    "name": "Hugging Face MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Hugging Face MCP. Paste a token for account tools.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://huggingface.co/docs/hub/en/hf-mcp",
+    "transport": "mcp",
+    "mcp": "https://huggingface.co/mcp",
+    "cors": true,
+    "keywords": [
+      "hugging face mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-exa",
+    "name": "Exa",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Exa web search. Needs your Exa key for searches.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://exa.ai/",
+    "transport": "mcp",
+    "mcp": "https://mcp.exa.ai/mcp",
+    "cors": true,
+    "keywords": [
+      "exa"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-firecrawl",
+    "name": "Firecrawl",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Firecrawl scrape. Needs your Firecrawl key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.firecrawl.dev/",
+    "transport": "mcp",
+    "mcp": "https://mcp.firecrawl.dev/v2/mcp",
+    "cors": true,
+    "keywords": [
+      "firecrawl"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-github",
+    "name": "GitHub MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official GitHub remote MCP. Sign in or paste a personal access token. The account connector on the Accounts tab is separate and lists repos from the REST API.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://github.com/github/github-mcp-server",
+    "transport": "mcp",
+    "mcp": "https://api.githubcopilot.com/mcp/",
+    "cors": true,
+    "keywords": [
+      "github mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-notion",
+    "name": "Notion",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Notion MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.notion.com/docs/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.notion.com/mcp",
+    "cors": true,
+    "keywords": [
+      "notion"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-linear",
+    "name": "Linear",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Linear MCP. Needs sign-in or an API key.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://linear.app/docs/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.linear.app/mcp",
+    "cors": true,
+    "keywords": [
+      "linear"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-slack",
+    "name": "Slack",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Slack MCP. Needs sign-in. The server blocks browser apps until you set the proxy URL.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.slack.dev/ai/slack-mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.slack.com/mcp",
+    "cors": false,
+    "keywords": [
+      "slack"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-gmail",
+    "name": "Gmail",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Gmail remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://gmailmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "gmail"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-calendar",
+    "name": "Google Calendar",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Calendar remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://calendarmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google calendar"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-drive",
+    "name": "Google Drive",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Drive remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://drivemcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google drive"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-docs",
+    "name": "Google Docs",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Docs remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://docsmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google docs"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-sheets",
+    "name": "Google Sheets",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Sheets remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://sheetsmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google sheets"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-slides",
+    "name": "Google Slides",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Slides remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://slidesmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google slides"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-chat",
+    "name": "Google Chat",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Chat remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://chatmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google chat"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-people",
+    "name": "Google People",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google People remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/people",
+    "transport": "mcp",
+    "mcp": "https://people.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google people"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-classroom",
+    "name": "Google Classroom",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Classroom remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://classroommcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google classroom"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-atlassian",
+    "name": "Atlassian",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Jira and Confluence. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://support.atlassian.com/rovo/docs/atlassian-remote-mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.atlassian.com/v1/mcp",
+    "cors": true,
+    "keywords": [
+      "atlassian"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-figma",
+    "name": "Figma",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Figma MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.figma.com/docs/figma-mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.figma.com/mcp",
+    "cors": true,
+    "keywords": [
+      "figma"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-canva",
+    "name": "Canva",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Canva MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://www.canva.dev/docs/mcp/",
+    "transport": "mcp",
+    "mcp": "https://mcp.canva.com/mcp",
+    "cors": true,
+    "keywords": [
+      "canva"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-gitlab",
+    "name": "GitLab MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official GitLab MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/",
+    "transport": "mcp",
+    "mcp": "https://gitlab.com/api/v4/mcp",
+    "cors": true,
+    "keywords": [
+      "gitlab mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-paypal",
+    "name": "PayPal",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official PayPal MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.paypal.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.paypal.com/mcp",
+    "cors": true,
+    "keywords": [
+      "paypal"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-intercom",
+    "name": "Intercom",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Intercom MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.intercom.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.intercom.com/mcp",
+    "cors": true,
+    "keywords": [
+      "intercom"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-webflow",
+    "name": "Webflow",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Webflow MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.webflow.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.webflow.com/mcp",
+    "cors": true,
+    "keywords": [
+      "webflow"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-square",
+    "name": "Square",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Square MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.squareup.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.squareup.com/mcp",
+    "cors": true,
+    "keywords": [
+      "square"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-netlify",
+    "name": "Netlify MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Netlify MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.netlify.com/ai/mcp/",
+    "transport": "mcp",
+    "mcp": "https://netlify-mcp.netlify.app/mcp",
+    "cors": true,
+    "keywords": [
+      "netlify mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-clickup",
+    "name": "ClickUp",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official ClickUp MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.clickup.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.clickup.com/mcp",
+    "cors": true,
+    "keywords": [
+      "clickup"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-wix",
+    "name": "Wix",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Wix MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://dev.wix.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.wix.com/mcp",
+    "cors": true,
+    "keywords": [
+      "wix"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-miro",
+    "name": "Miro",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Miro MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.miro.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.miro.com/mcp",
+    "cors": true,
+    "keywords": [
+      "miro"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-grafana",
+    "name": "Grafana",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Grafana MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://grafana.com/docs/grafana/latest/datasources/",
+    "transport": "mcp",
+    "mcp": "https://mcp.grafana.com/mcp",
+    "cors": true,
+    "keywords": [
+      "grafana"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-wordpress",
+    "name": "WordPress.com",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "WordPress.com MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.wordpress.com/",
+    "transport": "mcp",
+    "mcp": "https://public-api.wordpress.com/wpcom/v2/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "wordpress.com"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-sentry",
+    "name": "Sentry",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Sentry MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.sentry.io/product/sentry-mcp/",
+    "transport": "mcp",
+    "mcp": "https://mcp.sentry.dev/mcp",
+    "cors": false,
+    "keywords": [
+      "sentry"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-stripe",
+    "name": "Stripe MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Stripe MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.stripe.com/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.stripe.com",
+    "cors": false,
+    "keywords": [
+      "stripe mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-supabase",
+    "name": "Supabase",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Supabase MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://supabase.com/docs/guides/getting-started/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.supabase.com/mcp",
+    "cors": false,
+    "keywords": [
+      "supabase"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-asana",
+    "name": "Asana",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Asana MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.asana.com/docs/using-asanas-mcp-server",
+    "transport": "mcp",
+    "mcp": "https://mcp.asana.com/v2/mcp",
+    "cors": false,
+    "keywords": [
+      "asana"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-hubspot",
+    "name": "HubSpot",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official HubSpot MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.hubspot.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.hubspot.com",
+    "cors": false,
+    "keywords": [
+      "hubspot"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-monday",
+    "name": "monday.com",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "monday.com MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.monday.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.monday.com/mcp",
+    "cors": false,
+    "keywords": [
+      "monday.com"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-vercel",
+    "name": "Vercel",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Vercel MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://vercel.com/docs/agent-resources/vercel-mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.vercel.com",
+    "cors": false,
+    "keywords": [
+      "vercel"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-neon",
+    "name": "Neon",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Neon MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://neon.tech/docs/ai/neon-mcp-server",
+    "transport": "mcp",
+    "mcp": "https://mcp.neon.tech/mcp",
+    "cors": false,
+    "keywords": [
+      "neon"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-airtable",
+    "name": "Airtable",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Airtable MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://airtable.com/developers",
+    "transport": "mcp",
+    "mcp": "https://mcp.airtable.com/mcp",
+    "cors": false,
+    "keywords": [
+      "airtable"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-todoist",
+    "name": "Todoist",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Todoist MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developer.todoist.com/",
+    "transport": "mcp",
+    "mcp": "https://ai.todoist.net/mcp",
+    "cors": false,
+    "keywords": [
+      "todoist"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-perplexity",
+    "name": "Perplexity",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Perplexity MCP. Needs your API key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.perplexity.ai/",
+    "transport": "mcp",
+    "mcp": "https://api.perplexity.ai/mcp",
+    "cors": true,
+    "keywords": [
+      "perplexity"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-posthog",
+    "name": "PostHog",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "PostHog MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://posthog.com/docs/model-context-protocol",
+    "transport": "mcp",
+    "mcp": "https://mcp.posthog.com/mcp",
+    "cors": false,
+    "keywords": [
+      "posthog"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-prisma",
+    "name": "Prisma",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Prisma MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.prisma.io/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.prisma.io/mcp",
+    "cors": false,
+    "keywords": [
+      "prisma"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-cloudflare",
+    "name": "Cloudflare API",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Cloudflare API MCP. Needs your token. The server rejects this site’s browser origin, so use the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
+    "transport": "mcp",
+    "mcp": "https://mcp.cloudflare.com/mcp",
+    "cors": false,
+    "keywords": [
+      "cloudflare api"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-pagerduty",
+    "name": "PagerDuty",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "PagerDuty MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developer.pagerduty.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.pagerduty.com/mcp",
+    "cors": true,
+    "keywords": [
+      "pagerduty"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-sanity",
+    "name": "Sanity",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Sanity MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.sanity.io/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.sanity.io/mcp",
+    "cors": true,
+    "keywords": [
+      "sanity"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-algolia",
+    "name": "Algolia",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Algolia MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.algolia.com/doc/",
+    "transport": "mcp",
+    "mcp": "https://mcp.algolia.com/mcp",
+    "cors": false,
+    "keywords": [
+      "algolia"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-mongodb",
+    "name": "MongoDB",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "MongoDB MCP. Needs your connection token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.mongodb.com/docs/mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.mongodb.com/mcp",
+    "cors": false,
+    "keywords": [
+      "mongodb"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-upstash",
+    "name": "Upstash",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Upstash MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://upstash.com/docs/redis/howto/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.upstash.com/mcp",
+    "cors": true,
+    "keywords": [
+      "upstash"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-resend",
+    "name": "Resend",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Resend MCP. Needs your API key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://resend.com/docs/mcp",
+    "transport": "mcp",
+    "mcp": "https://api.resend.com/mcp",
+    "cors": false,
+    "keywords": [
+      "resend"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-mailchimp",
+    "name": "Mailchimp",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Mailchimp MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://mailchimp.com/developer/",
+    "transport": "mcp",
+    "mcp": "https://mcp.mailchimp.com/mcp",
+    "cors": true,
+    "keywords": [
+      "mailchimp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-amplitude",
+    "name": "Amplitude",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Amplitude MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://amplitude.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.amplitude.com/mcp",
+    "cors": true,
+    "keywords": [
+      "amplitude"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-mixpanel",
+    "name": "Mixpanel",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Mixpanel MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.mixpanel.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.mixpanel.com/mcp",
+    "cors": true,
+    "keywords": [
+      "mixpanel"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-workos",
+    "name": "WorkOS",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "WorkOS MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://workos.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.workos.com/mcp",
+    "cors": true,
+    "keywords": [
+      "workos"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-stytch",
+    "name": "Stytch",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Stytch MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://stytch.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.stytch.dev/mcp",
+    "cors": true,
+    "keywords": [
+      "stytch"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-descope",
+    "name": "Descope",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Descope MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.descope.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.descope.com/mcp",
+    "cors": true,
+    "keywords": [
+      "descope"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-postman",
+    "name": "Postman",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Postman MCP. Needs your API key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://learning.postman.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.postman.com/mcp",
+    "cors": true,
+    "keywords": [
+      "postman"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-shortcut",
+    "name": "Shortcut",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Shortcut MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developer.shortcut.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.shortcut.com/mcp",
+    "cors": true,
+    "keywords": [
+      "shortcut"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-browserstack",
+    "name": "BrowserStack",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "BrowserStack MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.browserstack.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.browserstack.com/mcp",
+    "cors": true,
+    "keywords": [
+      "browserstack"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-lambdatest",
+    "name": "LambdaTest",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "LambdaTest MCP. Needs your key for uploads.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.lambdatest.com/support/docs/",
+    "transport": "mcp",
+    "mcp": "https://mcp.lambdatest.com/mcp",
+    "cors": true,
+    "keywords": [
+      "lambdatest"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-productboard",
+    "name": "Productboard",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Productboard MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developer.productboard.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.productboard.com/mcp",
+    "cors": true,
+    "keywords": [
+      "productboard"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-jam",
+    "name": "Jam",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Jam MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://jam.dev/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.jam.dev/mcp",
+    "cors": false,
+    "keywords": [
+      "jam"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-heroku",
+    "name": "Heroku",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Heroku MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://devcenter.heroku.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.heroku.com/mcp",
+    "cors": false,
+    "keywords": [
+      "heroku"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-render",
+    "name": "Render",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Render MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://render.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.render.com/mcp",
+    "cors": false,
+    "keywords": [
+      "render"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-railway",
+    "name": "Railway",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Railway MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.railway.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.railway.com/mcp",
+    "cors": false,
+    "keywords": [
+      "railway"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-digitalocean",
+    "name": "DigitalOcean",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "DigitalOcean MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.digitalocean.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.digitalocean.com/mcp",
+    "cors": false,
+    "keywords": [
+      "digitalocean"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-buildkite",
+    "name": "Buildkite",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Buildkite MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://buildkite.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.buildkite.com/mcp",
+    "cors": true,
+    "keywords": [
+      "buildkite"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-circleci",
+    "name": "CircleCI",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "CircleCI MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://circleci.com/docs/",
+    "transport": "mcp",
+    "mcp": "https://mcp.circleci.com/v1/mcp",
+    "cors": false,
+    "keywords": [
+      "circleci"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-contentful",
+    "name": "Contentful",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Contentful MCP. Needs your token.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.contentful.com/developers/docs/",
+    "transport": "mcp",
+    "mcp": "https://mcp.contentful.com/mcp",
+    "cors": true,
+    "keywords": [
+      "contentful"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-cal",
+    "name": "Cal.com",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Cal.com MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://cal.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.cal.com/mcp",
+    "cors": true,
+    "keywords": [
+      "cal.com"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-klaviyo",
+    "name": "Klaviyo",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Klaviyo MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.klaviyo.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.klaviyo.com/mcp",
+    "cors": true,
+    "keywords": [
+      "klaviyo"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-customerio",
+    "name": "Customer.io",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Customer.io MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.customer.io/",
+    "transport": "mcp",
+    "mcp": "https://mcp.customer.io/mcp",
+    "cors": true,
+    "keywords": [
+      "customer.io"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-datadog",
+    "name": "Datadog",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Datadog MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.datadoghq.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.datadoghq.com/api/unstable/mcp-server/mcp",
+    "cors": false,
+    "keywords": [
+      "datadog"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-honeycomb",
+    "name": "Honeycomb",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Honeycomb MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.honeycomb.io/",
+    "transport": "mcp",
+    "mcp": "https://mcp.honeycomb.io/mcp",
+    "cors": false,
+    "keywords": [
+      "honeycomb"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-axiom",
+    "name": "Axiom",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Axiom MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://axiom.co/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.axiom.co/mcp",
+    "cors": false,
+    "keywords": [
+      "axiom"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-newrelic",
+    "name": "New Relic",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "New Relic MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.newrelic.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.newrelic.com/mcp",
+    "cors": false,
+    "keywords": [
+      "new relic"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-alchemy",
+    "name": "Alchemy",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Alchemy MCP. Needs your key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.alchemy.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.alchemy.com/mcp",
+    "cors": true,
+    "keywords": [
+      "alchemy"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-quicknode",
+    "name": "QuickNode",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "QuickNode MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.quicknode.com/docs",
+    "transport": "mcp",
+    "mcp": "https://mcp.quicknode.com/mcp",
+    "cors": false,
+    "keywords": [
+      "quicknode"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-plaid",
+    "name": "Plaid",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Plaid MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://plaid.com/docs/",
+    "transport": "mcp",
+    "mcp": "https://mcp.plaid.com/mcp",
+    "cors": false,
+    "keywords": [
+      "plaid"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-wise",
+    "name": "Wise",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Wise MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.wise.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.wise.com/mcp",
+    "cors": false,
+    "keywords": [
+      "wise"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-squarespace",
+    "name": "Squarespace",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Squarespace MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.squarespace.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.squarespace.com/mcp",
+    "cors": false,
+    "keywords": [
+      "squarespace"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-framer",
+    "name": "Framer",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Framer MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://www.framer.com/developers/",
+    "transport": "mcp",
+    "mcp": "https://mcp.framer.com/mcp",
+    "cors": false,
+    "keywords": [
+      "framer"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-semgrep",
+    "name": "Semgrep",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Semgrep MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://semgrep.dev/docs/",
+    "transport": "mcp",
+    "mcp": "https://mcp.semgrep.ai/mcp",
+    "cors": false,
+    "keywords": [
+      "semgrep"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-ngrok",
+    "name": "ngrok",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "ngrok MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://ngrok.com/docs/",
+    "transport": "mcp",
+    "mcp": "https://mcp.ngrok.com/mcp",
+    "cors": false,
+    "keywords": [
+      "ngrok"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-box",
+    "name": "Box",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Box MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.box.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.box.com",
+    "cors": false,
+    "keywords": [
+      "box"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-zapier",
+    "name": "Zapier",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Zapier MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.zapier.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.zapier.com/api/mcp/mcp",
+    "cors": false,
+    "keywords": [
+      "zapier"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-aws-knowledge",
+    "name": "AWS knowledge",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "AWS knowledge MCP answered without a key. Browser calls need the proxy.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://aws.amazon.com/blogs/machine-learning/",
+    "transport": "mcp",
+    "mcp": "https://knowledge-mcp.global.api.aws",
+    "cors": false,
+    "keywords": [
+      "aws knowledge"
+    ],
+    "tools": []
+  }
+]
