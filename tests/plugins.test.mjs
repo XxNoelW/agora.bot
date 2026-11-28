@@ -30,8 +30,10 @@ function jsonResponse(data, status = 200) {
   };
 }
 
-test('the catalog is a large store of real connectors', () => {
-  assert.ok(catalog.length >= 200, `expected at least 200 plugins, got ${catalog.length}`);
+test('the catalog is a curated set of real connectors', () => {
+  assert.ok(catalog.length >= 80 && catalog.length <= 120, `expected 80-120 plugins, got ${catalog.length}`);
+  assert.equal(catalog.some((plugin) => plugin.id === 'wiki-zh'), false);
+  assert.equal(catalog.filter((plugin) => plugin.id === 'wikipedia').length, 1);
   const ids = new Set();
   const tools = new Set();
   for (const plugin of catalog) {
@@ -57,7 +59,8 @@ test('the catalog is a large store of real connectors', () => {
     }
   }
   assert.equal(JSON.stringify(catalog).includes('github_pat_'), false);
-  assert.ok(catalog.some((plugin) => plugin.id === 'weather' && plugin.needs === 'none'));
+  assert.ok(catalog.some((plugin) => plugin.id === 'weather' && plugin.tools.some((tool) => tool.name === 'weather_now')));
+  assert.ok(catalog.some((plugin) => plugin.id === 'wikipedia' && plugin.tools.some((tool) => tool.name === 'wiki_en_search')));
   assert.ok(catalog.some((plugin) => plugin.id === 'mcp-deepwiki' && plugin.needs === 'none'));
   assert.ok(catalog.some((plugin) => plugin.id === 'mcp-github' && plugin.needs === 'signin'));
   assert.ok(catalog.some((plugin) => plugin.id === 'mcp-slack' && plugin.cors === false));
@@ -158,10 +161,6 @@ test('the worker refuses hosts that are not on the list and answers MCP initiali
 });
 
 test('client connectors answer from the network', async () => {
-  const words = catalog.find((item) => item.id === 'thesaurus');
-  const synonyms = await http.runHttpTool(words, words.tools[0], { word: 'happy' });
-  assert.match(synonyms, /glad|joyful|cheerful/i);
-
   const money = catalog.find((item) => item.id === 'currency');
   const rate = await http.runHttpTool(money, money.tools[0], { from: 'USD', to: 'EUR' });
   assert.match(rate, /EUR/);

@@ -1,0 +1,1404 @@
+[
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikipedia",
+      "wiki"
+    ],
+    "id": "wikipedia",
+    "name": "Wikipedia",
+    "category": "Reference",
+    "icon": "📚",
+    "summary": "Search and read English Wikipedia. No key.",
+    "homepage": "https://en.wikipedia.org/",
+    "tools": [
+      {
+        "name": "wiki_en_search",
+        "description": "Search English Wikipedia",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=5&namespace=0&format=json&origin=*",
+        "present": "opensearch"
+      },
+      {
+        "name": "wiki_en_summary",
+        "description": "Read a English Wikipedia summary",
+        "params": {
+          "title": "Article title"
+        },
+        "get": "https://en.wikipedia.org/api/rest_v1/page/summary/{title}",
+        "present": "wiki"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "wikidata"
+    ],
+    "id": "wikidata",
+    "name": "Wikidata",
+    "category": "Reference",
+    "icon": "🗃️",
+    "summary": "Search Wikidata entities. No key.",
+    "homepage": "https://www.wikidata.org/",
+    "tools": [
+      {
+        "name": "wikidata_search",
+        "description": "Search Wikidata",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://www.wikidata.org/w/api.php?action=wbsearchentities&search={query}&language=en&format=json&limit=5&origin=*",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "define",
+      "definition",
+      "dictionary"
+    ],
+    "id": "dictionary",
+    "name": "Dictionary",
+    "category": "Language",
+    "icon": "📘",
+    "summary": "English definitions from Wiktionary. No key.",
+    "homepage": "https://en.wiktionary.org/",
+    "tools": [
+      {
+        "name": "define_word",
+        "description": "Define an English word",
+        "params": {
+          "word": "Word to define"
+        },
+        "get": "https://en.wiktionary.org/api/rest_v1/page/definition/{word}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "translate",
+      "translation"
+    ],
+    "id": "translate",
+    "name": "Translate",
+    "category": "Language",
+    "icon": "🌐",
+    "summary": "Short translations through the public Google translate endpoint. No key.",
+    "homepage": "https://translate.googleapis.com/",
+    "tools": [
+      {
+        "name": "translate_text",
+        "description": "Translate a short phrase. Use language codes such as en and es.",
+        "params": {
+          "text": "Text",
+          "to": "Target language code",
+          "from": "Source language code"
+        },
+        "get": "https://translate.googleapis.com/translate_a/single?client=gtx&sl={from}&tl={to}&dt=t&q={text}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "weather",
+      "forecast",
+      "temperature"
+    ],
+    "id": "weather",
+    "name": "Weather",
+    "category": "Weather",
+    "icon": "☀️",
+    "summary": "Current weather from Open-Meteo. No key.",
+    "homepage": "https://open-meteo.com/",
+    "tools": [
+      {
+        "name": "weather_now",
+        "description": "Current weather for a city",
+        "params": {
+          "city": "City name"
+        },
+        "steps": [
+          {
+            "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+            "as": "geo"
+          },
+          {
+            "url": "https://api.open-meteo.com/v1/forecast?latitude={geo.results.0.latitude}&longitude={geo.results.0.longitude}&current=temperature_2m,weather_code,wind_speed_10m&timezone=auto",
+            "as": "wx"
+          }
+        ],
+        "present": "weather"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "air quality"
+    ],
+    "id": "air-quality",
+    "name": "Air quality",
+    "category": "Weather",
+    "icon": "🌬️",
+    "summary": "Air quality from Open-Meteo. No key.",
+    "homepage": "https://open-meteo.com/",
+    "tools": [
+      {
+        "name": "air_quality_city",
+        "description": "Air quality for a city",
+        "params": {
+          "city": "City name"
+        },
+        "steps": [
+          {
+            "url": "https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1&language=en&format=json",
+            "as": "geo"
+          },
+          {
+            "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude={geo.results.0.latitude}&longitude={geo.results.0.longitude}&current=us_aqi,pm2_5,pm10,ozone",
+            "as": "out"
+          }
+        ],
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "geocode",
+      "coordinates",
+      "latitude"
+    ],
+    "id": "geocode",
+    "name": "Geocoding",
+    "category": "Maps",
+    "icon": "📍",
+    "summary": "Find a place with Open-Meteo geocoding. No key.",
+    "homepage": "https://open-meteo.com/en/docs/geocoding-api",
+    "tools": [
+      {
+        "name": "geocode_place",
+        "description": "Latitude and longitude for a place name",
+        "params": {
+          "place": "Place name"
+        },
+        "get": "https://geocoding-api.open-meteo.com/v1/search?name={place}&count=3&language=en&format=json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "currency",
+      "exchange rate",
+      "convert money"
+    ],
+    "id": "currency",
+    "name": "Currency",
+    "category": "Money",
+    "icon": "💱",
+    "summary": "Exchange rates from the European Central Bank via Frankfurter. No key.",
+    "homepage": "https://www.frankfurter.app/",
+    "tools": [
+      {
+        "name": "exchange_rate",
+        "description": "Latest rate between two currency codes",
+        "params": {
+          "from": "From code such as USD",
+          "to": "To code such as EUR"
+        },
+        "get": "https://api.frankfurter.app/latest?from={from}&to={to}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "country",
+      "capital",
+      "population"
+    ],
+    "id": "countries",
+    "name": "Countries",
+    "category": "Reference",
+    "icon": "🏳️",
+    "summary": "Country facts from REST Countries. No key.",
+    "homepage": "https://restcountries.com/",
+    "tools": [
+      {
+        "name": "country_facts",
+        "description": "Facts for a country code",
+        "params": {
+          "code": "ISO code such as JP"
+        },
+        "get": "https://restcountries.com/v3.1/alpha/{code}?fields=name,capital,population,region,languages,currencies",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "holiday",
+      "holidays"
+    ],
+    "id": "holidays",
+    "name": "Public holidays",
+    "category": "Time",
+    "icon": "🎉",
+    "summary": "Public holidays from Nager.Date. No key.",
+    "homepage": "https://date.nager.at/",
+    "tools": [
+      {
+        "name": "public_holidays",
+        "description": "Public holidays for a country code and year",
+        "params": {
+          "country": "Country code such as US",
+          "year": "Year such as 2026"
+        },
+        "get": "https://date.nager.at/api/v3/PublicHolidays/{year}/{country}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "time zone",
+      "timezone",
+      "what time"
+    ],
+    "id": "clock",
+    "name": "Clock",
+    "category": "Time",
+    "icon": "🕒",
+    "summary": "Local time and time in a named time zone. No network.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat",
+    "local": "time",
+    "tools": [
+      {
+        "name": "time_now",
+        "description": "The current local date and time",
+        "params": {}
+      },
+      {
+        "name": "time_in",
+        "description": "The current time in a time zone",
+        "params": {
+          "zone": "Time zone such as Europe/Paris"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "calculate",
+      "calculator",
+      "math"
+    ],
+    "id": "calculator",
+    "name": "Calculator",
+    "category": "Utilities",
+    "icon": "🧮",
+    "summary": "Arithmetic in the browser. No network.",
+    "homepage": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators",
+    "local": "calc",
+    "tools": [
+      {
+        "name": "calculate",
+        "description": "Evaluate a math expression",
+        "params": {
+          "expression": "Expression such as (2+3)*4"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "convert",
+      "unit",
+      "celsius",
+      "fahrenheit",
+      "kilometer"
+    ],
+    "id": "units",
+    "name": "Unit conversion",
+    "category": "Utilities",
+    "icon": "📏",
+    "summary": "Convert length, mass, temperature, and time. No network.",
+    "homepage": "https://en.wikipedia.org/wiki/Conversion_of_units",
+    "local": "units",
+    "tools": [
+      {
+        "name": "convert_units",
+        "description": "Convert a measurement",
+        "params": {
+          "amount": "Number",
+          "from": "From unit",
+          "to": "To unit"
+        }
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "duckduckgo",
+      "instant answer"
+    ],
+    "id": "duckduckgo",
+    "name": "Instant answer",
+    "category": "Reference",
+    "icon": "🦆",
+    "summary": "DuckDuckGo instant answer. No key. Many queries have no summary.",
+    "homepage": "https://duckduckgo.com/api",
+    "tools": [
+      {
+        "name": "ddg_instant",
+        "description": "DuckDuckGo instant answer",
+        "params": {
+          "query": "Query"
+        },
+        "get": "https://api.duckduckgo.com/?q={query}&format=json&no_html=1&skip_disambig=1",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "read page",
+      "jina"
+    ],
+    "id": "url-reader",
+    "name": "Page reader",
+    "category": "Reference",
+    "icon": "📄",
+    "summary": "Read a public page through the Jina reader. No key.",
+    "homepage": "https://jina.ai/reader/",
+    "tools": [
+      {
+        "name": "read_url",
+        "description": "Read the text of a public https page",
+        "params": {
+          "url": "https link"
+        },
+        "get": "https://r.jina.ai/{url}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "hacker news"
+    ],
+    "id": "hacker-news",
+    "name": "Hacker News",
+    "category": "News",
+    "icon": "🟧",
+    "summary": "Search Hacker News. No key.",
+    "homepage": "https://hn.algolia.com/api",
+    "tools": [
+      {
+        "name": "hn_search",
+        "description": "Search Hacker News",
+        "params": {
+          "query": "Query"
+        },
+        "get": "https://hn.algolia.com/api/v1/search?query={query}&hitsPerPage=5",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "npm package"
+    ],
+    "id": "npm",
+    "name": "npm",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a npm package. No key.",
+    "homepage": "https://github.com/npm/registry/blob/master/docs/REGISTRY-API.md",
+    "tools": [
+      {
+        "name": "npm_lookup",
+        "description": "Look up a npm package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://registry.npmjs.org/{name}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "pypi"
+    ],
+    "id": "pypi",
+    "name": "PyPI",
+    "category": "Developer",
+    "icon": "📦",
+    "summary": "Look up a PyPI package. No key.",
+    "homepage": "https://warehouse.pypa.io/api-reference/json.html",
+    "tools": [
+      {
+        "name": "pypi_lookup",
+        "description": "Look up a PyPI package",
+        "params": {
+          "name": "Package name"
+        },
+        "get": "https://pypi.org/pypi/{name}/json",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "public repo",
+      "github repo"
+    ],
+    "id": "github-public",
+    "name": "Public GitHub repo",
+    "category": "Developer",
+    "icon": "🐙",
+    "summary": "Read a public GitHub repository. No key. Your signed-in account is a separate connector.",
+    "homepage": "https://docs.github.com/rest",
+    "tools": [
+      {
+        "name": "public_github_repo",
+        "description": "Read a public repo such as mlc-ai/web-llm",
+        "params": {
+          "owner": "Owner",
+          "repo": "Repository"
+        },
+        "get": "https://api.github.com/repos/{owner}/{repo}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "none",
+    "needs": "none",
+    "keywords": [
+      "stack overflow",
+      "stackoverflow"
+    ],
+    "id": "stackoverflow",
+    "name": "Stack Overflow",
+    "category": "Developer",
+    "icon": "📚",
+    "summary": "Search Stack Overflow. No key.",
+    "homepage": "https://api.stackexchange.com/docs",
+    "tools": [
+      {
+        "name": "so_search",
+        "description": "Search Stack Overflow",
+        "params": {
+          "query": "Query"
+        },
+        "get": "https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q={query}&site=stackoverflow&pagesize=3",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "id": "feed-bbc-world",
+    "name": "BBC World",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from BBC World. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.bbc.com/news",
+    "keywords": [
+      "bbc",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_bbc_world",
+        "description": "Latest BBC World headlines",
+        "params": {},
+        "get": "https://feeds.bbci.co.uk/news/world/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-npr",
+    "name": "NPR News",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from NPR News. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.npr.org/",
+    "keywords": [
+      "npr",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_npr",
+        "description": "Latest NPR News headlines",
+        "params": {},
+        "get": "https://feeds.npr.org/1001/rss.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-guardian-world",
+    "name": "The Guardian World",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from The Guardian World. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://www.theguardian.com/world",
+    "keywords": [
+      "guardian",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_guardian_world",
+        "description": "Latest The Guardian World headlines",
+        "params": {},
+        "get": "https://www.theguardian.com/world/rss",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "id": "feed-nyt-world",
+    "name": "New York Times World",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from New York Times World. No key.",
+    "auth": "none",
+    "needs": "none",
+    "via": "direct",
+    "homepage": "https://www.nytimes.com/section/world",
+    "keywords": [
+      "new york times",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_nyt_world",
+        "description": "Latest New York Times World headlines",
+        "params": {},
+        "get": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+        "present": "rss"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "token"
+    },
+    "keywords": [
+      "finnhub",
+      "stock quote"
+    ],
+    "id": "finnhub",
+    "name": "Finnhub",
+    "category": "Money",
+    "icon": "📊",
+    "summary": "A stock quote. Needs your Finnhub key.",
+    "homepage": "https://finnhub.io/docs/api",
+    "setup": "Create a Finnhub key.",
+    "setupUrl": "https://finnhub.io/register",
+    "tools": [
+      {
+        "name": "stock_quote",
+        "description": "A stock quote by symbol",
+        "params": {
+          "symbol": "Ticker such as AAPL"
+        },
+        "get": "https://finnhub.io/api/v1/quote?symbol={symbol}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "auth": "key",
+    "needs": "key",
+    "key": {
+      "in": "query",
+      "name": "key"
+    },
+    "keywords": [
+      "youtube"
+    ],
+    "id": "youtube",
+    "name": "YouTube Data",
+    "category": "Entertainment",
+    "icon": "▶️",
+    "summary": "Search videos. Needs your YouTube Data API key.",
+    "homepage": "https://developers.google.com/youtube/v3",
+    "setup": "Create a YouTube Data API key.",
+    "setupUrl": "https://console.cloud.google.com/apis/library/youtube.googleapis.com",
+    "tools": [
+      {
+        "name": "youtube_search",
+        "description": "Search YouTube videos",
+        "params": {
+          "query": "Search words"
+        },
+        "get": "https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=3&q={query}",
+        "present": "auto"
+      }
+    ]
+  },
+  {
+    "id": "mcp-deepwiki",
+    "name": "DeepWiki",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Ask about a public GitHub repo. No key.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://deepwiki.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.deepwiki.com/mcp",
+    "cors": true,
+    "keywords": [
+      "deepwiki"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-microsoft-learn",
+    "name": "Microsoft Learn",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Search Microsoft docs. No key.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://learn.microsoft.com/api/mcp",
+    "transport": "mcp",
+    "mcp": "https://learn.microsoft.com/api/mcp",
+    "cors": true,
+    "keywords": [
+      "microsoft learn"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-gitmcp",
+    "name": "GitMCP docs",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Library docs from GitMCP. No key.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://gitmcp.io/",
+    "transport": "mcp",
+    "mcp": "https://gitmcp.io/docs",
+    "cors": true,
+    "keywords": [
+      "gitmcp docs"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-context7",
+    "name": "Context7",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Library docs from Context7. No key for the public tools.",
+    "auth": "none",
+    "needs": "none",
+    "homepage": "https://context7.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.context7.com/mcp",
+    "cors": true,
+    "keywords": [
+      "context7"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-huggingface",
+    "name": "Hugging Face MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Hugging Face MCP. Paste a token for account tools.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://huggingface.co/docs/hub/en/hf-mcp",
+    "transport": "mcp",
+    "mcp": "https://huggingface.co/mcp",
+    "cors": true,
+    "keywords": [
+      "hugging face mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-exa",
+    "name": "Exa",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Exa web search. Needs your Exa key for searches.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://exa.ai/",
+    "transport": "mcp",
+    "mcp": "https://mcp.exa.ai/mcp",
+    "cors": true,
+    "keywords": [
+      "exa"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-firecrawl",
+    "name": "Firecrawl",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Firecrawl scrape. Needs your Firecrawl key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.firecrawl.dev/",
+    "transport": "mcp",
+    "mcp": "https://mcp.firecrawl.dev/v2/mcp",
+    "cors": true,
+    "keywords": [
+      "firecrawl"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-github",
+    "name": "GitHub MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official GitHub remote MCP. Sign in or paste a personal access token. The account connector on the Accounts tab is separate and lists repos from the REST API.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://github.com/github/github-mcp-server",
+    "transport": "mcp",
+    "mcp": "https://api.githubcopilot.com/mcp/",
+    "cors": true,
+    "keywords": [
+      "github mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-notion",
+    "name": "Notion",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Notion MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.notion.com/docs/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.notion.com/mcp",
+    "cors": true,
+    "keywords": [
+      "notion"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-linear",
+    "name": "Linear",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Linear MCP. Needs sign-in or an API key.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://linear.app/docs/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.linear.app/mcp",
+    "cors": true,
+    "keywords": [
+      "linear"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-slack",
+    "name": "Slack",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Slack MCP. Needs sign-in. The server blocks browser apps until you set the proxy URL.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.slack.dev/ai/slack-mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.slack.com/mcp",
+    "cors": false,
+    "keywords": [
+      "slack"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-gmail",
+    "name": "Gmail",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Gmail remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://gmailmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "gmail"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-calendar",
+    "name": "Google Calendar",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Calendar remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://calendarmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google calendar"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-drive",
+    "name": "Google Drive",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Drive remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://drivemcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google drive"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-docs",
+    "name": "Google Docs",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Docs remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://docsmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google docs"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-sheets",
+    "name": "Google Sheets",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Sheets remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://sheetsmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google sheets"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-slides",
+    "name": "Google Slides",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Google Slides remote MCP. Needs Google sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.google.com/workspace",
+    "transport": "mcp",
+    "mcp": "https://slidesmcp.googleapis.com/mcp/v1",
+    "cors": true,
+    "keywords": [
+      "google slides"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-atlassian",
+    "name": "Atlassian",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Jira and Confluence. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://support.atlassian.com/rovo/docs/atlassian-remote-mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.atlassian.com/v1/mcp",
+    "cors": true,
+    "keywords": [
+      "atlassian"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-figma",
+    "name": "Figma",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Figma MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.figma.com/docs/figma-mcp-server/",
+    "transport": "mcp",
+    "mcp": "https://mcp.figma.com/mcp",
+    "cors": true,
+    "keywords": [
+      "figma"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-canva",
+    "name": "Canva",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Canva MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://www.canva.dev/docs/mcp/",
+    "transport": "mcp",
+    "mcp": "https://mcp.canva.com/mcp",
+    "cors": true,
+    "keywords": [
+      "canva"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-gitlab",
+    "name": "GitLab MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official GitLab MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/",
+    "transport": "mcp",
+    "mcp": "https://gitlab.com/api/v4/mcp",
+    "cors": true,
+    "keywords": [
+      "gitlab mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-paypal",
+    "name": "PayPal",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official PayPal MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.paypal.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.paypal.com/mcp",
+    "cors": true,
+    "keywords": [
+      "paypal"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-intercom",
+    "name": "Intercom",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Intercom MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.intercom.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.intercom.com/mcp",
+    "cors": true,
+    "keywords": [
+      "intercom"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-netlify",
+    "name": "Netlify MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Netlify MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.netlify.com/ai/mcp/",
+    "transport": "mcp",
+    "mcp": "https://netlify-mcp.netlify.app/mcp",
+    "cors": true,
+    "keywords": [
+      "netlify mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-clickup",
+    "name": "ClickUp",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official ClickUp MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.clickup.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.clickup.com/mcp",
+    "cors": true,
+    "keywords": [
+      "clickup"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-sentry",
+    "name": "Sentry",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Sentry MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.sentry.io/product/sentry-mcp/",
+    "transport": "mcp",
+    "mcp": "https://mcp.sentry.dev/mcp",
+    "cors": false,
+    "keywords": [
+      "sentry"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-stripe",
+    "name": "Stripe MCP",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Stripe MCP. Needs your key. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.stripe.com/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.stripe.com",
+    "cors": false,
+    "keywords": [
+      "stripe mcp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-supabase",
+    "name": "Supabase",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Supabase MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://supabase.com/docs/guides/getting-started/mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.supabase.com/mcp",
+    "cors": false,
+    "keywords": [
+      "supabase"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-asana",
+    "name": "Asana",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Asana MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.asana.com/docs/using-asanas-mcp-server",
+    "transport": "mcp",
+    "mcp": "https://mcp.asana.com/v2/mcp",
+    "cors": false,
+    "keywords": [
+      "asana"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-hubspot",
+    "name": "HubSpot",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official HubSpot MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developers.hubspot.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.hubspot.com",
+    "cors": false,
+    "keywords": [
+      "hubspot"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-monday",
+    "name": "monday.com",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "monday.com MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.monday.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.monday.com/mcp",
+    "cors": false,
+    "keywords": [
+      "monday.com"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-vercel",
+    "name": "Vercel",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Vercel MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://vercel.com/docs/agent-resources/vercel-mcp",
+    "transport": "mcp",
+    "mcp": "https://mcp.vercel.com",
+    "cors": false,
+    "keywords": [
+      "vercel"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-neon",
+    "name": "Neon",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Official Neon MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://neon.tech/docs/ai/neon-mcp-server",
+    "transport": "mcp",
+    "mcp": "https://mcp.neon.tech/mcp",
+    "cors": false,
+    "keywords": [
+      "neon"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-airtable",
+    "name": "Airtable",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Airtable MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://airtable.com/developers",
+    "transport": "mcp",
+    "mcp": "https://mcp.airtable.com/mcp",
+    "cors": false,
+    "keywords": [
+      "airtable"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-todoist",
+    "name": "Todoist",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Todoist MCP. Needs your token. Browser calls need the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developer.todoist.com/",
+    "transport": "mcp",
+    "mcp": "https://ai.todoist.net/mcp",
+    "cors": false,
+    "keywords": [
+      "todoist"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-perplexity",
+    "name": "Perplexity",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Perplexity MCP. Needs your API key.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://docs.perplexity.ai/",
+    "transport": "mcp",
+    "mcp": "https://api.perplexity.ai/mcp",
+    "cors": true,
+    "keywords": [
+      "perplexity"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-cloudflare",
+    "name": "Cloudflare API",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Cloudflare API MCP. Needs your token. The server rejects this site’s browser origin, so use the proxy.",
+    "auth": "bearer",
+    "needs": "key",
+    "homepage": "https://developers.cloudflare.com/agents/model-context-protocol/mcp-servers-for-cloudflare/",
+    "transport": "mcp",
+    "mcp": "https://mcp.cloudflare.com/mcp",
+    "cors": false,
+    "keywords": [
+      "cloudflare api"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-mailchimp",
+    "name": "Mailchimp",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Mailchimp MCP. Needs sign-in.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://mailchimp.com/developer/",
+    "transport": "mcp",
+    "mcp": "https://mcp.mailchimp.com/mcp",
+    "cors": true,
+    "keywords": [
+      "mailchimp"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-box",
+    "name": "Box",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Box MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://developer.box.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.box.com",
+    "cors": false,
+    "keywords": [
+      "box"
+    ],
+    "tools": []
+  },
+  {
+    "id": "mcp-zapier",
+    "name": "Zapier",
+    "category": "Accounts",
+    "icon": "🔌",
+    "summary": "Zapier MCP. Needs sign-in. Browser calls need the proxy.",
+    "auth": "oauth",
+    "needs": "signin",
+    "homepage": "https://docs.zapier.com/",
+    "transport": "mcp",
+    "mcp": "https://mcp.zapier.com/api/mcp/mcp",
+    "cors": false,
+    "keywords": [
+      "zapier"
+    ],
+    "tools": []
+  },
+  {
+    "id": "feed-ars",
+    "name": "Ars Technica",
+    "category": "News",
+    "icon": "📰",
+    "summary": "Latest headlines from Ars Technica. Needs the Agora proxy because the feed blocks browser apps.",
+    "auth": "none",
+    "needs": "proxy",
+    "via": "proxy",
+    "homepage": "https://arstechnica.com/",
+    "keywords": [
+      "ars technica",
+      "headlines"
+    ],
+    "tools": [
+      {
+        "name": "feed_ars",
+        "description": "Latest Ars Technica headlines",
+        "params": {},
+        "get": "https://feeds.arstechnica.com/arstechnica/index",
+        "present": "rss"
+      }
+    ]
+  }
+]
