@@ -20,6 +20,11 @@ const TOOL_LABEL = {
   github_list_pages: 'listed GitHub Pages sites',
   github_list_gists: 'listed GitHub gists',
   github_create_gist: 'created a gist',
+  remember: 'saved a memory',
+  forget: 'forgot a memory',
+  create_routine: 'saved a routine',
+  list_routines: 'listed routines',
+  cancel_routine: 'cancelled a routine',
 };
 
 function sourceItems(message) {
@@ -98,10 +103,24 @@ export function messageHTML(message) {
   const agent = agentById(message.agentId);
   const phase = message.pending
     ? (String(message.content || '').startsWith('Looking up') ? 'looking up' : (String(message.content || '').startsWith('Getting Agora') ? 'getting ready' : 'writing'))
-    : (message.error ? 'could not finish' : 'Agora AI');
+    : (message.error ? 'could not finish' : 'Agora 1.0');
+  const image = message.image
+    ? `<img class="chat-image" alt="Attached image" src="${esc(message.image)}"><p class="small muted">Agora 1.0 cannot see this picture.</p>`
+    : '';
+  const file = message.attachment?.text
+    ? `<details class="file-note"><summary>${esc(message.attachment.name || 'File')}</summary><pre>${esc(message.attachment.text)}</pre></details>`
+    : '';
+  const rated = message.rating === 'up' || message.rating === 'down';
+  const rate = !message.pending && message.content
+    ? `<div class="rate">
+        <button type="button" class="quiet${message.rating === 'up' ? ' on' : ''}" data-act="rate" data-rate="up" data-mid="${esc(message.id)}" aria-label="Thumbs up" aria-pressed="${message.rating === 'up' ? 'true' : 'false'}">Up</button>
+        <button type="button" class="quiet${message.rating === 'down' ? ' on' : ''}" data-act="rate" data-rate="down" data-mid="${esc(message.id)}" aria-label="Thumbs down" aria-pressed="${message.rating === 'down' ? 'true' : 'false'}">Down</button>
+        ${rated ? `<input class="rate-note" data-rate-note="${esc(message.id)}" maxlength="500" placeholder="Optional comment" value="${esc(message.ratingComment || '')}" aria-label="Feedback comment">` : ''}
+      </div>`
+    : '';
   return `<div class="bubble-row${message.pending ? ' pending' : ''}${message.error ? ' error' : ''}" data-mid="${esc(message.id)}">
     ${agent ? iconMarkup(agent) : ''}
-    <div class="bubble"><div class="meta" data-meta>${esc(agent?.name || 'Agent')} · ${esc(phase)}</div><div class="text" data-body>${message.content ? rich(message.content) : (message.pending ? '…' : '')}</div></div>
+    <div class="bubble"><div class="meta" data-meta>${esc(agent?.name || 'Agent')} · ${esc(phase)}</div>${image}${file}<div class="text" data-body>${message.content ? rich(message.content) : (message.pending ? '…' : '')}</div>${rate}</div>
   </div>`;
 }
 
@@ -119,10 +138,15 @@ export function agentListHTML(activeId) {
   }).join('');
 }
 
-export function agentChatsHTML(agentId, activeChatId) {
-  const chats = listAgentChats(agentId);
+export function agentChatsHTML(agentId, activeChatId, query = '') {
+  const q = String(query || '').trim().toLowerCase();
+  const chats = listAgentChats(agentId).filter((chat) => {
+    if (!q) return true;
+    if ((chat.name || '').toLowerCase().includes(q)) return true;
+    return (chat.messages || []).some((message) => String(message.content || '').toLowerCase().includes(q));
+  });
   if (!agentId) return '';
-  if (!chats.length) return '<p class="muted empty-note">No chats yet.</p>';
+  if (!chats.length) return `<p class="muted empty-note">${q ? 'No chats match.' : 'No chats yet.'}</p>`;
   return chats.map((chat) => {
     const on = chat.id === activeChatId;
     return `<div class="chat-row${on ? ' active' : ''}">
@@ -153,16 +177,16 @@ export function chatHeadHTML(chat, agent) {
       <span class="face-stack">${members.map((item) => iconMarkup(item)).join('')}</span>
       <div>
         <h1>${esc(chat.name || 'Group')}</h1>
-        <p class="model-pill">Agora AI · ${esc(members.map((item) => item.name).join(', '))}</p>
+        <p class="model-pill">Agora 1.0 · ${esc(members.map((item) => item.name).join(', '))}</p>
       </div>
     </div>`;
   }
-  if (!agent) return '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora AI</p></div></div>';
+  if (!agent) return '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora 1.0</p></div></div>';
   return `<div class="who">
     ${iconMarkup(agent)}
     <div>
       <h1>${esc(agent.name)}</h1>
-      <p class="model-pill">Agora AI</p>
+      <p class="model-pill">Agora 1.0</p>
     </div>
     <button type="button" class="quiet" data-act="edit-agent" data-id="${esc(agent.id)}">Edit</button>
     <button type="button" class="quiet" data-act="delete-agent" data-id="${esc(agent.id)}">Delete</button>
@@ -175,7 +199,7 @@ export function emptyHomeHTML() {
   return `<div class="empty-home">
     <div class="hero-faces" aria-hidden="true">${faces}</div>
     <h1>Create an agent</h1>
-    <p>You start with an empty workspace. Give an agent a name and an icon, then chat. Agora AI is the only model, and it can search the web when a question needs it.</p>
+    <p>You start with an empty workspace. Give an agent a name and an icon, then chat. Agora 1.0 is the only model, and it can search the web when a question needs it.</p>
     <button type="button" data-act="open-create">Create agent</button>
   </div>`;
 }
@@ -187,7 +211,7 @@ export function threadHTML(chat, agent) {
     const title = chat.type === 'group' ? (chat.name || 'Group') : (agent?.name || 'Agent');
     const note = chat.type === 'group'
       ? 'Everyone in the group sees the whole conversation and answers in turn.'
-      : 'Ask anything. Agora AI answers in your language.';
+      : 'Ask anything. Agora 1.0 answers in your language.';
     return `<div class="welcome">${chat.type === 'group' ? '' : (agent ? iconMarkup(agent) : '')}<h2>${esc(title)}</h2><p>${esc(note)}</p></div>`;
   }
   return messages.map(messageHTML).join('');
@@ -266,7 +290,7 @@ export function connectorsHTML(opts = {}) {
     return items ? `<div data-connector-group="${esc(group)}">${items}</div>` : '';
   }).join('');
   const skipped = UNAVAILABLE.map((item) => `<li><b>${esc(item.name)}.</b> ${esc(item.why)}</li>`).join('');
-  const body = `<p class="small muted">Keys stay encrypted in this browser. Agora AI only sees whether an account is connected.</p>
+  const body = `<p class="small muted">Keys stay encrypted in this browser. Agora 1.0 only sees whether an account is connected.</p>
     <label for="connector-filter">Find a connector</label>
     <input id="connector-filter" type="search" placeholder="Search connectors" autocomplete="off">
     ${cards}
@@ -294,7 +318,7 @@ export function settingsHTML() {
       <input id="student-repo" value="${esc(state.settings.studentRepo || DEFAULT_STUDENT_REPO)}" autocomplete="off" spellcheck="false" placeholder="${esc(DEFAULT_STUDENT_REPO)}">
       <h2>Online connection</h2>
       <p class="warn-note">A key is optional. It stays only in this browser and is sent only to openrouter.ai. Do not type it on a shared computer.</p>
-      <p>${saved ? 'A key is saved on this computer.' : 'No key yet. Agora AI can still search the web.'}</p>
+      <p>${saved ? 'A key is saved on this computer.' : 'No key yet. Agora 1.0 can still search the web.'}</p>
       <label for="or-key">Paste a key</label>
       <input id="or-key" type="password" name="or-key" autocomplete="off" spellcheck="false" placeholder="Stays on this computer">
       <div class="row">

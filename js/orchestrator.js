@@ -13,6 +13,8 @@ import {
 } from './connectors.js';
 import { pluginToolPrompt, matchPluginIntent, runPluginTool, isPluginTool } from './plugin-run.js';
 import { loadPluginConfig } from './plugin-store.js';
+import { memoryBlock, memoryToolLines, isMemoryTool, runMemoryTool } from './memory.js';
+import { routineToolLines, isRoutineTool, runRoutineTool } from './routines.js';
 
 const MAX_TOOL_LOOPS = 2;
 const HISTORY_LIMIT = 12;
@@ -69,7 +71,8 @@ function systemFor(agent, conv, mode, clockLine = '') {
     const extra = connectorDecidePrompt(agent);
     const asked = [...(conv.messages || [])].reverse().find((item) => item.role === 'user');
     const plugins = pluginToolPrompt(asked?.content || '');
-    return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}${extra ? `\n${extra}` : ''}${plugins ? `\n${plugins}` : ''}`;
+    const local = `${memoryToolLines()}\n${routineToolLines()}`;
+    return `Your name is ${agent.name}. You only decide if a tool is needed.\n${toolPrompt(tools || undefined)}${extra ? `\n${extra}` : ''}\n${local}${plugins ? `\n${plugins}` : ''}`;
   }
   const others = (conv.agentIds || []).filter((id) => id !== agent.id).map(agentById).filter(Boolean);
   let group;
@@ -87,6 +90,7 @@ function systemFor(agent, conv, mode, clockLine = '') {
     'If they ask the date or the time, answer from the visitor clock above. Never say a date was not provided.',
     'Ignore a tool result that is about a different topic. Cite a page as [Title](url) only when you used that page. If you did not use one, do not add a sources list.',
     connectorPrompt(agent),
+    memoryBlock(latestUserText(conv)),
   ].filter(Boolean).join(' ');
   if (mode === 'react') {
     return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf you have nothing new, reply with exactly PASS.`;
@@ -116,7 +120,10 @@ export function buildMessages(agent, conv, { mode = 'answer', clockLine = '' } =
     } else {
       role = 'user';
       const who = m.role === 'user' ? 'User' : (agentById(m.agentId)?.name || 'Helper');
-      content = `${who}: ${clip(m.content, 700)}`;
+      let body = String(m.content || '');
+      if (m.attachment?.text) body += `\n\n[File: ${m.attachment.name}]\n${clip(m.attachment.text, 2500)}`;
+      if (m.image) body += '\n\nThe user attached an image. Agora 1.0 is text-only and cannot see pictures.';
+      content = `${who}: ${clip(body, 3200)}`;
     }
     if (!content) continue;
     const last = msgs[msgs.length - 1];
@@ -134,6 +141,10 @@ export function buildMessages(agent, conv, { mode = 'answer', clockLine = '' } =
     else msgs.push({ role: 'user', content: nudge });
   }
   return msgs;
+}
+
+function latestUserText(conv) {
+  return lastUserText(conv?.messages || []);
 }
 
 function lastUserText(messages) {
@@ -196,7 +207,7 @@ export function shouldRetry(err) {
 
 function stopText(timedOut) {
   return timedOut?.()
-    ? 'Agora AI took too long, so I stopped. Please try again.'
+    ? 'Agora 1.0 took too long, so I stopped. Please try again.'
     : 'Stopped.';
 }
 
@@ -309,7 +320,7 @@ function finishOffline(msg, sources, userText, onPhase, onUpdate) {
     msg.error = true;
     msg.content = needsWebSearch(userText)
       ? 'I looked that up and found no pages. Please try a simpler question.'
-      : 'Agora AI cannot write a full reply on this device. Add a key in Settings, or use Chrome or Edge. You can still ask a question and I will search the web.';
+      : 'Agora 1.0 cannot write a full reply on this device. Add a key in Settings, or use Chrome or Edge. You can still ask a question and I will search the web.';
   }
   onPhase?.(msg.error ? 'error' : 'done');
   if (!msg.error) state.usage.agentMessages++;
@@ -340,7 +351,7 @@ function settings() {
 function publicNote(err) {
   const note = friendlyMessage(err);
   if (/teacher|qwen|llama|gemma|mistral|deepseek|model id|openrouter model/i.test(note)) {
-    return 'Agora AI could not answer just now. Please try again.';
+    return 'Agora 1.0 could not answer just now. Please try again.';
   }
   return note;
 }
@@ -372,7 +383,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
       if (st.ready) { msg.loading = false; if (!msg.toolCall) msg.content = ''; onUpdate?.(true); return; }
       msg.loading = true;
       const pct = st.progress > 0 && st.progress < 1 ? ` (${Math.round(st.progress * 100)}%)` : '';
-      msg.content = `Getting Agora AI ready${pct}`;
+      msg.content = `Getting Agora 1.0 ready${pct}`;
       onUpdate?.(true);
     };
     onStatus(stat);
@@ -537,7 +548,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           shouldStop: stopCheck,
         });
         if (aborted() || stopCheck()) break;
-        const call = parseToolCall(decision, isPluginTool);
+        const call = parseToolCall(decision, (name) => isPluginTool(name) || isMemoryTool(name) || isRoutineTool(name));
         if (!call) {
           if (!usedTool && decision && !isNone(decision) && !/\bTOOL\s*:/i.test(decision)) direct = decision;
           break;
@@ -549,6 +560,24 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           if (outcome.connect) ensureConnectCard(conv, msg, outcome.connect);
           insertAfterTurn(conv, msg, {
             id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: {}, content: outcome.text, ts: Date.now(),
+          });
+          usedTool = true;
+          direct = '';
+          save();
+          onUpdate?.();
+          continue;
+        }
+        if (isMemoryTool(call.name) || isRoutineTool(call.name)) {
+          const args = call.args || {};
+          let result;
+          try {
+            result = isMemoryTool(call.name) ? await runMemoryTool(call.name, args) : await runRoutineTool(call.name, args);
+          } catch (err) {
+            if (aborted() || err?.name === 'AbortError') break;
+            result = err.message || 'That did not work.';
+          }
+          insertAfterTurn(conv, msg, {
+            id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args, content: result, ts: Date.now(),
           });
           usedTool = true;
           direct = '';
@@ -714,7 +743,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
         msg.content = fallback;
       } else {
         msg.error = true;
-        msg.content = signal?.aborted ? stopText(timedOut) : 'Agora AI could not finish that reply. Please try again.';
+        msg.content = signal?.aborted ? stopText(timedOut) : 'Agora 1.0 could not finish that reply. Please try again.';
       }
       save();
       onUpdate?.();

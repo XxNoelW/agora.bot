@@ -51,8 +51,8 @@ export function friendlyMessage(e) {
   const m = String(e.message || e);
   if (/webgpu/i.test(m)) return 'This browser cannot run the helpers. Use Chrome or Edge where WebGPU works. You can still look around.';
   if (/timeout|timed out|stall|too long|went quiet/i.test(m)) return 'This took too long, so I stopped. Please try again.';
-  if (/failed to fetch|network|import|load failed/i.test(m)) return 'I could not download Agora AI. Check your internet and try again.';
-  if (/not found|unknown model|cannot find model|model_id/i.test(m)) return 'Agora AI could not start. Please try again.';
+  if (/failed to fetch|network|import|load failed/i.test(m)) return 'I could not download Agora 1.0. Check your internet and try again.';
+  if (/not found|unknown model|cannot find model|model_id/i.test(m)) return 'Agora 1.0 could not start. Please try again.';
   return 'Something went wrong while writing. Please try again.';
 }
 

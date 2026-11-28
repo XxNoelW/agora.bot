@@ -9,7 +9,7 @@ The site stays at `https://xxnoelw.github.io/agora.bot/`.
 - A dark chat workspace. You create the agents, give each a name and an icon, and open chats or groups.
 - Chats stay in this browser. A group lets the agents read each other and answer in turn.
 - Connectors let an agent use keys or sign-in for GitHub, GitLab, Bitbucket, OpenAI, Gemini, OpenRouter, Mistral, Groq, Hugging Face, Stability, ElevenLabs, Notion, Trello, Todoist, Airtable, Linear, Asana, ClickUp, Discord, Slack, Telegram, Bluesky, Mastodon, Spotify, Dropbox, Google Drive, Pexels, Unsplash, OpenWeather, and Stripe test reads. Keys stay encrypted in the browser and are not shown to the chat model.
-- One chat brand, Agora AI. On a computer with WebGPU it tries Agora 1.0 first, then the built-in local model. A key in Settings can connect online when WebGPU is missing. The key stays in this browser. The sidebar says which one is answering.
+- One chat brand, Agora 1.0. On a computer with WebGPU it tries the trained weights first, then the built-in local model. A key in Settings can connect online when WebGPU is missing. The key stays in this browser. The sidebar says which one is answering.
 - Web search from the page itself, with links in the reply. Sources are Wikipedia, DuckDuckGo quick answers, and public pages read through the Jina reader. No search key is required.
 
 The Kaggle notebook and `scripts/kaggle-push.sh` stay in the repo for the owner. They are not part of the page.
@@ -24,7 +24,7 @@ Open `http://localhost:8000`. Modules do not load from `file://`.
 
 1. Pick an agent and start a chat.
 2. Ask a question, for example: "How do bees make honey?"
-3. The reply should include links. If this browser cannot run Agora AI locally, the links still come back. A key in Settings is optional.
+3. The reply should include links. If this browser cannot run Agora 1.0 locally, the links still come back. A key in Settings is optional.
 
 ## Tests
 
@@ -53,6 +53,18 @@ To publish the weights after the training notebook:
 6. Reload the site. The sidebar should say `Answering with Agora 1.0`. Until the file is public, it says Agora 1.0 is not published and names the built-in model.
 
 The same steps are in `training/publish_agora_web.py`.
+
+## Memory, feedback, and routines
+
+Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localStorage when that is missing). Nothing is uploaded.
+
+- Memory stores a name, preferences, and short facts. Relevant notes are added to the prompt in a short block. Turn it off in Memory. Say “remember that …” or “forget …”. The same actions are tools: `remember` and `forget`.
+- Chats can be searched from the sidebar or the Memory panel, then renamed or deleted.
+- Each answer has thumbs up and down, plus an optional comment. **Export feedback** downloads JSONL (`messages`, `answer`, `rating`, `comment`) for training. Sharing that file is up to you.
+- Routines accept “every morning at 8 tell me the weather” and “remind me Friday 5pm”, or the form under Routines. Tools: `create_routine`, `list_routines`, `cancel_routine`. They run while Agora is open and catch up missed ones the next time you open it. A closed browser does not run them yet. The Routines panel says so.
+- The page is a PWA. The service worker caches the app shell only. It does not cache Hugging Face weights or the WebLLM library.
+- Mic uses the browser speech API. EN / HU switches English and Hungarian. Speak reads replies aloud.
+- File accepts text, Markdown, CSV, JSON, and PDF text when the file contains real text. An image is shown with a note that Agora 1.0 cannot see pictures.
 
 ## Connectors
 
