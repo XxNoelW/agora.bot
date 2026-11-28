@@ -34,7 +34,14 @@ export function normalizeIcon(icon, fallbackColor) {
   return { type: 'shape', shape, color: safeHex(icon?.color || fallbackColor) };
 }
 
+function emojiText(agent) {
+  const text = String(agent?.emoji || '').replace(/[<>&"']/g, '').trim();
+  return text ? [...text].slice(0, 8).join('') : '';
+}
+
 export function iconMarkup(agent) {
+  const emoji = emojiText(agent);
+  if (emoji) return `<span class="avatar emoji" aria-hidden="true">${emoji}</span>`;
   const icon = normalizeIcon(agent?.icon, agent?.color);
   if (icon.type === 'photo') {
     return `<img class="avatar photo" alt="" src="${icon.dataUrl}">`;

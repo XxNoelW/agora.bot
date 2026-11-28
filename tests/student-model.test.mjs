@@ -21,12 +21,14 @@ test('the trained model points at a public repo and the prebuilt Qwen2 1.5B libr
 test('the status line names the trained model or the built-in fallback', () => {
   assert.equal(answerLine({ kind: 'trained', repo: 'XxNoelW/Agora-1.0', busy: false }), 'Answering with Agora 1.0');
   assert.equal(answerLine({ kind: 'trained', busy: true, progress: 0.4 }), 'Downloading Agora 1.0 40%');
-  assert.match(answerLine({
+  const builtinLine = answerLine({
     kind: 'builtin',
     builtin: 'Qwen2.5 Coder 7B',
     reason: 'Agora 1.0 is not published yet.',
     busy: false,
-  }), /built-in Qwen2\.5 Coder 7B/);
+  });
+  assert.match(builtinLine, /Agora 1\.0/);
+  assert.doesNotMatch(builtinLine, /Qwen/);
   assert.match(answerLine({ kind: 'checking', gpuOk: false, busy: false }), /web search/);
   assert.equal(answerLine({ kind: 'builtin', online: true, busy: false }), 'Answering online');
 });

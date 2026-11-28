@@ -2,6 +2,8 @@
 import { state, save, migrateState } from './store.js';
 import { cachedMemories, memoryEnabled, setMemoryEnabled, replaceMemories } from './memory.js';
 import { voiceLang } from './voice.js';
+import { applyProfiles, chatsByAgent, memoryByAgent, profilesByAgent } from './builtins.js';
+import { clearSyncPending, isOnline, markSyncPending, syncPending } from './offline.js';
 
 export const DEFAULT_CLOUD_URL = 'https://agora-cloud.knoel99-morcik.workers.dev';
 export const SYNC_CAP = 1_000_000;
@@ -119,19 +121,24 @@ function withoutPictures(bundle) {
 }
 
 export function bundleChats() {
-  const full = { chats: state.chats || [], agents: state.agents || [] };
+  const chats = state.chats || [];
+  const full = { chats, agents: state.agents || [], byAgent: chatsByAgent(chats) };
   if (encodedSize(full) <= SYNC_CAP) return { data: full, trimmed: false };
-  return { data: withoutPictures(full), trimmed: true };
+  const slim = withoutPictures(full);
+  slim.byAgent = chatsByAgent(slim.chats);
+  return { data: slim, trimmed: true };
 }
 
 export function bundleMemory() {
-  return { notes: cachedMemories(), enabled: memoryEnabled() };
+  const notes = cachedMemories();
+  return { notes, enabled: memoryEnabled(), byAgent: memoryByAgent(notes) };
 }
 
 export function bundleSettings() {
   const copy = { ...(state.settings || {}) };
   delete copy.openrouterKey;
   delete copy.apiKey;
+  copy.agentProfiles = profilesByAgent(state.agents);
   return copy;
 }
 
@@ -157,7 +164,7 @@ export async function applyBundle(kind, raw) {
     return;
   }
   if (kind === 'memory') {
-    const notes = Array.isArray(data) ? data : (data?.notes || []);
+    const notes = Array.isArray(data) ? data : (data?.notes || flattenAgentMap(data?.byAgent));
     if (data && typeof data.enabled === 'boolean') setMemoryEnabled(data.enabled);
     await replaceMemories(notes);
     return;
@@ -165,9 +172,19 @@ export async function applyBundle(kind, raw) {
   const incoming = data && typeof data === 'object' && !Array.isArray(data) ? { ...data } : {};
   delete incoming.openrouterKey;
   delete incoming.apiKey;
+  const profiles = incoming.agentProfiles;
+  delete incoming.agentProfiles;
   const next = migrateState({ ...state, settings: { ...state.settings, ...incoming } });
   state.settings = next.settings;
+  if (profiles) state.agents = migrateState({ ...state, agents: applyProfiles(state.agents, profiles) }).agents;
   save();
+}
+
+function flattenAgentMap(map) {
+  if (!map || typeof map !== 'object') return [];
+  return Object.entries(map).flatMap(([agentId, rows]) => (
+    (Array.isArray(rows) ? rows : []).map((row) => ({ ...row, agentId: row?.agentId || (agentId === 'group' ? '' : agentId) }))
+  ));
 }
 
 async function callApi(url, path, { method = 'GET', body, code, fetchImpl = fetch } = {}) {
@@ -212,6 +229,14 @@ async function pushKind(url, code, kind, version, fetchImpl) {
 }
 
 export async function syncNow(fetchImpl = fetch) {
+  if (!isOnline()) {
+    markSyncPending();
+    return {
+      ok: false,
+      queued: true,
+      message: ui('You are offline. Sync will run when you are back online.', 'Nincs internet. A szinkron akkor fut le, ha \u00fajra online vagy.'),
+    };
+  }
   const code = cloudCode();
   if (!code) {
     return { ok: false, message: ui('Create an account or paste a sync code first.', 'El\u0151bb hozz l\u00e9tre fi\u00f3kot, vagy illessz be egy szinkronk\u00f3dot.') };
@@ -240,10 +265,16 @@ export async function syncNow(fetchImpl = fetch) {
   const extra = trimmed
     ? ui(' Pictures stayed on this device.', ' A k\u00e9pek ezen az eszk\u00f6z\u00f6n maradtak.')
     : '';
+  clearSyncPending();
   return {
     ok: true,
     message: ui('Synced chats, memory, and settings.', 'Szinkron k\u00e9sz: cseveg\u00e9sek, mem\u00f3ria \u00e9s be\u00e1ll\u00edt\u00e1sok.') + extra,
   };
+}
+
+export async function flushQueuedSync(fetchImpl = fetch) {
+  if (!isOnline() || !syncPending()) return null;
+  return syncNow(fetchImpl);
 }
 
 export async function resolveConflict(choice, fetchImpl = fetch) {

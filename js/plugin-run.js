@@ -6,6 +6,7 @@ import { connectMcp, callMcpTool } from './mcp-client.js';
 import { readSecret } from './secrets.js';
 import { scrubSecrets } from './secrets.js';
 import { noteEvent } from './usage.js';
+import { isOnline, offlineConnectorMessage } from './offline.js';
 
 const sessions = new Map();
 
@@ -156,6 +157,10 @@ export async function runPluginTool(name, args = {}, { fetchImpl = fetch, signal
   const { plugin, tool } = found;
   noteEvent('tool', { tool: name });
   if (!isEnabled(plugin.id)) return `${plugin.name} is off. Turn it on in Connectors.`;
+  if (!plugin.local) {
+    const paused = offlineConnectorMessage();
+    if (paused && !isOnline()) return paused;
+  }
   const config = loadPluginConfig();
   try {
     if (plugin.transport === 'mcp') {

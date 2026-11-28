@@ -14,7 +14,7 @@ const icons = await import('../js/icons.js');
 const chats = await import('../js/chats.js');
 const orch = await import('../js/orchestrator.js');
 
-test('a new workspace has no preset agents', () => {
+test('a new workspace starts with the built-in agents', () => {
   const desktop = { userAgent: 'Mozilla/5.0 (X11; Linux x86_64)', deviceMemory: 16 };
   const fresh = store.defaults(desktop);
   assert.deepEqual(fresh.agents, []);
@@ -24,7 +24,11 @@ test('a new workspace has no preset agents', () => {
     agents: [],
     chats: [],
   }, desktop);
-  assert.equal(migrated.agents.length, 0);
+  assert.equal(migrated.agents.length, 7);
+  assert.equal(migrated.agents[0].id, 'builtin_default');
+  assert.equal(migrated.settings.builtinsSeeded, true);
+  const again = store.migrateState(migrated, desktop);
+  assert.equal(again.agents.length, 7);
 });
 
 test('agents can be created with a shape or a small photo, then edited and deleted', () => {

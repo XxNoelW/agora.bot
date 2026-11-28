@@ -1,5 +1,11 @@
 # Decisions
 
+## 2026-11-28, agents, vision, offline
+
+- Built-in agents are separate bots, not a model menu. Memory notes are stored with an agent id. Sync still uses chats, memory, and settings. Settings carry `agentProfiles` keyed by agent id, and that object is only the name, emoji, description, instructions, tools, and examples.
+- The picture helper is shown as Agora vision. The status line says Agora 1.0 even when a built-in weight file answers.
+- The shell cache stays same-origin. Model hosts go in `agora-runtime-v1` only after a download.
+
 ## 2026-11-28, account sync
 
 - Sync is optional and has no email address. `POST /account` returns a random id and secret once. The Worker stores SHA-256 of the secret and compares it in constant time. The browser keeps `id.secret` and shows it as text and a QR code drawn on the page.
