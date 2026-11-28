@@ -16,8 +16,12 @@ import {
   renameChatHTML, agentFormHTML, groupFormHTML, connectorsHTML, patchThread,
 } from './pages.js';
 import { testConnector, writeConnectorMeta, packCred } from './connectors.js';
-import { saveSecret, deleteSecret } from './secrets.js';
+import { saveSecret, deleteSecret, hasSecret } from './secrets.js';
 import { beginMastodonLogin, finishMastodonLogin, beginPkce, finishPkce } from './oauth.js';
+import { ensureCatalog, catalogList, connectPlugin, dropMcpSession } from './plugin-run.js';
+import { setEnabled, setMaxSteps, setWorkerUrl, addCustom, removeCustom, rememberTools } from './plugin-store.js';
+import { connectorsShell, pluginResultsHTML, setPluginQuery, setPluginCategory, setPluginNeeds, showMorePlugins } from './plugin-ui.js';
+import { beginMcpOauth, finishMcpOauth } from './mcp-client.js';
 import { ensureAgentChats, listAgentChats, createAgentChat, renameAgentChat, deleteAgentChat, createGroupChat, groupCanContinue } from './chats.js';
 import { createAgentRecord, applyAgentEdits, removeAgent } from './agents.js';
 import { ICON_COLORS } from './icons.js';
@@ -405,7 +409,62 @@ const actions = {
       paint(false);
     }
   },
-  'open-connectors'() { openModal(connectorsHTML(), null, closeModal); },
+  'open-connectors'() { openConnectors('store'); },
+  'connector-tab'(btn) { openConnectors(btn.dataset.tab || 'store'); },
+  'plugin-cat'(btn) { setPluginCategory(btn.dataset.cat || ''); openConnectors('store'); },
+  'plugin-need'(btn) { setPluginNeeds(btn.dataset.need || ''); openConnectors('store'); },
+  'plugins-more'() { showMorePlugins(); refreshPluginResults(); },
+  async 'connect-plugin'(btn) {
+    const plugin = catalogList().find((item) => item.id === btn.dataset.plugin);
+    if (!plugin) return;
+    const typed = document.querySelector(`[data-plugin-key="${plugin.id}"]`)?.value?.trim() || '';
+    if (typed) await saveSecret(`plugin:${plugin.id}`, typed);
+    if ((plugin.auth === 'oauth' || plugin.needs === 'signin') && !(await hasSecret(`plugin:${plugin.id}`))) {
+      toast('Opening the sign-in page…');
+      await beginMcpOauth(plugin);
+      return;
+    }
+    const connected = await connectPlugin(plugin);
+    rememberTools(plugin.id, connected.tools || plugin.tools || []);
+    setEnabled(plugin.id, true);
+    toast(connected.tools?.length ? `Connected. ${connected.tools.length} tools.` : 'Connected.');
+    openConnectors('connected');
+  },
+  async 'disconnect-plugin'(btn) {
+    const id = btn.dataset.plugin;
+    setEnabled(id, false);
+    dropMcpSession(id);
+    await deleteSecret(`plugin:${id}`);
+    if (id.startsWith('custom-')) removeCustom(id);
+    toast('Disconnected on this computer.');
+    openConnectors(document.querySelector('[data-tab].chip.on')?.dataset.tab || 'store');
+  },
+  async 'add-custom-mcp'() {
+    const name = $('#custom-name')?.value?.trim() || 'Custom connector';
+    const url = $('#custom-url')?.value?.trim() || '';
+    const auth = $('#custom-auth')?.value || 'none';
+    const headerName = $('#custom-header')?.value?.trim() || '';
+    const secret = $('#custom-secret')?.value?.trim() || '';
+    const id = `custom-${Math.random().toString(36).slice(2, 8)}`;
+    addCustom({ id, name, url, auth, headerName });
+    if (secret) await saveSecret(`plugin:${id}`, secret);
+    setEnabled(id, true);
+    const plugin = catalogList().find((item) => item.id === id);
+    if (auth === 'oauth' && !secret) {
+      toast('Opening the sign-in page…');
+      await beginMcpOauth(plugin);
+      return;
+    }
+    const connected = await connectPlugin(plugin);
+    rememberTools(id, connected.tools || []);
+    toast(connected.tools?.length ? `Added. ${connected.tools.length} tools.` : 'Added.');
+    openConnectors('connected');
+  },
+  'save-plugin-settings'() {
+    setMaxSteps($('#max-steps')?.value);
+    const url = setWorkerUrl($('#worker-url')?.value);
+    toast(url ? 'Proxy URL saved on this computer.' : 'Limits saved. No proxy URL yet.');
+  },
   async 'test-connector'(btn) {
     const root = btn.closest('.connect-card, .connector-row');
     const cred = readConnectorCred(root);
@@ -430,7 +489,7 @@ const actions = {
     }
     save();
     toast(result.detail);
-    if ($('#modal-title')?.textContent === 'Connectors') openModal(connectorsHTML(), null, closeModal);
+    if ($('#modal-title')?.textContent === 'Connectors') openConnectors('accounts');
     else paint(false);
   },
   async 'disconnect-connector'(btn) {
@@ -440,7 +499,7 @@ const actions = {
     writeConnectorMeta(id, { state: 'unknown', detail: 'Disconnected.' });
     save();
     toast('Disconnected on this computer.');
-    openModal(connectorsHTML(), null, closeModal);
+    openConnectors('accounts');
   },
   async 'mastodon-start'(btn) {
     const root = btn.closest('.connect-card, .connector-row');
@@ -510,7 +569,14 @@ const oauthProvider = oauthState.split('.')[0];
 if (oauthCode || oauthError) {
   history.replaceState(null, '', location.pathname + location.hash);
   if (oauthError) toast('Sign-in was cancelled.');
-  else if (oauthProvider === 'spotify' || oauthProvider === 'dropbox' || oauthProvider === 'gdrive') {
+  else if (oauthProvider === 'mcp') {
+    finishMcpOauth(oauthCode, oauthState).then(async (result) => {
+      await saveSecret(`plugin:${result.id}`, result.accessToken);
+      setEnabled(result.id, true);
+      toast('Signed in on this computer.');
+      paint(false);
+    }).catch((err) => toast(scrubOauth(err)));
+  } else if (oauthProvider === 'spotify' || oauthProvider === 'dropbox' || oauthProvider === 'gdrive') {
     finishPkce(oauthProvider, oauthCode, oauthState).then((result) => {
       toast(result.detail);
       paint(false);
@@ -551,6 +617,11 @@ function readConnectorCred(root) {
 
 document.addEventListener('click', onClick);
 document.addEventListener('input', (event) => {
+  if (event.target?.id === 'plugin-filter') {
+    setPluginQuery(event.target.value.trim());
+    refreshPluginResults();
+    return;
+  }
   if (event.target?.id !== 'connector-filter') return;
   const query = event.target.value.trim().toLowerCase();
   document.querySelectorAll('[data-connector-card]').forEach((card) => {
@@ -569,6 +640,11 @@ document.addEventListener('submit', (event) => {
   else if (form.id === 'settings-form') saveSettings();
 });
 document.addEventListener('change', async (event) => {
+  if (event.target?.dataset?.pluginToggle) {
+    setEnabled(event.target.dataset.pluginToggle, event.target.checked);
+    refreshPluginResults();
+    return;
+  }
   if (event.target?.dataset?.allow) {
     const agent = agentById(event.target.dataset.id);
     const id = event.target.dataset.connector;
@@ -614,3 +690,17 @@ gpuPromise.then((result) => {
   if (result.ok) ensureAnswerModel().catch(() => {});
 });
 ensureOnline();
+ensureCatalog().catch(() => {});
+
+let connectorTab = 'store';
+async function openConnectors(tab) {
+  connectorTab = tab || connectorTab;
+  try { await ensureCatalog(); } catch { /* the store still opens if the catalog file is missing */ }
+  openModal(await connectorsShell(connectorTab), null, closeModal);
+  $('#modal-box')?.classList.add('wide');
+}
+async function refreshPluginResults() {
+  const box = $('#plugin-results');
+  if (!box) return;
+  box.innerHTML = await pluginResultsHTML();
+}

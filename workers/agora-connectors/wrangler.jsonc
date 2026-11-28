@@ -1,0 +1,11 @@
+{
+  "name": "agora-connectors",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-28",
+  "observability": {
+    "enabled": true,
+    "traces": {
+      "enabled": true
+    }
+  }
+}

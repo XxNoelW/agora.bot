@@ -16,6 +16,10 @@ const TOOL_LABEL = {
   read_file: 'read a note',
   list_files: 'checked the notes',
   run_js: 'worked something out',
+  github_list_repos: 'listed GitHub repos',
+  github_list_pages: 'listed GitHub Pages sites',
+  github_list_gists: 'listed GitHub gists',
+  github_create_gist: 'created a gist',
 };
 
 function sourceItems(message) {
@@ -84,7 +88,9 @@ export function messageHTML(message) {
     const who = agentById(message.agentId);
     const web = message.tool === 'web_search' || message.tool === 'read_page' || message.tool === 'fetch_wikipedia_page';
     if (web && !sourceItems(message).some((item) => item && item.url)) return '';
-    return `<div class="tool-line" data-mid="${esc(message.id)}"><div class="meta">${esc(who?.name || 'Agent')} ${esc(TOOL_LABEL[message.tool] || 'used a tool')}</div>${web ? sourcesHTML(message) : `<p>${esc(message.content || '')}</p>`}</div>`;
+    const label = `${who?.name || 'Agent'} ${TOOL_LABEL[message.tool] || 'used a tool'}`;
+    const body = web ? sourcesHTML(message) : `<p>${esc(message.content || '')}</p>`;
+    return `<details class="tool-line" data-mid="${esc(message.id)}"><summary>${esc(label)}</summary>${body}</details>`;
   }
   if (message.role === 'system' || message.role === 'handoff' || message.role === 'task') {
     return `<div class="sys-line" data-mid="${esc(message.id)}"><p>${esc(message.content || '')}</p></div>`;
@@ -253,22 +259,23 @@ function connectorCard(item) {
   </section>`;
 }
 
-export function connectorsHTML() {
+export function connectorsHTML(opts = {}) {
   const groups = ['Models', 'Code', 'Work', 'Chat', 'Media', 'Sign-in'];
   const cards = groups.map((group) => {
     const items = CONNECTORS.filter((item) => item.group === group).map(connectorCard).join('');
     return items ? `<div data-connector-group="${esc(group)}">${items}</div>` : '';
   }).join('');
   const skipped = UNAVAILABLE.map((item) => `<li><b>${esc(item.name)}.</b> ${esc(item.why)}</li>`).join('');
-  return `<h2 id="modal-title">Connectors</h2>
-    <p class="small muted">Keys stay encrypted in this browser. Agora AI only sees whether an account is connected.</p>
+  const body = `<p class="small muted">Keys stay encrypted in this browser. Agora AI only sees whether an account is connected.</p>
     <label for="connector-filter">Find a connector</label>
     <input id="connector-filter" type="search" placeholder="Search connectors" autocomplete="off">
     ${cards}
     <section class="connector-row" data-connector-card data-hay="unavailable skipped">
       <h2>Not available from this site</h2>
       <ul class="small">${skipped}<li><b>GitHub sign-in.</b> ${esc(GITHUB_OAUTH_NOTE)}</li></ul>
-    </section>
+    </section>`;
+  if (opts.embedded) return body;
+  return `<h2 id="modal-title">Connectors</h2>${body}
     <div class="row"><button type="button" class="ghost" data-act="close-modal">Close</button></div>`;
 }
 

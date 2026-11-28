@@ -532,6 +532,8 @@ export const TOOLS = {
   list_files: { fn: list_files, sig: '{}', desc: 'list shared notes' },
   run_js: { fn: run_js, sig: '{"code":"console.log(2+2)"}', desc: 'run JavaScript in a sandbox (no page access, 3s limit)' },
   github_list_repos: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list repos on the connected GitHub account' },
+  github_list_pages: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list GitHub Pages sites on the connected account' },
+  github_list_gists: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list gists on the connected GitHub account' },
   github_create_gist: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{"filename":"note.md","content":"hello"}', desc: 'create a private gist on the connected GitHub account' },
   notion_search: { fn: async () => 'Notion is handled by the connector, not the model.', sig: '{"query":"notes"}', desc: 'search the connected Notion workspace' },
   openai_list_models: { fn: async () => 'OpenAI is handled by the connector, not the model.', sig: '{}', desc: 'list model ids on the connected OpenAI account' },
@@ -624,13 +626,13 @@ function argsFromAfter(name, after) {
   return null;
 }
 
-function parseJsonEnvelope(text) {
+function parseJsonEnvelope(text, known) {
   const jsonText = extractBalanced(text);
   if (!jsonText) return null;
   const parsed = parseJsonLoose(jsonText);
   if (!parsed) return null;
   const name = normalizeTool(parsed.name || parsed.tool || parsed.tool_name);
-  if (!name || (!TOOLS[name] && !isConnectorTool(name))) return null;
+  if (!name || !known(name)) return null;
   let args = parsed.arguments ?? parsed.args ?? parsed.parameters ?? null;
   if (args == null) {
     args = { ...parsed };
@@ -641,16 +643,17 @@ function parseJsonEnvelope(text) {
 }
 
 // Find a tool call. Returns {name, args, raw} or null. args is null when JSON was broken.
-export function parseToolCall(text) {
+export function parseToolCall(text, isKnown = () => false) {
   if (!text) return null;
   const cleaned = String(text).replace(/```(?:json|tool|javascript)?/gi, '').replace(/```/g, '');
   if (/^\s*NONE\b/i.test(cleaned.trim()) && !/TOOL\s*:/i.test(cleaned)) return null;
+  const known = (name) => !!(TOOLS[name] || isConnectorTool(name) || isKnown(name));
 
   const toolRe = /TOOL\s*:?\s*([A-Za-z0-9_]+)/gi;
   let match;
   while ((match = toolRe.exec(cleaned))) {
     const name = normalizeTool(match[1]);
-    if (!TOOLS[name] && !isConnectorTool(name)) continue;
+    if (!known(name)) continue;
     const after = cleaned.slice(match.index + match[0].length);
     const args = argsFromAfter(name, after);
     return { name, args, raw: cleaned.slice(match.index, match.index + match[0].length + Math.min(after.length, 400)).split('\n')[0] };
@@ -676,7 +679,7 @@ export function parseToolCall(text) {
     }
   }
 
-  return parseJsonEnvelope(cleaned);
+  return parseJsonEnvelope(cleaned, known);
 }
 
 export async function execTool(name, args, opts = {}) {

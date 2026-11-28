@@ -8,7 +8,9 @@ export function closeModal() {
   const modal = $('#modal');
   if (!modal) return;
   modal.classList.add('hidden');
-  $('#modal-box').innerHTML = '';
+  const box = $('#modal-box');
+  box.innerHTML = '';
+  box.classList.remove('wide');
   document.body.classList.remove('modal-open');
   onDismiss = null;
 }
