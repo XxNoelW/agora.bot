@@ -8,7 +8,7 @@ The site's default backend URL is `https://agora-cloud.knoel99-morcik.workers.de
 
 | File | Role |
 | --- | --- |
-| `index.js` | The Worker script. This is the only file to upload. |
+| `index.js` | The Worker script. This is the only file to upload. Redeploy it after applying `migrations/003_agents.sql`. |
 | `schema.sql` | Full D1 schema for a new database. |
 | `migrations/002_shares_stats_feedback.sql` | New tables for an existing database. Safe to run more than once. |
 | `wrangler.jsonc` | Optional Wrangler config. Replace `database_id` before `wrangler deploy`. |
@@ -38,6 +38,7 @@ Put the printed database id in `wrangler.jsonc`, then:
 
 ```bash
 npx wrangler d1 execute agora-cloud --remote --file=schema.sql
+npx wrangler d1 execute agora-cloud --remote --file=migrations/003_agents.sql
 npx wrangler deploy
 ```
 

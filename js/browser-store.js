@@ -1,7 +1,7 @@
 // Small lists (memories, feedback, routines) live in IndexedDB, with localStorage if IndexedDB is missing.
 const DB_NAME = 'agona-app';
-const DB_VERSION = 1;
-const NAMES = ['memories', 'feedback', 'routines'];
+const DB_VERSION = 2;
+const NAMES = ['memories', 'feedback', 'routines', 'library'];
 
 function localKey(name) {
   return `agora:store:${name}`;

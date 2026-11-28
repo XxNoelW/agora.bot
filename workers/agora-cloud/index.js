@@ -322,6 +322,56 @@ function stripControl(text) {
   return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
 }
 
+export const AGENT_HIDE_AFTER = 3;
+
+export function prepareAgent(body) {
+  const name = String(body?.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  const instructions = String(body?.instructions || '').replace(/[\u0000-\u0008]/g, '').trim().slice(0, 4000);
+  const description = String(body?.description || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+  const emoji = String(body?.emoji || '').replace(/[<>&"']/g, '').trim().slice(0, 8);
+  const lang = body?.lang === 'hu' ? 'hu' : 'en';
+  const tools = Array.isArray(body?.tools) ? body.tools.map((item) => String(item).slice(0, 40)).filter(Boolean).slice(0, 24) : [];
+  const examples = Array.isArray(body?.examples)
+    ? body.examples.map((item) => String(item).replace(/\s+/g, ' ').trim().slice(0, 180)).filter(Boolean).slice(0, 6)
+    : [];
+  if (!name || !instructions) return { ok: false, error: 'Name and instructions are required.' };
+  const blob = `${name}\n${description}\n${instructions}\n${examples.join('\n')}`;
+  if ((blob.match(/https?:\/\//gi) || []).length > 4) return { ok: false, error: 'Too many links.' };
+  if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(blob)) return { ok: false, error: 'Remove email addresses before publishing.' };
+  return { ok: true, agent: { name, emoji, description, instructions, lang, tools, examples } };
+}
+
+export function visibleAgents(rows, { q = '', sort = 'popular' } = {}) {
+  const query = String(q || '').trim().toLowerCase();
+  let list = (rows || []).filter((row) => !row.hidden && Number(row.reports || 0) < AGENT_HIDE_AFTER);
+  if (query) {
+    list = list.filter((row) => `${row.name || ''} ${row.description || ''} ${row.instructions || ''}`.toLowerCase().includes(query));
+  }
+  list.sort((a, b) => (sort === 'new'
+    ? Number(b.created || 0) - Number(a.created || 0)
+    : (Number(b.installs || 0) - Number(a.installs || 0)) || (Number(b.created || 0) - Number(a.created || 0))));
+  return list.slice(0, 40).map(publicAgentRow);
+}
+
+function publicAgentRow(row) {
+  let tools = [];
+  let examples = [];
+  try { tools = JSON.parse(row.tools || '[]'); } catch { tools = []; }
+  try { examples = JSON.parse(row.examples || '[]'); } catch { examples = []; }
+  return {
+    id: row.id,
+    name: row.name,
+    emoji: row.emoji || '',
+    description: row.description || '',
+    instructions: row.instructions || '',
+    lang: row.lang || 'en',
+    tools: Array.isArray(tools) ? tools : [],
+    examples: Array.isArray(examples) ? examples : [],
+    installs: Number(row.installs) || 0,
+    created: Number(row.created) || 0,
+  };
+}
+
 export function fitShare(body, maxBytes = SHARE_MAX_BYTES) {
   const title = String(body?.title || 'Chat').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Chat';
   let messages = Array.isArray(body?.messages) ? body.messages.map(cleanShareMessage).filter(Boolean) : [];
@@ -348,6 +398,17 @@ async function createShare(request, env, origin) {
   }
   const read = await readJson(request, SHARE_MAX_BYTES + 8192, origin);
   if (read.error) return read.error;
+  if (read.body?.kind === 'page') {
+    const title = String(read.body.title || 'Page').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Page';
+    const html = String(read.body.html || '').slice(0, 20000);
+    if (!html.trim()) return json({ error: 'That page is empty.' }, 400, origin);
+    const id = newPublicId();
+    const now = Date.now();
+    await env.DB.prepare(
+      'INSERT INTO shares (id, data, created) VALUES (?, ?, ?)',
+    ).bind(id, JSON.stringify({ kind: 'page', title, html }), now).run();
+    return json({ id, kind: 'page', created: now }, 201, origin);
+  }
   const fit = fitShare(read.body);
   if (!fit.messages.length) return json({ error: 'There is nothing to share.' }, 400, origin);
   if (fit.bytes > SHARE_MAX_BYTES) return json({ error: 'That chat is over 256 KB.' }, 413, origin);
@@ -371,9 +432,52 @@ async function readShare(env, id, origin) {
   return json({
     id: row.id,
     created: Number(row.created) || 0,
+    kind: data.kind === 'page' ? 'page' : 'chat',
     title: String(data.title || 'Chat'),
+    html: data.kind === 'page' ? String(data.html || '') : '',
     messages: Array.isArray(data.messages) ? data.messages : [],
   }, 200, origin);
+}
+
+async function listAgentsRoute(env, url, origin) {
+  const listed = await env.DB.prepare(
+    'SELECT id, name, emoji, description, instructions, lang, tools, examples, installs, created, reports, hidden FROM agents',
+  ).all();
+  const agents = visibleAgents(listed?.results || [], {
+    q: url.searchParams.get('q') || '',
+    sort: url.searchParams.get('sort') === 'new' ? 'new' : 'popular',
+  });
+  return json({ agents }, 200, origin);
+}
+
+async function publishAgentRoute(request, env, origin) {
+  const read = await readJson(request, 20000, origin);
+  if (read.error) return read.error;
+  const prepared = prepareAgent(read.body);
+  if (!prepared.ok) return json({ error: prepared.error }, 400, origin);
+  const id = newPublicId();
+  const now = Date.now();
+  const agent = prepared.agent;
+  await env.DB.prepare(
+    'INSERT INTO agents (id, name, emoji, description, instructions, lang, tools, examples, installs, created, reports, hidden) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 0, 0)',
+  ).bind(id, agent.name, agent.emoji, agent.description, agent.instructions, agent.lang, JSON.stringify(agent.tools), JSON.stringify(agent.examples), now).run();
+  return json({ id, created: now }, 201, origin);
+}
+
+async function bumpAgent(env, id, field, origin) {
+  const clean = String(id || '').toUpperCase();
+  if (!/^[A-Z2-7]{16}$/.test(clean)) return json({ error: 'That agent was not found.' }, 404, origin);
+  const column = field === 'reports' ? 'reports' : 'installs';
+  const result = await env.DB.prepare(
+    `UPDATE agents SET ${column} = ${column} + 1 WHERE id = ?`,
+  ).bind(clean).run();
+  if (changesOf(result) !== 1) return json({ error: 'That agent was not found.' }, 404, origin);
+  if (field === 'reports') {
+    await env.DB.prepare(
+      'UPDATE agents SET hidden = 1 WHERE id = ? AND reports >= ?',
+    ).bind(clean, AGENT_HIDE_AFTER).run();
+  }
+  return json({ ok: true }, 200, origin);
 }
 
 function eventKey(type, tool) {
@@ -503,6 +607,11 @@ export async function handleRequest(request, env) {
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json({ ok: true, name: 'agora-cloud' }, 200, origin);
     }
+    if (request.method === 'GET' && path === '/agents') return listAgentsRoute(env, url, origin);
+    const agentAct = path.match(/^\/agents\/([^/]+)\/(install|report)$/);
+    if (agentAct && request.method === 'POST') {
+      return bumpAgent(env, decodeURIComponent(agentAct[1]), agentAct[2] === 'report' ? 'reports' : 'installs', origin);
+    }
     if (request.method === 'POST' && path === '/share') return createShare(request, env, origin);
     if (path.startsWith('/share/')) {
       if (request.method !== 'GET') return json({ error: 'Not found' }, 404, origin);
@@ -521,6 +630,11 @@ export async function handleRequest(request, env) {
       return saveTraining(request, env, origin);
     }
     if (request.method === 'POST' && path === '/account') return createAccount(env, origin);
+    if (request.method === 'POST' && path === '/agents') {
+      const publisher = await authorize(request, env);
+      if (!publisher) return json({ error: 'That sync code was not accepted.' }, 401, origin);
+      return publishAgentRoute(request, env, origin);
+    }
     const account = await authorize(request, env);
     if (!account) return json({ error: 'That sync code was not accepted.' }, 401, origin);
     if (request.method === 'DELETE' && path === '/account') return deleteAccount(env, account, origin);

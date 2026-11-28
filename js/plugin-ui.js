@@ -14,6 +14,11 @@ const NEEDS_LABEL = {
 
 let shown = 48;
 let view = { query: '', category: '', needs: '' };
+let market = { agents: [], query: '', sort: 'popular', error: '', offline: false };
+
+export function setMarketplace(next) {
+  market = { ...market, ...next };
+}
 
 export function resetPluginView() {
   shown = 48;
@@ -81,6 +86,24 @@ function connectedHTML() {
   </article>`).join('');
 }
 
+export function marketplaceHTML() {
+  if (market.offline) return '<p>The marketplace needs the internet. Installed agents stay on this device.</p>';
+  if (market.error) return `<p>${esc(market.error)}</p>`;
+  const cards = (market.agents || []).map((agent) => `<article class="plugin-card">
+    <div class="row spread"><h3>${esc(agent.emoji || '')} ${esc(agent.name)}</h3><span class="model-pill">${esc(String(agent.installs || 0))} installs</span></div>
+    <p class="small">${esc(agent.description || '')}</p>
+    <div class="row"><button type="button" data-act="get-agent" data-id="${esc(agent.id)}">Get</button></div>
+  </article>`).join('');
+  return `<label for="market-filter">Search agents</label>
+    <input id="market-filter" type="search" value="${esc(market.query || '')}" placeholder="Teacher, writer, homework" autocomplete="off">
+    <div class="chip-row">
+      <button type="button" class="chip${market.sort === 'popular' ? ' on' : ''}" data-act="market-sort" data-sort="popular">Popular</button>
+      <button type="button" class="chip${market.sort === 'new' ? ' on' : ''}" data-act="market-sort" data-sort="new">New</button>
+    </div>
+    <div class="plugin-grid">${cards || '<p>No agents match that search.</p>'}</div>
+    <p class="small muted">Get adds the agent with empty memory. Publishing is in the agent editor, and only the name, emoji, description, instructions, tools, and examples are sent.</p>`;
+}
+
 export async function connectorsShell(tab = 'store') {
   const config = pluginConfig();
   const cats = categoriesOf(catalogList());
@@ -132,12 +155,15 @@ export async function connectorsShell(tab = 'store') {
     ? connectorsHTML({ embedded: true })
     : tab === 'connected'
       ? connectedHTML()
-      : store;
+      : tab === 'market'
+        ? marketplaceHTML()
+        : store;
   return `<h2 id="modal-title">Connectors</h2>
     <div class="chip-row" role="tablist">
       <button type="button" class="chip${tab === 'store' ? ' on' : ''}" data-act="connector-tab" data-tab="store">Store</button>
       <button type="button" class="chip${tab === 'connected' ? ' on' : ''}" data-act="connector-tab" data-tab="connected">Connected</button>
       <button type="button" class="chip${tab === 'accounts' ? ' on' : ''}" data-act="connector-tab" data-tab="accounts">Accounts</button>
+      <button type="button" class="chip${tab === 'market' ? ' on' : ''}" data-act="connector-tab" data-tab="market">Marketplace</button>
     </div>
     <div id="connector-panel">${panel}</div>
     <div class="row"><button type="button" class="ghost" data-act="close-modal">Close</button></div>`;

@@ -52,6 +52,7 @@ try {
       <button type="button" class="quiet settings-btn" data-act="open-memory">Memory</button>
       <button type="button" class="quiet settings-btn" data-act="open-routines">Routines</button>
       <button type="button" class="quiet settings-btn" data-act="open-connectors">Connectors</button>
+      <button type="button" class="quiet settings-btn" data-act="open-pages">My pages</button>
       <button type="button" class="quiet settings-btn" data-act="open-settings">Settings</button>
       <div id="offline-badge" class="offline-badge" hidden></div>
       <div id="model-status" class="model-status" role="status">Agora 1.0</div>
@@ -94,7 +95,7 @@ try {
         <button type="button" class="quiet" data-act="voice-lang" id="voice-lang">EN</button>
         <button type="button" class="quiet" data-act="toggle-speak" id="speak-toggle" aria-pressed="false">Speak</button>
       </div>
-      <input id="file-input" type="file" hidden accept=".txt,.md,.csv,.json,.pdf,text/plain,text/markdown,text/csv,application/json,application/pdf">
+      <input id="file-input" type="file" hidden accept=".txt,.md,.csv,.json,.pdf,.docx,text/plain,text/markdown,text/csv,application/json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
       <input id="image-input" type="file" hidden accept="image/png,image/jpeg,image/webp,image/gif">
       <div class="pill">
         <textarea id="input" rows="1" placeholder="Message"></textarea>
@@ -110,7 +111,8 @@ try {
 </div>
 <div id="tour" class="tour" hidden></div>
 <div id="live" class="sr-only" aria-live="polite"></div>
-<div id="toast" role="status"></div>
+  <aside id="page-panel" class="page-panel" hidden></aside>
+  <div id="toast" role="status"></div>
 <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-box" id="modal-box"></div>
 </div>

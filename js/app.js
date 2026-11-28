@@ -22,13 +22,14 @@ import { $, closeModal, openModal, confirm, toast, announce } from './dom.js';
 import {
   agentListHTML, agentChatsHTML, groupListHTML, chatHeadHTML, threadHTML, settingsHTML,
   renameChatHTML, agentFormHTML, groupFormHTML, connectorsHTML, patchThread, liteHintHTML,
+  pagePanelHTML, publishPreviewHTML,
 } from './pages.js';
 import { testConnector, writeConnectorMeta, packCred } from './connectors.js';
 import { saveSecret, deleteSecret, hasSecret } from './secrets.js';
 import { beginMastodonLogin, finishMastodonLogin, beginPkce, finishPkce } from './oauth.js';
 import { ensureCatalog, catalogList, connectPlugin, dropMcpSession } from './plugin-run.js';
 import { setEnabled, setMaxSteps, setWorkerUrl, addCustom, removeCustom, rememberTools } from './plugin-store.js';
-import { connectorsShell, pluginResultsHTML, setPluginQuery, setPluginCategory, setPluginNeeds, showMorePlugins } from './plugin-ui.js';
+import { connectorsShell, pluginResultsHTML, setPluginQuery, setPluginCategory, setPluginNeeds, showMorePlugins, setMarketplace } from './plugin-ui.js';
 import { beginMcpOauth, finishMcpOauth } from './mcp-client.js';
 import { ensureAgentChats, listAgentChats, createAgentChat, renameAgentChat, deleteAgentChat, createGroupChat, groupCanContinue } from './chats.js';
 import { createAgentRecord, applyAgentEdits, removeAgent, duplicateAgent } from './agents.js';
@@ -37,13 +38,18 @@ import { resizeImageFile, shrinkChatImage, visionImage } from './image.js';
 import { memoryPanelHTML, routinesPanelHTML, filterHistory } from './panels.js';
 import {
   loadMemories, parseMemoryCommand, applyMemoryCommand, memoryEnabled, setMemoryEnabled,
-  addMemory, editMemory, removeMemory, forgetAgent, claimLegacyMemories, replaceMemories,
+  addMemory, editMemory, removeMemory, forgetAgent, claimLegacyMemories, replaceMemories, cachedMemories,
 } from './memory.js';
 import {
   loadRoutines, parseRoutine, createRoutine, cancelRoutine, startRoutineLoop,
 } from './routines.js';
 import { loadFeedback, feedbackRecord, saveFeedback, toJSONL } from './feedback.js';
 import { attachmentBlock, textFromPdf } from './attachments.js';
+import { readPdf } from './pdf-read.js';
+import { chunkText, extractDocxXml, libraryBlock, chatLibrary, rememberChunks, setChatLibrary, zipLocalEntries } from './library.js';
+import { listPublished, publishAgent, installPublished, agentFromInstall, publishPreview } from './marketplace.js';
+import { restorePage } from './agora-pages.js';
+import { saveRow, listRows } from './browser-store.js';
 import { voiceLang, setVoiceLang, speakEnabled, setSpeakEnabled, startListening, speakText } from './voice.js';
 import {
   setCloudUrl, clearCloudCode, createAccount, linkAccount, syncNow, flushQueuedSync, resolveConflict, removeAccount, ui,
@@ -271,6 +277,14 @@ function paint(patch) {
   }
   setBusy(isRunning());
   applyChrome();
+  renderPagePanel();
+}
+
+function renderPagePanel() {
+  const panel = $('#page-panel');
+  if (!panel) return;
+  panel.hidden = !session.pageOpen;
+  if (session.pageOpen) panel.innerHTML = pagePanelHTML(session.pageId || '');
 }
 
 function paintOffline() {
@@ -491,6 +505,8 @@ async function submitText(text, extra = {}) {
     }
   }
   paintPending();
+  const found = libraryBlock(chatLibrary(chat.id), typed || attachment?.text || '');
+  const citations = found.hits;
   await ensureGpu();
   runCtl = new AbortController();
   setBusy(true);
@@ -500,7 +516,7 @@ async function submitText(text, extra = {}) {
       let body = clean;
       if (attachment?.text) body = `${attachment.text}\n\n${body}`.trim();
       await runGroupRound(chat, { ...opts, text: body, fresh: true, image, imageText, imageMiss, solution: !!extra.solution });
-    } else await runUserTask(clean, { ...opts, onlyAgentId: session.agentId, chat, attachment, image, imageText, imageMiss, solution: !!extra.solution, title: typed });
+    } else await runUserTask(clean, { ...opts, onlyAgentId: session.agentId, chat, attachment, image, imageText, imageMiss, solution: !!extra.solution, citations, title: typed });
   } catch (err) {
     console.error(err);
     chat.messages.push({
@@ -511,6 +527,11 @@ async function submitText(text, extra = {}) {
     });
     save();
   } finally {
+    const made = [...chat.messages].reverse().find((item) => item.role === 'tool' && /^PAGE /.test(item.content || ''));
+    if (made) {
+      session.pageId = String(made.content).split('\n')[0].slice(5).trim();
+      session.pageOpen = true;
+    }
     runCtl = null;
     settlePending(chat.messages, { aborted: false });
     save();
@@ -944,6 +965,51 @@ const actions = {
   'retry-model'() {
     ensureAnswerModel().catch(() => {});
   },
+  'open-pages'() { session.pageOpen = true; renderPagePanel(); },
+  'close-pages'() { session.pageOpen = false; renderPagePanel(); },
+  'open-page'(btn) { session.pageId = btn.dataset.id; session.pageOpen = true; renderPagePanel(); },
+  'page-tab'(btn) {
+    const root = btn.closest('.page-panel-inner');
+    const code = btn.dataset.tab === 'code';
+    root?.querySelectorAll('[data-page-view]').forEach((node) => { node.hidden = (node.dataset.pageView === 'code') !== code; });
+    root?.querySelectorAll('[data-act="page-tab"]').forEach((node) => node.classList.toggle('on', node === btn));
+  },
+  'restore-page'(btn) {
+    restorePage(btn.dataset.id, Number(btn.dataset.index));
+    session.pageId = btn.dataset.id;
+    renderPagePanel();
+  },
+  'preview-publish'(btn) {
+    const agent = agentById(btn.dataset.id || session.draft?.id);
+    if (!agent) return;
+    const names = cachedMemories().filter((row) => row.agentId === agent.id && row.kind === 'name').map((row) => row.text);
+    openModal(publishPreviewHTML(agent, names), null, closeModal);
+  },
+  async 'confirm-publish'(btn) {
+    const agent = agentById(btn.dataset.id);
+    if (!agent) return;
+    const names = cachedMemories().filter((row) => row.agentId === agent.id && row.kind === 'name').map((row) => row.text);
+    const preview = publishPreview(agent, { names });
+    const result = await publishAgent(preview.def);
+    toast(result.ok ? ui('Published. Memory stayed here.', 'K\u00f6zz\u00e9t\u00e9ve. A mem\u00f3ria itt maradt.') : (result.data?.error || ui('Publish did not finish.', 'A k\u00f6zz\u00e9t\u00e9tel nem fejez\u0151d\u00f6tt be.')));
+    if (result.ok) closeModal();
+  },
+  async 'get-agent'(btn) {
+    const row = marketAgents.find((item) => item.id === btn.dataset.id);
+    if (!row) return;
+    await installPublished(row.id);
+    const agent = agentFromInstall(row);
+    state.agents.push(agent);
+    const chat = createAgentChat(agent.id, { name: 'New chat', persist: false });
+    save();
+    closeModal();
+    activateAgent(agent.id, chat.id);
+    toast(ui('Added with empty memory.', '\u00dcres mem\u00f3ri\u00e1val ker\u00fclt ide.'));
+  },
+  'market-sort'(btn) {
+    marketSort = btn.dataset.sort === 'new' ? 'new' : 'popular';
+    openConnectors('market');
+  },
   'pick-file'() { $('#file-input')?.click(); },
   'pick-image'() { $('#image-input')?.click(); },
   'voice-input'() { toggleMic(); },
@@ -1268,6 +1334,11 @@ document.addEventListener('input', (event) => {
     refreshPluginResults();
     return;
   }
+  if (event.target?.id === 'market-filter') {
+    marketQuery = event.target.value.trim();
+    openConnectors('market');
+    return;
+  }
   if (event.target?.id !== 'connector-filter') return;
   const query = event.target.value.trim().toLowerCase();
   document.querySelectorAll('[data-connector-card]').forEach((card) => {
@@ -1453,11 +1524,27 @@ $('#file-input')?.addEventListener('change', async (event) => {
   if (file.size > 2000000) { toast('That file is too big.'); return; }
   try {
     let text = '';
+    const bytes = new Uint8Array(await file.arrayBuffer());
     if (/pdf$/i.test(file.name) || file.type === 'application/pdf') {
-      text = await textFromPdf(new Uint8Array(await file.arrayBuffer()));
+      try { text = await readPdf(bytes); } catch { text = ''; }
+      if (!text || text.replace(/\f/g, '').trim().length < 40) {
+        const simple = await textFromPdf(bytes);
+        if (simple && simple.length > text.replace(/\f/g, '').trim().length) text = simple;
+      }
       if (!text) { toast('No text could be read from that PDF.'); return; }
-    } else text = await file.text();
+    } else if (/\.docx$/i.test(file.name)) {
+      const entry = zipLocalEntries(bytes).find((item) => item.name === 'word/document.xml');
+      if (!entry) { toast('That document had no text.'); return; }
+      const xml = entry.method === 0 ? new TextDecoder().decode(entry.data) : await inflateZip(entry.data);
+      text = extractDocxXml(xml);
+      if (!text) { toast('That document had no text.'); return; }
+    } else text = new TextDecoder().decode(bytes);
     session.attachment = { name: file.name, text: attachmentBlock(file.name, text).split('\n').slice(1).join('\n') || text.slice(0, 8000) };
+    const chat = currentChat();
+    if (chat) {
+      const chunks = rememberChunks(chat.id, chunkText(text, { name: file.name }));
+      await saveRow('library', { id: chat.id, chunks });
+    }
     paintPending();
   } catch {
     toast('That file could not be read.');
@@ -1485,9 +1572,48 @@ window.addEventListener('online', () => {
 });
 window.addEventListener('offline', () => paintOffline());
 
+async function inflateZip(data) {
+  if (typeof DecompressionStream === 'undefined') throw new Error('compressed');
+  const stream = new DecompressionStream('deflate-raw');
+  const writer = stream.writable.getWriter();
+  await writer.write(data);
+  await writer.close();
+  return new TextDecoder().decode(new Uint8Array(await new Response(stream.readable).arrayBuffer()));
+}
+
+const composer = $('#composer');
+composer?.addEventListener('dragover', (event) => { event.preventDefault(); });
+composer?.addEventListener('drop', (event) => {
+  event.preventDefault();
+  const file = event.dataTransfer?.files?.[0];
+  if (!file || !$('#file-input')) return;
+  const input = $('#file-input');
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  input.files = transfer.files;
+  input.dispatchEvent(new Event('change'));
+});
+
 let connectorTab = 'store';
+let marketAgents = [];
+let marketQuery = '';
+let marketSort = 'popular';
 async function openConnectors(tab) {
   connectorTab = tab || connectorTab;
+  if (connectorTab === 'market') {
+    if (navigator.onLine === false) setMarketplace({ offline: true, agents: [], query: marketQuery, sort: marketSort });
+    else {
+      const result = await listPublished(marketQuery, marketSort);
+      marketAgents = result.data?.agents || [];
+      setMarketplace({
+        offline: false,
+        agents: marketAgents,
+        query: marketQuery,
+        sort: marketSort,
+        error: result.ok ? '' : (result.data?.error || 'The marketplace did not answer.'),
+      });
+    }
+  }
   try { await ensureCatalog(); } catch { /* the store still opens if the catalog file is missing */ }
   openModal(await connectorsShell(connectorTab), null, closeModal);
   $('#modal-box')?.classList.add('wide');

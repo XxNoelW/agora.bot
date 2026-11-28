@@ -11,6 +11,7 @@ export const SHELL_FILES = [
   'data/plugins.json',
   'js/app.js',
   'js/agents.js',
+  'js/agora-pages.js',
   'js/attachments.js',
   'js/browser-store.js',
   'js/builtins.js',
@@ -25,9 +26,11 @@ export const SHELL_FILES = [
   'js/generate.js',
   'js/icons.js',
   'js/image.js',
+  'js/library.js',
   'js/llm.js',
   'js/mcp-client.js',
   'js/memory.js',
+  'js/marketplace.js',
   'js/math.js',
   'js/metrics.js',
   'js/offline-run.js',
@@ -36,6 +39,7 @@ export const SHELL_FILES = [
   'js/openrouter.js',
   'js/orchestrator.js',
   'js/pages.js',
+  'js/pdf-read.js',
   'js/panels.js',
   'js/persist.js',
   'js/pii.js',
@@ -82,7 +86,7 @@ export function shouldRuntimeCache(requestUrl) {
   if (host === 'huggingface.co' || host.endsWith('.huggingface.co') || host.endsWith('.hf.co')) return true;
   if (host === 'esm.run') return true;
   if (host === 'raw.githubusercontent.com' && url.pathname.includes('/mlc-ai/')) return true;
-  if (host === 'cdn.jsdelivr.net' && /tesseract/i.test(url.pathname)) return true;
+  if (host === 'cdn.jsdelivr.net' && /tesseract|pdfjs-dist/i.test(url.pathname)) return true;
   if (host === 'tessdata.projectnaptha.com') return true;
   return false;
 }

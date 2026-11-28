@@ -13,6 +13,8 @@ import { GITHUB_OAUTH_NOTE, readClientId, redirectUri } from './oauth.js';
 import { DEFAULT_CLOUD_URL, cloudCode, cloudUrl, syncConflict, ui } from './cloud.js';
 import { qrSvg } from './qr.js';
 import { agentDescription, agentExamples, agentLabel, isHomeworkAgent } from './builtins.js';
+import { listPages, pageFrameHTML } from './agora-pages.js';
+import { publishPreview } from './marketplace.js';
 import { voiceLang } from './voice.js';
 
 const TOOL_LABEL = {
@@ -93,7 +95,10 @@ export function messageHTML(message) {
   if (!message) return '';
   if (message.role === 'connect') return connectCardHTML(message);
   if (message.role === 'user') {
-    return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${present(message.content)}</div></div></div>`;
+    const cites = Array.isArray(message.citations) && message.citations.length
+      ? `<ul class="sources">${message.citations.map((hit) => `<li>${esc(hit.name || 'file')}${hit.page ? ` p.${esc(String(hit.page))}` : ''}</li>`).join('')}</ul>`
+      : '';
+    return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${present(message.content)}</div>${cites}</div></div>`;
   }
   if (message.role === 'tool') {
     if (message.hidden) return '';
@@ -274,6 +279,7 @@ export function agentFormHTML(draft, { editing = false } = {}) {
       <button type="button" data-act="save-agent">${editing ? ui('Save', 'Ment\u00e9s') : ui('Create agent', 'Agent l\u00e9trehoz\u00e1sa')}</button>
       ${editing ? `<button type="button" class="ghost" data-act="duplicate-agent" data-id="${esc(draft?.id || '')}">${esc(ui('Duplicate', 'M\u00e1solat'))}</button>` : ''}
       <button type="button" class="ghost" data-act="close-modal">${esc(ui('Cancel', 'M\u00e9gse'))}</button>
+      ${editing ? `<button type="button" class="ghost" data-act="preview-publish" data-id="${esc(draft?.id || '')}">${esc(ui('Publish', 'K\u00f6zz\u00e9t\u00e9tel'))}</button>` : ''}
       ${editing ? `<button type="button" class="danger" data-act="delete-agent" data-id="${esc(draft?.id || '')}">${esc(ui('Delete', 'T\u00f6rl\u00e9s'))}</button>` : ''}
     </div>`;
 }
@@ -491,6 +497,46 @@ export function settingsHTML() {
       </div>
       <p class="small muted">The copy is a file on your computer. The key is not inside it.</p>
     </section>`;
+}
+
+export function pagePanelHTML(activeId = '') {
+  const rows = listPages();
+  const current = rows.find((page) => page.id === activeId) || rows[0];
+  const list = rows.map((page) => `<button type="button" class="quiet${page.id === current?.id ? ' on' : ''}" data-act="open-page" data-id="${esc(page.id)}">${esc(page.title)}</button>`).join('');
+  const versions = (current?.versions || []).map((version, index) => `<button type="button" class="quiet" data-act="restore-page" data-id="${esc(current.id)}" data-index="${index}">${esc(version.title || 'Earlier')}</button>`).join('');
+  if (!current) {
+    return `<div class="page-panel-inner"><div class="row spread"><h2>My pages</h2><button type="button" class="quiet" data-act="close-pages">Close</button></div><p class="small">Ask Agora 1.0 to make a page, chart, or game. It uses create_page.</p></div>`;
+  }
+  return `<div class="page-panel-inner">
+    <div class="row spread"><h2>${esc(current.title)}</h2><button type="button" class="quiet" data-act="close-pages">Close</button></div>
+    <div class="chip-row">${list}</div>
+    <div class="chip-row">
+      <button type="button" class="chip on" data-act="page-tab" data-tab="preview">Preview</button>
+      <button type="button" class="chip" data-act="page-tab" data-tab="code">Code</button>
+    </div>
+    <div data-page-view="preview">${pageFrameHTML(current.html, current.title)}</div>
+    <pre class="page-code" data-page-view="code" hidden>${esc(current.html)}</pre>
+    ${versions ? `<p class="small">Earlier versions</p><div class="chip-row">${versions}</div>` : ''}
+    <p class="small muted">Ask in the chat to change this page. The preview cannot read your chats.</p>
+  </div>`;
+}
+
+export function publishPreviewHTML(agent, names = []) {
+  const preview = publishPreview(agent, { names });
+  const warnings = preview.warnings.length
+    ? `<p class="warn-note">${esc(preview.warnings.join(' '))}</p>`
+    : '';
+  return `<h2 id="modal-title">${esc(ui('Publish this agent', 'Agent k\u00f6zz\u00e9t\u00e9tele'))}</h2>
+    <p class="small">${esc(ui(
+      'Only this definition is sent. Memory, chats, files, and pages stay on this device.',
+      'Csak ez a le\u00edr\u00e1s megy el. A mem\u00f3ria, a cseveg\u00e9sek, a f\u00e1jlok \u00e9s az oldalak itt maradnak.',
+    ))}</p>
+    ${warnings}
+    <pre class="page-code">${esc(JSON.stringify(preview.def, null, 2))}</pre>
+    <div class="row">
+      <button type="button" data-act="confirm-publish" data-id="${esc(agent.id)}">${esc(ui('Publish', 'K\u00f6zz\u00e9t\u00e9tel'))}</button>
+      <button type="button" class="ghost" data-act="close-modal">${esc(ui('Cancel', 'M\u00e9gse'))}</button>
+    </div>`;
 }
 
 export function renameChatHTML(chat) {

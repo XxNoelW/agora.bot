@@ -219,7 +219,7 @@ async function runDirect(agent, chat, parentSignal, onUpdate) {
 
 export async function runUserTask(text, {
   signal = new AbortController().signal, onUpdate, gpu, onlyAgentId, planned, chat: givenChat,
-  attachment = null, image = '', imageText = '', imageMiss = '', solution = false, title = '',
+  attachment = null, image = '', imageText = '', imageMiss = '', solution = false, citations = null, title = '',
 } = {}) {
   const chat = givenChat || workspaceChat();
   const clean = String(text || '').trim();
@@ -228,7 +228,7 @@ export async function runUserTask(text, {
   session.runBucket = { run: 0, global: state.usage.openrouterCalls || 0, stopped: false };
   try {
     chat.messages.push({
-      id: uid('m_'), role: 'user', content: clean, attachment, image, imageText, imageMiss, solution: !!solution, ts: Date.now(),
+      id: uid('m_'), role: 'user', content: clean, attachment, image, imageText, imageMiss, solution: !!solution, citations, ts: Date.now(),
     });
     state.usage.userMessages++;
     maybeTitle(chat, title || clean || attachment?.name || 'Image');
