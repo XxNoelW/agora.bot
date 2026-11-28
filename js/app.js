@@ -37,6 +37,9 @@ import {
 import { loadFeedback, feedbackRecord, saveFeedback, toJSONL } from './feedback.js';
 import { attachmentBlock, textFromPdf } from './attachments.js';
 import { voiceLang, setVoiceLang, speakEnabled, setSpeakEnabled, startListening, speakText } from './voice.js';
+import {
+  setCloudUrl, clearCloudCode, createAccount, linkAccount, syncNow, resolveConflict, removeAccount, ui,
+} from './cloud.js';
 
 const thread = $('#thread');
 let runCtl = null;
@@ -313,6 +316,7 @@ async function saveSettings() {
   }
   const key = $('#or-key')?.value || '';
   if (key.trim()) writeOpenRouterKey(key);
+  if ($('#cloud-url')) setCloudUrl($('#cloud-url').value);
   const field = $('#or-key');
   if (field) field.value = '';
   save();
@@ -531,6 +535,7 @@ const actions = {
     const next = setVoiceLang(voiceLang() === 'hu' ? 'en' : 'hu');
     const button = $('#voice-lang');
     if (button) button.textContent = next === 'hu' ? 'HU' : 'EN';
+    if ($('#cloud-url')) openModal(settingsHTML(), null, closeModal);
   },
   'toggle-speak'() {
     const on = setSpeakEnabled(!speakEnabled());
@@ -590,8 +595,69 @@ const actions = {
   },
   'save-plugin-settings'() {
     setMaxSteps($('#max-steps')?.value);
-    const url = setWorkerUrl($('#worker-url')?.value);
-    toast(url ? 'Proxy URL saved on this computer.' : 'Limits saved. No proxy URL yet.');
+    setWorkerUrl($('#worker-url')?.value);
+    toast('Proxy URL saved on this computer.');
+  },
+  async 'create-cloud-account'() {
+    const result = await createAccount($('#cloud-url')?.value || '');
+    toast(result.message);
+    openModal(settingsHTML(), null, closeModal);
+  },
+  async 'copy-sync-code'() {
+    const code = $('#sync-code')?.value || '';
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast(ui('Sync code copied.', 'A szinkronk\u00f3d a v\u00e1g\u00f3lapra ker\u00fclt.'));
+    } catch {
+      toast(ui('Select the code and copy it.', 'Jel\u00f6ld ki a k\u00f3dot, \u00e9s m\u00e1sold ki.'));
+    }
+  },
+  async 'link-cloud'() {
+    const result = await linkAccount($('#cloud-url')?.value || '', $('#cloud-link')?.value || '');
+    toast(result.message);
+    paint(false);
+    openModal(settingsHTML(), null, closeModal);
+  },
+  async 'sync-now'() {
+    setCloudUrl($('#cloud-url')?.value || '');
+    const result = await syncNow();
+    toast(result.message);
+    openModal(settingsHTML(), null, closeModal);
+  },
+  async 'sync-keep-local'() {
+    const result = await resolveConflict('local');
+    toast(result.message);
+    openModal(settingsHTML(), null, closeModal);
+  },
+  async 'sync-use-server'() {
+    const result = await resolveConflict('server');
+    toast(result.message);
+    paint(false);
+    openModal(settingsHTML(), null, closeModal);
+  },
+  'forget-cloud'() {
+    clearCloudCode();
+    toast(ui('Removed from this device. The account is still there.', 'Elt\u00e1vol\u00edtva err\u0151l az eszk\u00f6zr\u0151l. A fi\u00f3k megmaradt.'));
+    openModal(settingsHTML(), null, closeModal);
+  },
+  async 'delete-cloud-account'() {
+    const ok = await confirm({
+      title: ui('Delete account', 'Fi\u00f3k t\u00f6rl\u00e9se'),
+      text: ui(
+        'The synced copy is deleted. Chats on this device stay.',
+        'A szinkroniz\u00e1lt m\u00e1solat t\u00f6rl\u0151dik. A cseveg\u00e9sek ezen az eszk\u00f6z\u00f6n megmaradnak.',
+      ),
+      ok: ui('Delete account', 'Fi\u00f3k t\u00f6rl\u00e9se'),
+      danger: true,
+    });
+    if (!ok) {
+      openModal(settingsHTML(), null, closeModal);
+      return;
+    }
+    const result = await removeAccount();
+    toast(result.message);
+    openModal(settingsHTML(), null, closeModal);
   },
   async 'test-connector'(btn) {
     const root = btn.closest('.connect-card, .connector-row');
@@ -668,6 +734,7 @@ const actions = {
     });
     if (!ok) return;
     resetAll();
+    clearCloudCode();
     closeModal();
     session.view = 'empty';
     session.agentId = '';

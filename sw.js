@@ -1,3 +1,4 @@
+// Shell v2 includes the account sync scripts.
 import { CACHE_NAME, SHELL_FILES, shouldCache } from './js/shell-cache.js';
 
 self.addEventListener('install', (event) => {

@@ -3,9 +3,12 @@ const KEY = 'agora:plugins';
 
 export const DEFAULT_ENABLED = ['clock', 'calculator', 'units', 'wikipedia', 'weather', 'dictionary', 'currency'];
 
+// Deployed connectors proxy. A saved URL replaces it.
+export const DEFAULT_WORKER_URL = 'https://agora-connectors.knoel99-morcik.workers.dev';
+
 const EMPTY = () => ({
   enabled: DEFAULT_ENABLED.slice(),
-  workerUrl: '',
+  workerUrl: DEFAULT_WORKER_URL,
   maxSteps: 4,
   custom: [],
   tools: {},
@@ -20,7 +23,7 @@ export function loadPluginConfig(storage = globalThis.localStorage) {
     const parsed = JSON.parse(storage?.getItem(KEY) || 'null');
     if (parsed && typeof parsed === 'object') {
       base.enabled = Array.isArray(parsed.enabled) ? parsed.enabled.map(String) : base.enabled;
-      base.workerUrl = cleanWorkerUrl(parsed.workerUrl);
+      base.workerUrl = cleanWorkerUrl(parsed.workerUrl) || DEFAULT_WORKER_URL;
       base.maxSteps = clampSteps(parsed.maxSteps);
       base.custom = Array.isArray(parsed.custom) ? parsed.custom.map(cleanCustom).filter(Boolean) : [];
       base.tools = parsed.tools && typeof parsed.tools === 'object' ? parsed.tools : {};
@@ -94,7 +97,7 @@ export function setMaxSteps(value) {
 
 export function setWorkerUrl(value) {
   const config = loadPluginConfig();
-  config.workerUrl = cleanWorkerUrl(value);
+  config.workerUrl = cleanWorkerUrl(value) || DEFAULT_WORKER_URL;
   savePluginConfig();
   return config.workerUrl;
 }

@@ -1,7 +1,7 @@
 import { esc } from './text.js';
 import { filterCatalog, categoriesOf } from './plugin-catalog.js';
 import { catalogList, enabledPlugins } from './plugin-run.js';
-import { pluginConfig, isEnabled } from './plugin-store.js';
+import { pluginConfig, isEnabled, DEFAULT_WORKER_URL } from './plugin-store.js';
 import { hasSecret } from './secrets.js';
 import { connectorsHTML } from './pages.js';
 
@@ -124,8 +124,8 @@ export async function connectorsShell(tab = 'store') {
       <label for="max-steps">Max tool steps</label>
       <input id="max-steps" type="number" min="1" max="8" value="${esc(String(config.maxSteps))}">
       <label for="worker-url">Proxy URL</label>
-      <input id="worker-url" placeholder="https://agora-connectors.example.workers.dev" value="${esc(config.workerUrl)}" autocomplete="off" spellcheck="false">
-      <p class="small muted">Leave the proxy empty until you deploy the Worker. Connectors that need it stay off the network.</p>
+      <input id="worker-url" placeholder="${esc(DEFAULT_WORKER_URL)}" value="${esc(config.workerUrl || DEFAULT_WORKER_URL)}" autocomplete="off" spellcheck="false">
+      <p class="small muted">The proxy is filled in with https://agora-connectors.knoel99-morcik.workers.dev. Paste another URL to use your own Worker.</p>
       <button type="button" data-act="save-plugin-settings">Save limits</button>
     </section>`;
   const panel = tab === 'accounts'

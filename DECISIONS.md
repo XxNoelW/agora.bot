@@ -1,5 +1,11 @@
 # Decisions
 
+## 2026-11-28, account sync
+
+- Sync is optional and has no email address. `POST /account` returns a random id and secret once. The Worker stores SHA-256 of the secret and compares it in constant time. The browser keeps `id.secret` and shows it as text and a QR code drawn on the page.
+- The copy is chats (with the agents those chats belong to), memory, and settings. Ratings and routines stay on the device. A write sends the version it last read. A different version gets 409 and the server copy, and the page asks which device to keep.
+- The Worker allows `https://xxnoelw.github.io` and localhost. It does not call a model provider.
+
 ## 2026-11-12, student training
 
 - The student checkpoint is `Qwen/Qwen2.5-1.5B-Instruct`. The Hugging Face model card (`cardData.license` and the `license:apache-2.0` tag) says Apache 2.0. Checked 2026-11-12 at `https://huggingface.co/api/models/Qwen/Qwen2.5-1.5B-Instruct`. The license file is on that model repo. No other student id was invented.

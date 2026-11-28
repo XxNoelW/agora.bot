@@ -1,5 +1,5 @@
 // App-shell files only. Model weights and the WebLLM library stay on their own hosts and caches.
-export const CACHE_NAME = 'agora-shell-v1';
+export const CACHE_NAME = 'agora-shell-v2';
 
 export const SHELL_FILES = [
   'index.html',
@@ -14,6 +14,7 @@ export const SHELL_FILES = [
   'js/browser-store.js',
   'js/characters.js',
   'js/chats.js',
+  'js/cloud.js',
   'js/connector-api.js',
   'js/connectors.js',
   'js/dom.js',
@@ -37,6 +38,7 @@ export const SHELL_FILES = [
   'js/plugin-run.js',
   'js/plugin-store.js',
   'js/plugin-ui.js',
+  'js/qr.js',
   'js/roles.js',
   'js/routines.js',
   'js/runner.js',

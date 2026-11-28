@@ -1,0 +1,21 @@
+{
+  "name": "agora-cloud",
+  "main": "index.js",
+  "compatibility_date": "2026-11-28",
+  "observability": {
+    "enabled": true,
+    "traces": {
+      "enabled": true
+    }
+  },
+  "vars": {
+    "ALLOWED_ORIGIN": "https://xxnoelw.github.io"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "agora-cloud",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ]
+}
