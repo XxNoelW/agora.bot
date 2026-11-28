@@ -1,6 +1,7 @@
 // Tools that work from a static page: no API key and no backend.
 import { state, save } from './store.js';
 import { isConnectorTool } from './connectors.js';
+import { noteEvent } from './usage.js';
 
 const clip = (s, n = 1500) => (s.length > n ? s.slice(0, n) + '… [truncated]' : s);
 
@@ -686,6 +687,7 @@ export async function execTool(name, args, opts = {}) {
   const tool = TOOLS[name];
   if (!tool) return 'Unknown tool: ' + name;
   state.usage.toolCalls++;
+  noteEvent('tool', { tool: name });
   save();
   try { return String(await tool.fn(args || {}, opts)); }
   catch (e) {

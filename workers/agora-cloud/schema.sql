@@ -18,9 +18,36 @@ CREATE TABLE sync (
 );
 
 -- Optional. A failed write here does not fail a sync.
-CREATE TABLE usage (
+-- Share rate limits reuse this table. account_id is a daily hash, not an IP address.
+CREATE TABLE IF NOT EXISTS usage (
   account_id TEXT,
   day TEXT,
   syncs INTEGER DEFAULT 0,
   PRIMARY KEY (account_id, day)
+);
+
+-- Read-only chat snapshots. No account. The id is unguessable.
+CREATE TABLE IF NOT EXISTS shares (
+  id TEXT PRIMARY KEY,
+  data TEXT,
+  created INTEGER
+);
+
+-- Anonymous daily counts. No visitor id, cookie, or IP.
+CREATE TABLE IF NOT EXISTS stats (
+  day TEXT,
+  type TEXT,
+  key TEXT,
+  count INTEGER,
+  PRIMARY KEY (day, type, key)
+);
+
+-- Opt-in training turns. Emails and phone numbers are removed before insert.
+CREATE TABLE IF NOT EXISTS feedback (
+  id TEXT PRIMARY KEY,
+  created INTEGER,
+  rating INTEGER,
+  lang TEXT,
+  data TEXT,
+  used INTEGER DEFAULT 0
 );

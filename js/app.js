@@ -1,6 +1,14 @@
 import { state, save, agentById, resetAll, exportState, uid } from './store.js';
 import { onStatus, status, ensureAnswerModel, currentAnswerLine, checkWebGPU } from './llm.js';
-import { cleanRepo } from './student-model.js';
+import { cleanRepo, getLiteOffer, refreshLiteOffer } from './student-model.js';
+import { esc } from './text.js';
+import { examplePrompts } from './examples.js';
+import { tourSteps, tourButtonLabel, tourSkipLabel } from './tour.js';
+import { progressLine, progressMessage } from './progress.js';
+import { requestPersistentStorage } from './persist.js';
+import { snapshotFromChat, publishShare, fetchShare, shareDialogHTML, sharedThreadHTML, transcriptText } from './share.js';
+import { noteEvent } from './usage.js';
+import { helpImproveEnabled, trainingTurn, postTraining } from './training.js';
 import {
   readOpenRouterKey, writeOpenRouterKey, forgetOpenRouterKey, redactSecrets, listModels,
   pickTeacherCandidates, pickDefaultTeacherIds, createOpenRouterAdapter,
@@ -13,7 +21,7 @@ import { session } from './session.js';
 import { $, closeModal, openModal, confirm, toast, announce } from './dom.js';
 import {
   agentListHTML, agentChatsHTML, groupListHTML, chatHeadHTML, threadHTML, settingsHTML,
-  renameChatHTML, agentFormHTML, groupFormHTML, connectorsHTML, patchThread,
+  renameChatHTML, agentFormHTML, groupFormHTML, connectorsHTML, patchThread, liteHintHTML,
 } from './pages.js';
 import { testConnector, writeConnectorMeta, packCred } from './connectors.js';
 import { saveSecret, deleteSecret, hasSecret } from './secrets.js';
@@ -83,6 +91,100 @@ function statusLine() {
 function paintStatus() {
   const el = $('#model-status');
   if (el) el.textContent = statusLine();
+  paintLoad();
+}
+
+function activeModelName() {
+  return state.settings.modelChoice === 'agora-lite' && getLiteOffer() === 'ready' ? 'Agora Lite' : 'Agora 1.0';
+}
+
+function paintLoad() {
+  const bar = $('#load-bar');
+  if (!bar) return;
+  if (document.body.classList.contains('share-mode')) {
+    bar.hidden = true;
+    return;
+  }
+  const preparing = !!session.gpu?.pending && !status.ready;
+  const loading = preparing || (status.busy && !status.ready);
+  const failed = !!(status.error && !status.busy && !status.ready);
+  bar.hidden = !loading && !failed;
+  if (bar.hidden) return;
+  const info = {
+    percent: status.percent || (status.progress ? Math.round(status.progress * 100) : 0),
+    mb: status.mb,
+    eta: status.eta,
+    fromCache: !!status.fromCache,
+  };
+  const msg = $('#load-msg');
+  const meta = $('#load-meta');
+  const fill = $('#load-fill');
+  const track = $('#load-track');
+  const retry = $('#load-retry');
+  const name = activeModelName();
+  if (msg) {
+    msg.textContent = failed
+      ? (status.text || ui('Agora 1.0 could not start.', 'Az Agora 1.0 nem indult el.'))
+      : (preparing && !status.busy
+        ? ui(
+          `Preparing ${name}. The first download can take a few minutes. This bar will move as the files arrive.`,
+          `A ${name} k\u00e9sz\u00fcl. Az els\u0151 let\u00f6lt\u00e9s n\u00e9h\u00e1ny percig tarthat. A s\u00e1v halad, ahogy a f\u00e1jlok meg\u00e9rkeznek.`,
+        )
+        : progressMessage(info, name));
+  }
+  if (meta) meta.textContent = failed ? '' : progressLine(info);
+  if (fill) {
+    fill.style.width = `${info.percent}%`;
+    fill.classList.toggle('indeterminate', !failed && info.percent <= 0);
+  }
+  if (track) track.setAttribute('aria-valuenow', String(info.percent));
+  if (retry) {
+    retry.hidden = !failed;
+    retry.textContent = ui('Try again', '\u00dajra');
+  }
+}
+
+function paintLite() {
+  const slot = $('#lite-hint');
+  if (!slot || document.body.classList.contains('share-mode')) {
+    if (slot) slot.hidden = true;
+    return;
+  }
+  const html = liteHintHTML();
+  if (slot.dataset.html === html) {
+    slot.hidden = !html;
+    return;
+  }
+  slot.dataset.html = html;
+  slot.hidden = !html;
+  slot.innerHTML = html;
+}
+
+function showTour() {
+  const box = $('#tour');
+  if (!box) return;
+  if (state.settings.welcomed || session.shared) {
+    box.hidden = true;
+    return;
+  }
+  const steps = tourSteps();
+  const index = Math.min(session.tourStep || 0, steps.length - 1);
+  const step = steps[index];
+  box.hidden = false;
+  box.innerHTML = `<p class="section-label">${esc(ui('Welcome', '\u00dcdv\u00f6z\u00f6l'))} ${index + 1} / ${steps.length}</p>
+    <h2>${esc(step.title)}</h2>
+    <p>${esc(step.body)}</p>
+    <div class="row">
+      <button type="button" data-act="tour-next">${esc(tourButtonLabel(index, steps.length))}</button>
+      <button type="button" class="ghost" data-act="tour-skip">${esc(tourSkipLabel())}</button>
+    </div>`;
+}
+
+function finishTour() {
+  state.settings.welcomed = true;
+  save();
+  const box = $('#tour');
+  if (box) box.hidden = true;
 }
 
 function setBusy(on) {
@@ -94,7 +196,39 @@ function setBusy(on) {
   if (cont) cont.hidden = on || !groupCanContinue(currentChat());
 }
 
+function paintShared() {
+  const snap = session.shared || { loading: true, messages: [] };
+  const head = $('#chat-head');
+  if (head) {
+    const title = snap.title || ui('Shared chat', 'Megosztott cseveg\u00e9s');
+    head.innerHTML = `<div class="who"><div><h1>${esc(title)}</h1><p class="model-pill">${esc(ui('Read-only', 'Csak olvashat\u00f3'))}</p></div></div>`;
+  }
+  if (thread) thread.innerHTML = `<div class="column">${sharedThreadHTML(snap)}</div>`;
+  const bar = $('#share-bar');
+  const note = $('#share-note');
+  if (note) {
+    note.textContent = ui(
+      'This is a read-only copy. Try Agora to start your own chat in this browser.',
+      'Ez egy csak olvashat\u00f3 m\u00e1solat. Pr\u00f3b\u00e1ld ki az Agor\u00e1t, \u00e9s kezdj saj\u00e1t cseveg\u00e9st ebben a b\u00f6ng\u00e9sz\u0151ben.',
+    );
+  }
+  const tryButton = $('#try-agora');
+  const copyButton = $('#copy-shared');
+  if (tryButton) tryButton.textContent = ui('Try Agora', 'Agora kipr\u00f3b\u00e1l\u00e1sa');
+  if (copyButton) copyButton.textContent = ui('Copy as text', 'M\u00e1sol\u00e1s sz\u00f6vegk\u00e9nt');
+  if (bar) bar.hidden = false;
+  const input = $('#input');
+  if (input) input.disabled = true;
+  document.title = `${snap.title || 'Agora'} · Agora`;
+  paintStatus();
+  applyChrome();
+}
+
 function paint(patch) {
+  if (session.shared) {
+    paintShared();
+    return;
+  }
   const agent = session.view === 'group' ? null : currentAgent();
   const chat = currentChat();
   if (chat && session.view !== 'group') session.chatId = chat.id;
@@ -123,6 +257,7 @@ function paint(patch) {
     document.title = `${chat?.name || agent?.name || 'Agora'} · Agora`;
   }
   paintStatus();
+  paintLite();
   setBusy(isRunning());
   applyChrome();
 }
@@ -226,6 +361,7 @@ async function submitText(text) {
   const attachment = session.attachment;
   const image = session.image || '';
   if ((!typed && !attachment && !image) || runCtl) return;
+  noteEvent('chat');
   const chat = currentChat();
   if (!chat) {
     toast('Create an agent first.');
@@ -314,6 +450,18 @@ async function saveSettings() {
     }
     state.settings.studentRepo = repo;
   }
+  const choice = document.querySelector('input[name="model-choice"]:checked')?.value;
+  if (choice === 'agora' || choice === 'agora-lite') {
+    if (choice === 'agora-lite' && getLiteOffer() !== 'ready') {
+      toast(ui('Agora Lite is coming soon.', 'Az Agora Lite hamarosan \u00e9rkezik.'));
+      return;
+    }
+    state.settings.modelChoice = choice;
+  }
+  const improve = $('#help-improve');
+  if (improve) state.settings.helpImprove = !!improve.checked;
+  const counts = $('#usage-counts');
+  if (counts) state.settings.usageCounts = !!counts.checked;
   const key = $('#or-key')?.value || '';
   if (key.trim()) writeOpenRouterKey(key);
   if ($('#cloud-url')) setCloudUrl($('#cloud-url').value);
@@ -526,7 +674,100 @@ const actions = {
     const record = feedbackRecord(chat, message, message.rating, message.ratingComment || '');
     await saveFeedback(record);
     save();
+    noteEvent('feedback');
+    if (helpImproveEnabled(state.settings)) {
+      const messages = trainingTurn(chat, message);
+      postTraining({ rating: message.rating, lang: voiceLang(), messages }).catch(() => {});
+    }
     paint(false);
+  },
+  'example'(btn) {
+    const item = examplePrompts()[Number(btn.dataset.example)];
+    if (!item) return;
+    submitText(item.text);
+  },
+  async 'share-chat'() {
+    const chat = currentChat();
+    const snapshot = snapshotFromChat(chat, (message) => agentById(message.agentId)?.name || 'Agora 1.0');
+    if (!snapshot.messages.length) {
+      toast(ui('Nothing to share yet.', 'M\u00e9g nincs mit megosztani.'));
+      return;
+    }
+    session.shareDraft = snapshot;
+    openModal(shareDialogHTML(snapshot, null), null, closeModal);
+    try {
+      const result = await publishShare(snapshot);
+      if (result.ok) noteEvent('share');
+      if ($('#modal') && !$('#modal').classList.contains('hidden')) openModal(shareDialogHTML(snapshot, result), null, closeModal);
+    } catch {
+      if ($('#modal') && !$('#modal').classList.contains('hidden')) {
+        openModal(shareDialogHTML(snapshot, {
+          ok: false,
+          error: ui('The link could not be created. You can still copy the chat.', 'A link nem k\u00e9sz\u00fclt el. A cseveg\u00e9st \u00edgy is kim\u00e1solhatod.'),
+        }), null, closeModal);
+      }
+    }
+  },
+  async 'copy-transcript'() {
+    const text = transcriptText(session.shareDraft || { messages: [] });
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(ui('Chat copied.', 'A cseveg\u00e9s a v\u00e1g\u00f3lapra ker\u00fclt.'));
+    } catch {
+      toast(ui('Select the chat and copy it.', 'Jel\u00f6ld ki a cseveg\u00e9st, \u00e9s m\u00e1sold ki.'));
+    }
+  },
+  async 'copy-share-link'() {
+    const link = $('#share-url')?.value || '';
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      toast(ui('Link copied.', 'A link a v\u00e1g\u00f3lapra ker\u00fclt.'));
+    } catch {
+      toast(ui('Select the link and copy it.', 'Jel\u00f6ld ki a linket, \u00e9s m\u00e1sold ki.'));
+    }
+  },
+  async 'copy-shared'() {
+    const text = transcriptText(session.shared || { messages: [] });
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(ui('Chat copied.', 'A cseveg\u00e9s a v\u00e1g\u00f3lapra ker\u00fclt.'));
+    } catch {
+      toast(ui('Select the chat and copy it.', 'Jel\u00f6ld ki a cseveg\u00e9st, \u00e9s m\u00e1sold ki.'));
+    }
+  },
+  'try-agora'() {
+    const next = `${location.pathname}${location.hash || ''}`;
+    location.assign(next);
+  },
+  'tour-next'() {
+    const steps = tourSteps();
+    session.tourStep = (session.tourStep || 0) + 1;
+    if (session.tourStep >= steps.length) finishTour();
+    else showTour();
+  },
+  'tour-skip': finishTour,
+  'use-lite'() {
+    if (getLiteOffer() !== 'ready') {
+      toast(ui('Agora Lite is coming soon.', 'Az Agora Lite hamarosan \u00e9rkezik.'));
+      return;
+    }
+    state.settings.modelChoice = 'agora-lite';
+    state.settings.liteDismissed = true;
+    save();
+    ensureAnswerModel().catch(() => {});
+    paint(false);
+    toast(ui('Agora Lite will load.', 'Az Agora Lite t\u00f6lt\u0151dik.'));
+  },
+  'dismiss-lite'() {
+    state.settings.liteDismissed = true;
+    save();
+    paint(false);
+  },
+  'retry-model'() {
+    ensureAnswerModel().catch(() => {});
   },
   'pick-file'() { $('#file-input')?.click(); },
   'pick-image'() { $('#image-input')?.click(); },
@@ -535,6 +776,8 @@ const actions = {
     const next = setVoiceLang(voiceLang() === 'hu' ? 'en' : 'hu');
     const button = $('#voice-lang');
     if (button) button.textContent = next === 'hu' ? 'HU' : 'EN';
+    showTour();
+    paint(false);
     if ($('#cloud-url')) openModal(settingsHTML(), null, closeModal);
   },
   'toggle-speak'() {
@@ -707,7 +950,10 @@ const actions = {
     toast('Opening the sign-in page…');
     await beginPkce(btn.dataset.oauth, clientId);
   },
-  'open-settings'() { openModal(settingsHTML(), null, closeModal); },
+  async 'open-settings'() {
+    await refreshLiteOffer().catch(() => {});
+    openModal(settingsHTML(), null, closeModal);
+  },
   stop() { runCtl?.abort(); toast('Stopped.'); },
   'forget-key'() {
     forgetOpenRouterKey();
@@ -790,7 +1036,17 @@ session.view = state.settings.activeGroupId ? 'group' : (state.settings.activeAg
 session.agentId = state.settings.activeAgentId || '';
 session.chatId = state.settings.activeChatId || '';
 session.groupId = state.settings.activeGroupId || '';
-if (session.view === 'group' && currentGroup()) activateGroup(session.groupId);
+const shareId = oauthParams.get('share');
+const openingShare = !!(shareId && !oauthCode && !oauthError);
+if (openingShare) {
+  document.body.classList.add('share-mode');
+  session.shared = { loading: true, title: '', messages: [] };
+  paint(false);
+  fetchShare(shareId).then((snap) => {
+    session.shared = snap.error ? { error: snap.error, title: '', messages: [] } : snap;
+    paint(false);
+  });
+} else if (session.view === 'group' && currentGroup()) activateGroup(session.groupId);
 else if (currentAgent()) activateAgent(session.agentId, session.chatId);
 else paint(false);
 
@@ -892,12 +1148,24 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
   if (state.settings.theme === 'system') applyChrome();
 });
 onStatus(() => paintStatus());
-gpuPromise = checkWebGPU();
-gpuPromise.then((result) => {
-  session.gpu = { ...result, pending: false };
-  paintStatus();
-  if (result.ok) ensureAnswerModel().catch(() => {});
-});
+function afterFirstPaint(fn) {
+  if (typeof requestAnimationFrame !== 'function') {
+    setTimeout(fn, 0);
+    return;
+  }
+  requestAnimationFrame(() => requestAnimationFrame(fn));
+}
+function startModel() {
+  requestPersistentStorage();
+  gpuPromise = checkWebGPU();
+  gpuPromise.then((result) => {
+    session.gpu = { ...result, pending: false };
+    if (result.ok) ensureAnswerModel().catch(() => {});
+    else paintLoad();
+    paintStatus();
+  });
+  refreshLiteOffer().then(() => { if (!session.shared) paint(false); }).catch(() => {});
+}
 ensureOnline();
 ensureCatalog().catch(() => {});
 loadMemories().catch(() => {});
@@ -920,6 +1188,11 @@ loadRoutines().then(() => {
 }).catch(() => {});
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js', { type: 'module' }).catch(() => {});
+}
+noteEvent('visit');
+if (!openingShare) {
+  showTour();
+  afterFirstPaint(startModel);
 }
 const langButton = $('#voice-lang');
 if (langButton) langButton.textContent = voiceLang() === 'hu' ? 'HU' : 'EN';

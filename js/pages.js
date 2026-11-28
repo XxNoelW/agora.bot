@@ -1,11 +1,13 @@
 import { esc, rich } from './text.js';
-import { state, agentById } from './store.js';
+import { state, agentById, prefersSmallModel } from './store.js';
 import { readOpenRouterKey } from './openrouter.js';
 import { extractSources } from './tools.js';
 import { listAgentChats, listGroupChats } from './chats.js';
 import { iconMarkup, iconSVG, SHAPES, ICON_COLORS, safeHex } from './icons.js';
 import { CONNECTORS, connectorView, UNAVAILABLE } from './connectors.js';
-import { DEFAULT_STUDENT_REPO } from './student-model.js';
+import { DEFAULT_STUDENT_REPO, LITE_MODEL_NAME, getLiteOffer, shouldSuggestLite } from './student-model.js';
+import { examplePrompts } from './examples.js';
+import { doNotTrack } from './usage.js';
 import { GITHUB_OAUTH_NOTE, readClientId, redirectUri } from './oauth.js';
 import { DEFAULT_CLOUD_URL, cloudCode, cloudUrl, syncConflict, ui } from './cloud.js';
 import { qrSvg } from './qr.js';
@@ -181,6 +183,7 @@ export function chatHeadHTML(chat, agent) {
         <h1>${esc(chat.name || 'Group')}</h1>
         <p class="model-pill">Agora 1.0 · ${esc(members.map((item) => item.name).join(', '))}</p>
       </div>
+      <button type="button" class="quiet" data-act="share-chat">${esc(ui('Share', 'Megoszt\u00e1s'))}</button>
     </div>`;
   }
   if (!agent) return '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora 1.0</p></div></div>';
@@ -190,8 +193,9 @@ export function chatHeadHTML(chat, agent) {
       <h1>${esc(agent.name)}</h1>
       <p class="model-pill">Agora 1.0</p>
     </div>
-    <button type="button" class="quiet" data-act="edit-agent" data-id="${esc(agent.id)}">Edit</button>
-    <button type="button" class="quiet" data-act="delete-agent" data-id="${esc(agent.id)}">Delete</button>
+      <button type="button" class="quiet" data-act="share-chat">${esc(ui('Share', 'Megoszt\u00e1s'))}</button>
+      <button type="button" class="quiet" data-act="edit-agent" data-id="${esc(agent.id)}">Edit</button>
+      <button type="button" class="quiet" data-act="delete-agent" data-id="${esc(agent.id)}">Delete</button>
   </div>`;
 }
 
@@ -214,7 +218,8 @@ export function threadHTML(chat, agent) {
     const note = chat.type === 'group'
       ? 'Everyone in the group sees the whole conversation and answers in turn.'
       : 'Ask anything. Agora 1.0 answers in your language.';
-    return `<div class="welcome">${chat.type === 'group' ? '' : (agent ? iconMarkup(agent) : '')}<h2>${esc(title)}</h2><p>${esc(note)}</p></div>`;
+    const examples = examplePrompts().map((item, index) => `<button type="button" data-act="example" data-example="${index}">${esc(item.label)}</button>`).join('');
+    return `<div class="welcome">${chat.type === 'group' ? '' : (agent ? iconMarkup(agent) : '')}<h2>${esc(title)}</h2><p>${esc(note)}</p><div class="examples">${examples}</div></div>`;
   }
   return messages.map(messageHTML).join('');
 }
@@ -305,6 +310,52 @@ export function connectorsHTML(opts = {}) {
     <div class="row"><button type="button" class="ghost" data-act="close-modal">Close</button></div>`;
 }
 
+function modelChoiceHTML() {
+  const offer = getLiteOffer();
+  const liteOn = offer === 'ready';
+  const selected = state.settings.modelChoice === 'agora-lite' && liteOn ? 'agora-lite' : 'agora';
+  const liteLabel = liteOn
+    ? LITE_MODEL_NAME
+    : `${LITE_MODEL_NAME} · ${offer === 'soon'
+      ? ui('coming soon', 'hamarosan')
+      : ui('could not check', 'most nem ellen\u0151rizhet\u0151')}`;
+  const phone = shouldSuggestLite({
+    offer,
+    smallDevice: prefersSmallModel(),
+    dismissed: false,
+    choice: selected,
+  });
+  const hint = phone
+    ? `<p class="small">${esc(ui(
+      'This device has limited memory. Agora Lite is the smaller download when it is available.',
+      'Ezen az eszk\u00f6z\u00f6n kev\u00e9s a mem\u00f3ria. Az Agora Lite a kisebb let\u00f6lt\u00e9s, ha el\u00e9rhet\u0151.',
+    ))}</p>`
+    : '';
+  return `<fieldset class="model-choice">
+      <legend>${esc(ui('Model', 'Modell'))}</legend>
+      <label class="checkline"><input type="radio" name="model-choice" value="agora" ${selected === 'agora' ? 'checked' : ''}> Agora 1.0</label>
+      <label class="checkline"><input type="radio" name="model-choice" value="agora-lite" ${selected === 'agora-lite' && liteOn ? 'checked' : ''} ${liteOn ? '' : 'disabled'}> ${esc(liteLabel)}</label>
+      ${hint}
+    </fieldset>`;
+}
+
+export function liteHintHTML() {
+  const offer = getLiteOffer();
+  const show = shouldSuggestLite({
+    offer,
+    smallDevice: prefersSmallModel(),
+    dismissed: !!state.settings.liteDismissed,
+    choice: state.settings.modelChoice,
+  });
+  if (!show) return '';
+  const ready = offer === 'ready';
+  const text = ready
+    ? ui('This device has limited memory. Agora Lite is a smaller download.', 'Ezen az eszk\u00f6z\u00f6n kev\u00e9s a mem\u00f3ria. Az Agora Lite kisebb let\u00f6lt\u00e9s.')
+    : ui('This device has limited memory. Agora Lite will be a smaller download when it is published.', 'Ezen az eszk\u00f6z\u00f6n kev\u00e9s a mem\u00f3ria. Az Agora Lite kisebb let\u00f6lt\u00e9s lesz, ha megjelenik.');
+  const use = ready ? `<button type="button" data-act="use-lite">${esc(ui('Use Agora Lite', 'Agora Lite haszn\u00e1lata'))}</button>` : '';
+  return `<p>${esc(text)}</p><div class="row">${use}<button type="button" class="ghost" data-act="dismiss-lite">${esc(ui('Not now', 'Most nem'))}</button></div>`;
+}
+
 function accountSyncHTML() {
   const code = cloudCode();
   const conflict = syncConflict();
@@ -349,6 +400,7 @@ export function settingsHTML() {
       <select id="theme">${option('dark', 'Dark')}${option('light', 'Light')}${option('system', 'Match this device')}</select>
       <h2>Agora 1.0</h2>
       <p class="small">Agora 1.0 is the trained model. This page loads it from the Hugging Face repo below. If the weights are not published, the built-in model answers instead.</p>
+      ${modelChoiceHTML()}
       <label for="student-repo">Hugging Face repo</label>
       <input id="student-repo" value="${esc(state.settings.studentRepo || DEFAULT_STUDENT_REPO)}" autocomplete="off" spellcheck="false" placeholder="${esc(DEFAULT_STUDENT_REPO)}">
       <h2>Online connection</h2>
@@ -371,6 +423,21 @@ export function settingsHTML() {
       <label for="cloud-url">${ui('Backend URL', 'Kiszolg\u00e1l\u00f3 c\u00edme')}</label>
       <input id="cloud-url" value="${esc(cloudUrl())}" autocomplete="off" spellcheck="false" placeholder="${esc(DEFAULT_CLOUD_URL)}">
       ${accountSyncHTML()}
+    </section>
+    <section class="settings-extra">
+      <h2>${ui('Privacy', 'Adatv\u00e9delem')}</h2>
+      <label class="checkline" for="usage-counts"><input id="usage-counts" type="checkbox" ${state.settings.usageCounts !== false ? 'checked' : ''}> ${esc(ui('Send anonymous usage counts', 'N\u00e9vtelen haszn\u00e1lati sz\u00e1mok k\u00fcld\u00e9se'))}</label>
+      <p class="small">${esc(ui(
+        'Sends counts such as a visit, a chat, a tool, a share, or a rating. No cookies and no address are stored. A Do Not Track signal from this browser turns sending off.',
+        'Sz\u00e1mokat k\u00fcld, p\u00e9ld\u00e1ul l\u00e1togat\u00e1st, cseveg\u00e9st, eszk\u00f6zt, megoszt\u00e1st vagy \u00e9rt\u00e9kel\u00e9st. Nincs s\u00fcti, \u00e9s c\u00edm sem t\u00e1rol\u00f3dik. A b\u00f6ng\u00e9sz\u0151 Ne k\u00f6vessen jelz\u00e9se le\u00e1ll\u00edtja a k\u00fcld\u00e9st.',
+      ))}</p>
+      ${doNotTrack() ? `<p class="small">${esc(ui('Do Not Track is on, so counts stay on this device.', 'A Ne k\u00f6vessen be van kapcsolva, ez\u00e9rt a sz\u00e1mok ezen az eszk\u00f6z\u00f6n maradnak.'))}</p>` : ''}
+      <p class="small"><a href="stats.html">${esc(ui('Open the public counts', 'Nyilv\u00e1nos sz\u00e1mok'))}</a></p>
+      <label class="checkline" for="help-improve"><input id="help-improve" type="checkbox" ${state.settings.helpImprove === true ? 'checked' : ''}> ${esc(ui('Help improve Agora', 'Seg\u00edts fejleszteni az Agor\u00e1t'))}</label>
+      <p class="small">${esc(ui(
+        'Off unless you turn it on. A thumbs up or thumbs down then sends the last question and answer so Agora can be trained. Emails and phone numbers are removed. The copy on this device stays either way.',
+        'Kikapcsolva marad, am\u00edg be nem kapcsolod. Ut\u00e1na a felfel\u00e9 vagy lefel\u00e9 jel az utols\u00f3 k\u00e9rd\u00e9st \u00e9s v\u00e1laszt elk\u00fcldi, hogy az Agora tanulhasson. Az e-mail c\u00edmeket \u00e9s a telefonsz\u00e1mokat levessz\u00fck. A m\u00e1solat ezen az eszk\u00f6z\u00f6n ett\u0151l f\u00fcggetlen\u00fcl megmarad.',
+      ))}</p>
     </section>
     <section class="settings-extra">
       <h2>This browser</h2>

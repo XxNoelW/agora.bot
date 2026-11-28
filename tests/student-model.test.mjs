@@ -44,7 +44,7 @@ test('only a qwen2 q4f16_1 config counts as published weights', async () => {
   assert.equal(missing, false);
 });
 
-test('the placeholder repo is not published yet, and a real MLC config is readable', async () => {
-  assert.equal(await studentWeightsReady(DEFAULT_STUDENT_REPO), false);
+test('the default repo publishes qwen2 q4 weights, and a known MLC config is readable', async () => {
+  assert.equal(await studentWeightsReady(DEFAULT_STUDENT_REPO), true);
   assert.equal(await studentWeightsReady('mlc-ai/Qwen2.5-1.5B-Instruct-q4f16_1-MLC'), true);
 });

@@ -64,7 +64,23 @@ try {
       </button>
       <div id="chat-head"></div>
     </header>
+    <div id="load-bar" class="load-bar" hidden>
+      <p id="load-msg"></p>
+      <div id="load-track" class="load-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Agora 1.0">
+        <span id="load-fill"></span>
+      </div>
+      <p id="load-meta"></p>
+      <button type="button" class="ghost" id="load-retry" data-act="retry-model" hidden>Try again</button>
+    </div>
+    <div id="lite-hint" class="lite-hint" hidden></div>
     <div id="thread" tabindex="-1" aria-live="polite"></div>
+    <div id="share-bar" class="share-bar" hidden>
+      <p id="share-note"></p>
+      <div class="row">
+        <button type="button" id="try-agora" data-act="try-agora">Try Agora</button>
+        <button type="button" class="ghost" id="copy-shared" data-act="copy-shared">Copy as text</button>
+      </div>
+    </div>
     <form id="composer" class="composer" autocomplete="off">
       <label class="sr-only" for="input">Message</label>
       <button type="button" class="quiet continue-btn" id="continue" data-act="continue-group" hidden>Continue</button>
@@ -90,6 +106,7 @@ try {
     </form>
   </main>
 </div>
+<div id="tour" class="tour" hidden></div>
 <div id="live" class="sr-only" aria-live="polite"></div>
 <div id="toast" role="status"></div>
 <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">

@@ -3,9 +3,27 @@
 // Only the weights come from the visitor's Hugging Face repo.
 
 export const DEFAULT_STUDENT_REPO = 'XxNoelW/Agora-1.0';
+export const LITE_REPO = 'XxNoelW/Agora-1.0-Lite';
 export const TRAINED_MODEL_NAME = 'Agora 1.0';
+export const LITE_MODEL_NAME = 'Agora Lite';
 export const STUDENT_MODEL_ID = 'agora-student-q4f16_1';
+export const LITE_MODEL_ID = 'agora-lite';
 export const STUDENT_WASM = 'https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_87/base/Qwen2-1.5B-Instruct-q4f16_1_cs1k-webgpu.wasm';
+
+// `agora-lite` is the model id the page asks WebLLM to load. The weights
+// come from LITE_REPO when that Hugging Face repo is public.
+export const MODEL_CONFIG = {
+  agora: {
+    id: STUDENT_MODEL_ID,
+    repo: DEFAULT_STUDENT_REPO,
+    label: TRAINED_MODEL_NAME,
+  },
+  'agora-lite': {
+    id: LITE_MODEL_ID,
+    repo: LITE_REPO,
+    label: LITE_MODEL_NAME,
+  },
+};
 
 export function cleanRepo(value) {
   const text = String(value || '')
@@ -30,22 +48,62 @@ export function studentRecord(repoId) {
   };
 }
 
+export function liteRecord(repoId = LITE_REPO) {
+  const repo = cleanRepo(repoId) || LITE_REPO;
+  return {
+    model: `https://huggingface.co/${repo}`,
+    model_id: LITE_MODEL_ID,
+    model_lib: STUDENT_WASM,
+    low_resource_required: true,
+    vram_required_MB: 512,
+    overrides: { context_window_size: 4096 },
+  };
+}
+
 export function studentAppConfig(repoId) {
   return { model_list: [studentRecord(repoId)] };
 }
 
-export async function studentWeightsReady(repoId, fetchImpl = fetch) {
+export function choiceAppConfig(choice, repoId) {
+  if (choice === 'agora-lite') return { model_list: [liteRecord(repoId || LITE_REPO)] };
+  return studentAppConfig(repoId);
+}
+
+export async function publishedModel(repoId, fetchImpl = fetch) {
   const repo = cleanRepo(repoId);
-  if (!repo) return false;
+  if (!repo) return 'missing';
   const url = `https://huggingface.co/${repo}/resolve/main/mlc-chat-config.json`;
   try {
     const res = await fetchImpl(url, { method: 'GET' });
-    if (!res?.ok) return false;
+    if (!res || res.status === 404 || res.status === 401) return 'missing';
+    if (!res.ok) return 'error';
     const text = await res.text();
-    return /"model_type"\s*:\s*"qwen2"/.test(text) && /"quantization"\s*:\s*"q4f16_1"/.test(text);
+    if (/"model_type"\s*:\s*"qwen2"/.test(text) && /"quantization"\s*:\s*"q4f16_1"/.test(text)) return 'ready';
+    return 'error';
   } catch {
-    return false;
+    return 'error';
   }
+}
+
+export async function studentWeightsReady(repoId, fetchImpl = fetch) {
+  return (await publishedModel(repoId, fetchImpl)) === 'ready';
+}
+
+let liteOffer = 'unknown';
+
+export function getLiteOffer() {
+  return liteOffer;
+}
+
+export async function refreshLiteOffer(fetchImpl = fetch) {
+  const result = await publishedModel(LITE_REPO, fetchImpl);
+  liteOffer = result === 'ready' ? 'ready' : (result === 'missing' ? 'soon' : 'unknown');
+  return liteOffer;
+}
+
+export function shouldSuggestLite({ offer, smallDevice, dismissed, choice }) {
+  if (dismissed || choice === 'agora-lite' || !smallDevice) return false;
+  return offer === 'ready' || offer === 'soon';
 }
 
 export function builtinName(modelId) {
@@ -58,12 +116,15 @@ export function builtinName(modelId) {
   return 'model';
 }
 
-export function answerLine({ kind, repo, builtin, reason, busy, progress, online, gpuOk }) {
+export function answerLine({ kind, repo, builtin, reason, busy, progress, online, gpuOk, label, fromCache }) {
   const pct = progress > 0 && progress < 1 ? ` ${Math.round(progress * 100)}%` : '';
+  const name = label || TRAINED_MODEL_NAME;
   if (online && !busy) return 'Answering online';
-  if (busy && kind === 'trained') return `Downloading ${TRAINED_MODEL_NAME}${pct}`;
+  if (busy && kind === 'trained' && fromCache) return `Loading ${name} from cache${pct}`;
+  if (busy && kind === 'trained') return `Downloading ${name}${pct}`;
+  if (busy && fromCache) return `Loading the built-in model from cache${pct}`;
   if (busy) return `Downloading the built-in model${pct}`;
-  if (kind === 'trained') return `Answering with ${TRAINED_MODEL_NAME}`;
+  if (kind === 'trained') return `Answering with ${name}`;
   if (kind === 'builtin') {
     const name = builtin || 'built-in model';
     return reason ? `Answering with the built-in ${name}. ${reason}` : `Answering with the built-in ${name}.`;
