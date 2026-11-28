@@ -217,16 +217,16 @@ async function runDirect(agent, chat, parentSignal, onUpdate) {
   }
 }
 
-export async function runUserTask(text, { signal = new AbortController().signal, onUpdate, gpu, onlyAgentId, planned, chat: givenChat } = {}) {
+export async function runUserTask(text, { signal = new AbortController().signal, onUpdate, gpu, onlyAgentId, planned, chat: givenChat, attachment = null, image = '', title = '' } = {}) {
   const chat = givenChat || workspaceChat();
   const clean = String(text || '').trim();
-  if (!clean) return;
+  if (!clean && !attachment && !image) return;
   active += 1;
   session.runBucket = { run: 0, global: state.usage.openrouterCalls || 0, stopped: false };
   try {
-    chat.messages.push({ id: uid('m_'), role: 'user', content: clean, ts: Date.now() });
+    chat.messages.push({ id: uid('m_'), role: 'user', content: clean, attachment, image, ts: Date.now() });
     state.usage.userMessages++;
-    maybeTitle(chat, clean);
+    maybeTitle(chat, title || clean || attachment?.name || 'Image');
     touchChat(chat);
     audit('message', clean.slice(0, 400));
     const direct = onlyAgentId ? agentById(onlyAgentId) : null;

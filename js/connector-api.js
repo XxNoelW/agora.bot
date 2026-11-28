@@ -96,7 +96,7 @@ export const UNAVAILABLE = [
 export const CONNECTOR_SPECS = [
   {
     id: 'github', name: 'GitHub', group: 'Code', auth: 'token',
-    hint: 'Paste a personal access token. It stays encrypted in this browser. Agora AI never sees it.',
+    hint: 'Paste a personal access token. It stays encrypted in this browser. Agora 1.0 never sees it.',
     setup: 'Create a GitHub token with repo and gist access.',
     setupUrl: 'https://github.com/settings/tokens',
     placeholder: 'github_pat_… or ghp_…',
@@ -222,7 +222,7 @@ export const CONNECTOR_SPECS = [
   },
   {
     id: 'gemini', name: 'Google Gemini', group: 'Models', auth: 'token',
-    hint: 'Paste a Gemini API key. It is used only for Gemini actions, not as the Agora AI chat model.',
+    hint: 'Paste a Gemini API key. It is used only for Gemini actions, not as the Agora 1.0 chat model.',
     setup: 'Create a Gemini API key in Google AI Studio.',
     setupUrl: 'https://aistudio.google.com/apikey',
     placeholder: 'AIza…',

@@ -1,0 +1,188 @@
+// Visitor notes. The prompt only receives a short slice, because Agora 1.0 is small.
+import { listRows, saveRow, removeRow, replaceRows } from './browser-store.js';
+
+const FLAG = 'agora:memory-enabled';
+let cache = [];
+
+export function memoryEnabled(storage = globalThis.localStorage) {
+  try {
+    const value = storage?.getItem(FLAG);
+    if (value == null) return true;
+    return value !== '0';
+  } catch { return true; }
+}
+
+export function setMemoryEnabled(on, storage = globalThis.localStorage) {
+  try { storage?.setItem(FLAG, on ? '1' : '0'); } catch { /* private mode */ }
+  return memoryEnabled(storage);
+}
+
+export function cachedMemories() {
+  return cache;
+}
+
+export async function loadMemories() {
+  cache = (await listRows('memories')).sort((a, b) => (b.updated || 0) - (a.updated || 0));
+  return cache;
+}
+
+function cleanText(text) {
+  return String(text || '').replace(/\s+/g, ' ').trim().slice(0, 240);
+}
+
+export function parseMemoryCommand(text) {
+  const raw = String(text || '').trim();
+  const name = raw.match(/^(?:my name is|call me|a nevem|h\u00edvj(?:\s+\w+)?)\s+(.+)$/i);
+  if (name) return { op: 'remember', kind: 'name', text: cleanText(name[1].replace(/[.!?]+$/g, '')), lang: /nevem|h\u00edvj/i.test(raw) ? 'hu' : 'en' };
+  const remember = raw.match(/^(?:please\s+)?(?:remember that|remember|eml\u00e9kezz(?:\s+arra)?(?:,?\s+hogy)?)\s+(.+)$/i);
+  if (remember) {
+    const body = cleanText(remember[1]);
+    const named = body.match(/^(?:my name is|a nevem)\s+(.+)$/i);
+    return {
+      op: 'remember',
+      kind: named ? 'name' : 'fact',
+      text: named ? cleanText(named[1]) : body,
+      lang: /eml\u00e9kezz|nevem/i.test(raw) ? 'hu' : 'en',
+    };
+  }
+  const forget = raw.match(/^(?:please\s+)?(?:forget|felejtsd el|felejts el)\s+(.+)$/i);
+  if (forget) {
+    return { op: 'forget', text: cleanText(forget[1]), lang: /felejts/i.test(raw) ? 'hu' : 'en' };
+  }
+  return null;
+}
+
+export function upsertMemory(list, { text, kind = 'fact', id, now = Date.now() }) {
+  const clean = cleanText(text);
+  if (!clean) return list;
+  const next = list.map((row) => ({ ...row }));
+  if (kind === 'name') {
+    const existing = next.find((row) => row.kind === 'name');
+    if (existing) {
+      existing.text = clean;
+      existing.updated = now;
+      return next;
+    }
+  }
+  const same = next.find((row) => row.text.toLowerCase() === clean.toLowerCase());
+  if (same) {
+    same.kind = kind;
+    same.updated = now;
+    return next;
+  }
+  next.unshift({ id: id || `mem_${now.toString(36)}`, text: clean, kind, created: now, updated: now });
+  return next.slice(0, 80);
+}
+
+export function forgetMemories(list, query) {
+  const q = cleanText(query).toLowerCase();
+  if (!q) return { list, removed: [] };
+  if (/^(everything|all|all of it|mindent|minden)$/i.test(q)) {
+    return { list: [], removed: list.slice() };
+  }
+  const removed = [];
+  const next = [];
+  for (const row of list) {
+    if (row.text.toLowerCase().includes(q) || (row.kind === 'name' && q.includes(row.text.toLowerCase()))) removed.push(row);
+    else next.push(row);
+  }
+  return { list: next, removed };
+}
+
+function words(text) {
+  return String(text || '').toLowerCase().split(/[^a-z0-9\u00e1\u00e9\u00ed\u00f3\u00f6\u0151\u00fa\u00fc\u0171]+/).filter((word) => word.length > 3);
+}
+
+export function selectMemories(list, userText, limit = 6) {
+  const rows = Array.isArray(list) ? list : [];
+  const name = rows.find((row) => row.kind === 'name');
+  const terms = words(userText);
+  const ranked = rows
+    .filter((row) => row !== name)
+    .map((row) => ({
+      row,
+      score: terms.reduce((sum, term) => sum + (row.text.toLowerCase().includes(term) ? term.length : 0), 0),
+    }))
+    .sort((a, b) => b.score - a.score || (b.row.updated || 0) - (a.row.updated || 0));
+  const picked = [];
+  if (name) picked.push(name);
+  for (const item of ranked) {
+    if (picked.length >= limit) break;
+    if (item.score > 0 || picked.length < 3) picked.push(item.row);
+  }
+  return picked.slice(0, limit);
+}
+
+export function memoryBlock(userText, list = cache, enabled = memoryEnabled()) {
+  if (!enabled) return '';
+  const picked = selectMemories(list, userText);
+  if (!picked.length) return '';
+  const lines = picked.map((row) => `- ${row.kind === 'name' ? 'Name: ' : ''}${row.text}`);
+  let body = `Notes about this visitor:\n${lines.join('\n')}\nUse a note only when it fits the question. Do not recite the list.`;
+  if (body.length > 480) body = body.slice(0, 477) + '…';
+  return body;
+}
+
+export function memoryToolLines() {
+  return [
+    'TOOL: remember {"text":"the visitor likes tea"} — save a fact in this browser',
+    'TOOL: forget {"text":"tea"} — delete a saved fact',
+  ].join('\n');
+}
+
+function reply(lang, en, hu) {
+  return lang === 'hu' ? hu : en;
+}
+
+export async function applyMemoryCommand(command) {
+  if (!memoryEnabled()) {
+    return reply(command.lang, 'Memory is off. Turn it on in Memory.', 'A mem\u00f3ria ki van kapcsolva. Kapcsold be a Memory panelen.');
+  }
+  if (!cleanText(command.text)) {
+    return reply(command.lang, 'Tell me what to remember or forget.', 'Mondd meg, mire eml\u00e9kezzek.');
+  }
+  if (command.op === 'forget') {
+    const result = forgetMemories(cache, command.text);
+    cache = result.list;
+    await replaceRows('memories', cache);
+    if (!result.removed.length) return reply(command.lang, 'I did not have that saved.', 'Ez nem volt elmentve.');
+    return reply(command.lang, 'Forgotten on this computer.', 'Elfelejtettem ezen a sz\u00e1m\u00edt\u00f3g\u00e9pen.');
+  }
+  cache = upsertMemory(cache, command);
+  const saved = cache.find((row) => row.text.toLowerCase() === command.text.toLowerCase()) || cache[0];
+  await saveRow('memories', saved);
+  return reply(command.lang, 'I will remember that on this computer.', 'Megjegyeztem ezen a sz\u00e1m\u00edt\u00f3g\u00e9pen.');
+}
+
+export async function editMemory(id, text) {
+  const row = cache.find((item) => item.id === id);
+  if (!row) return null;
+  row.text = cleanText(text);
+  row.updated = Date.now();
+  if (!row.text) return removeMemory(id);
+  await saveRow('memories', row);
+  return row;
+}
+
+export async function removeMemory(id) {
+  cache = cache.filter((row) => row.id !== id);
+  await removeRow('memories', id);
+  return cache;
+}
+
+export async function addMemory(text, kind = 'fact') {
+  cache = upsertMemory(cache, { text, kind });
+  const saved = cache[0];
+  await saveRow('memories', saved);
+  return saved;
+}
+
+export function isMemoryTool(name) {
+  return name === 'remember' || name === 'forget';
+}
+
+export async function runMemoryTool(name, args = {}) {
+  if (name === 'remember') return applyMemoryCommand({ op: 'remember', kind: 'fact', text: args.text || args.fact || '', lang: 'en' });
+  if (name === 'forget') return applyMemoryCommand({ op: 'forget', text: args.text || args.query || '', lang: 'en' });
+  return '';
+}

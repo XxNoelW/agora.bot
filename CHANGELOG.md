@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Memory, searchable chats, local thumbs feedback with a JSONL download, voice in English and Hungarian, file and image attach, and routines that run while Agora is open.
+- The app shell can install as a PWA. The service worker does not cache model weights.
+
+## 2026-11-28, connectors
+
 - Connectors is a searchable catalog in `data/plugins.json`. Ready connectors run in the browser. Entries that need a key, sign-in, or the optional Cloudflare proxy say so.
 - GitHub “list my sites” calls the GitHub API for repositories and Pages URLs instead of repeating the connection status.
 - A remote MCP URL can be added from the store. Sign-in uses OAuth 2.1 with PKCE when the server supports dynamic registration.

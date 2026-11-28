@@ -25,7 +25,18 @@ import { beginMcpOauth, finishMcpOauth } from './mcp-client.js';
 import { ensureAgentChats, listAgentChats, createAgentChat, renameAgentChat, deleteAgentChat, createGroupChat, groupCanContinue } from './chats.js';
 import { createAgentRecord, applyAgentEdits, removeAgent } from './agents.js';
 import { ICON_COLORS } from './icons.js';
-import { resizeImageFile } from './image.js';
+import { resizeImageFile, shrinkChatImage } from './image.js';
+import { memoryPanelHTML, routinesPanelHTML, filterHistory } from './panels.js';
+import {
+  loadMemories, parseMemoryCommand, applyMemoryCommand, memoryEnabled, setMemoryEnabled,
+  addMemory, editMemory, removeMemory,
+} from './memory.js';
+import {
+  loadRoutines, parseRoutine, createRoutine, cancelRoutine, startRoutineLoop,
+} from './routines.js';
+import { loadFeedback, feedbackRecord, saveFeedback, toJSONL } from './feedback.js';
+import { attachmentBlock, textFromPdf } from './attachments.js';
+import { voiceLang, setVoiceLang, speakEnabled, setSpeakEnabled, startListening, speakText } from './voice.js';
 
 const thread = $('#thread');
 let runCtl = null;
@@ -91,9 +102,9 @@ function paint(patch) {
     const groups = $('#group-list');
     const head = $('#chat-head');
     if (agents) agents.innerHTML = agentListHTML(session.view === 'agent' ? agent?.id : '');
-    if (chats) chats.innerHTML = agentChatsHTML(session.view === 'agent' ? agent?.id : '', chat?.id);
+    if (chats) chats.innerHTML = agentChatsHTML(session.view === 'agent' ? agent?.id : '', chat?.id, session.chatQuery || '');
     if (groups) groups.innerHTML = groupListHTML(session.view === 'group' ? chat?.id : '');
-    if (head) head.innerHTML = chat ? chatHeadHTML(chat, agent) : '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora AI</p></div></div>';
+    if (head) head.innerHTML = chat ? chatHeadHTML(chat, agent) : '<div class="who"><div><h1>Agora</h1><p class="model-pill">Agora 1.0</p></div></div>';
     if (thread) {
       thread.innerHTML = `<div class="column">${chat ? threadHTML(chat, agent) : threadHTML(null, null)}</div>`;
       const start = thread.querySelector('.bubble-row.user:last-of-type, .welcome, .empty-home');
@@ -191,35 +202,77 @@ async function ensureOnline() {
     state.settings.openrouterChatModel = id;
     save();
     paintStatus();
-  } catch { /* a later reply explains if Agora AI cannot answer */ }
+  } catch { /* a later reply explains if Agora 1.0 cannot answer */ }
+}
+
+function pushLocalTurn(chat, userText, answer, tool) {
+  chat.messages.push({ id: uid('m_'), role: 'user', content: userText, ts: Date.now() });
+  chat.messages.push({ id: uid('m_'), role: 'tool', tool, content: answer, agentId: session.agentId, ts: Date.now() });
+  chat.messages.push({
+    id: uid('m_'), role: 'agent', agentId: session.agentId, content: answer, answered: true, ts: Date.now(),
+  });
+  state.usage.userMessages += 1;
+  state.usage.agentMessages += 1;
+  save();
+  paint(false);
+  if (speakEnabled()) speakText(answer, voiceLang());
 }
 
 async function submitText(text) {
-  const clean = String(text || '').trim();
-  if (!clean || runCtl) return;
+  const typed = String(text || '').trim();
+  const attachment = session.attachment;
+  const image = session.image || '';
+  if ((!typed && !attachment && !image) || runCtl) return;
   const chat = currentChat();
   if (!chat) {
     toast('Create an agent first.');
     return;
   }
+  const memoryCommand = typed ? parseMemoryCommand(typed) : null;
+  if (memoryCommand && !attachment && !image) {
+    const answer = await applyMemoryCommand(memoryCommand);
+    const input = $('#input');
+    if (input) { input.value = ''; input.style.height = 'auto'; }
+    pushLocalTurn(chat, typed, answer, memoryCommand.op);
+    return;
+  }
+  const routineCommand = typed ? parseRoutine(typed) : null;
+  if (routineCommand && !attachment && !image) {
+    const row = await createRoutine(routineCommand);
+    const answer = routineCommand.lang === 'hu'
+      ? `Be\u00e1ll\u00edtottam. Ez csak akkor fut, ha az Agora nyitva van.`
+      : `Saved for ${row.text}. This runs only while Agora is open.`;
+    const input = $('#input');
+    if (input) { input.value = ''; input.style.height = 'auto'; }
+    pushLocalTurn(chat, typed, answer, 'create_routine');
+    return;
+  }
+  const clean = typed;
   const input = $('#input');
   if (input) {
     input.value = '';
     input.style.height = 'auto';
   }
+  session.attachment = null;
+  session.image = '';
+  paintPending();
   await ensureGpu();
   runCtl = new AbortController();
   setBusy(true);
   try {
     const opts = { signal: runCtl.signal, onUpdate: (patch) => paint(!!patch), gpu: session.gpu };
-    if (chat.type === 'group') await runGroupRound(chat, { ...opts, text: clean, fresh: true });
-    else await runUserTask(clean, { ...opts, onlyAgentId: session.agentId, chat });
+    if (chat.type === 'group') {
+      let body = clean;
+      if (attachment?.text) body = `${attachment.text}\n\n${body}`.trim();
+      if (image) body = `${body}\n\nThe user attached an image. Agora 1.0 is text-only and cannot see pictures.`.trim();
+      await runGroupRound(chat, { ...opts, text: body, fresh: true });
+    } else await runUserTask(clean, { ...opts, onlyAgentId: session.agentId, chat, attachment, image, title: typed });
   } catch (err) {
     console.error(err);
     chat.messages.push({
       id: uid('m_'),
       role: 'system',
-      content: redactSecrets(err.friendly || err.message || 'Agora AI could not answer. Please try again.'),
+      content: redactSecrets(err.friendly || err.message || 'Agora 1.0 could not answer. Please try again.'),
       ts: Date.now(),
     });
     save();
@@ -229,7 +282,21 @@ async function submitText(text) {
     save();
     announce('Replied.');
     paint(false);
+    if (speakEnabled()) {
+      const last = [...chat.messages].reverse().find((item) => item.role === 'agent' && item.content && !item.pending);
+      if (last) speakText(last.content, voiceLang());
+    }
   }
+}
+
+function paintPending() {
+  const box = $('#pending');
+  if (!box) return;
+  const bits = [];
+  if (session.attachment) bits.push(session.attachment.name);
+  if (session.image) bits.push('Image attached. Agora 1.0 cannot see pictures.');
+  box.hidden = !bits.length;
+  box.textContent = bits.join(' · ');
 }
 
 async function saveSettings() {
@@ -409,7 +476,68 @@ const actions = {
       paint(false);
     }
   },
+  'open-memory'() { openModal(memoryPanelHTML(), bindMemoryPanel, closeModal); $('#modal-box')?.classList.add('wide'); },
+  'open-routines'() { openRoutines(); },
   'open-connectors'() { openConnectors('store'); },
+  'save-memory'(btn) {
+    const input = document.querySelector(`[data-memory="${btn.dataset.id}"]`);
+    editMemory(btn.dataset.id, input?.value || '').then(() => openModal(memoryPanelHTML(), bindMemoryPanel, closeModal));
+  },
+  async 'delete-memory'(btn) {
+    await removeMemory(btn.dataset.id);
+    openModal(memoryPanelHTML(), bindMemoryPanel, closeModal);
+  },
+  'open-history'(btn) {
+    const chat = state.chats.find((item) => item.id === btn.dataset.id);
+    if (!chat) return;
+    closeModal();
+    if (chat.type === 'group') activateGroup(chat.id);
+    else activateAgent(chat.agentId, chat.id);
+  },
+  async 'delete-routine'(btn) {
+    await cancelRoutine(btn.dataset.id);
+    openModal(routinesPanelHTML(), null, closeModal);
+  },
+  'notify-permission'() {
+    if (!globalThis.Notification) { toast('This browser has no notifications.'); return; }
+    Notification.requestPermission().then((result) => {
+      toast(result === 'granted' ? 'Notifications are on for this browser.' : 'Notifications stay off.');
+    });
+  },
+  async 'export-feedback'() {
+    const rows = await loadFeedback();
+    const blob = new Blob([toJSONL(rows)], { type: 'application/x-ndjson' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'agora-feedback.jsonl';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    toast(rows.length ? 'Downloaded on this computer. Nothing was sent.' : 'No ratings yet.');
+  },
+  async 'rate'(btn) {
+    const chat = currentChat();
+    const message = chat?.messages?.find((item) => item.id === btn.dataset.mid);
+    if (!message) return;
+    message.rating = btn.dataset.rate === 'down' ? 'down' : 'up';
+    const record = feedbackRecord(chat, message, message.rating, message.ratingComment || '');
+    await saveFeedback(record);
+    save();
+    paint(false);
+  },
+  'pick-file'() { $('#file-input')?.click(); },
+  'pick-image'() { $('#image-input')?.click(); },
+  'voice-input'() { toggleMic(); },
+  'voice-lang'() {
+    const next = setVoiceLang(voiceLang() === 'hu' ? 'en' : 'hu');
+    const button = $('#voice-lang');
+    if (button) button.textContent = next === 'hu' ? 'HU' : 'EN';
+  },
+  'toggle-speak'() {
+    const on = setSpeakEnabled(!speakEnabled());
+    const button = $('#speak-toggle');
+    if (button) button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    toast(on ? 'Agora 1.0 will read replies aloud.' : 'Spoken replies are off.');
+  },
   'connector-tab'(btn) { openConnectors(btn.dataset.tab || 'store'); },
   'plugin-cat'(btn) { setPluginCategory(btn.dataset.cat || ''); openConnectors('store'); },
   'plugin-need'(btn) { setPluginNeeds(btn.dataset.need || ''); openConnectors('store'); },
@@ -617,6 +745,20 @@ function readConnectorCred(root) {
 
 document.addEventListener('click', onClick);
 document.addEventListener('input', (event) => {
+  if (event.target?.id === 'chat-search') {
+    session.chatQuery = event.target.value;
+    paint(false);
+    return;
+  }
+  if (event.target?.dataset?.rateNote) {
+    const chat = currentChat();
+    const message = chat?.messages?.find((item) => item.id === event.target.dataset.rateNote);
+    if (!message?.rating) return;
+    message.ratingComment = event.target.value;
+    saveFeedback(feedbackRecord(chat, message, message.rating, message.ratingComment));
+    save();
+    return;
+  }
   if (event.target?.id === 'plugin-filter') {
     setPluginQuery(event.target.value.trim());
     refreshPluginResults();
@@ -691,6 +833,121 @@ gpuPromise.then((result) => {
 });
 ensureOnline();
 ensureCatalog().catch(() => {});
+loadMemories().catch(() => {});
+loadFeedback().catch(() => {});
+loadRoutines().then(() => {
+  startRoutineLoop(async (routine) => {
+    if (globalThis.Notification?.permission === 'granted') {
+      try { new Notification('Agora 1.0', { body: routine.text }); } catch { /* the browser blocked it */ }
+    }
+    toast(routine.text);
+    const chat = currentChat();
+    if (!chat || runCtl) return;
+    if (/\b(tell|weather|what|mondd|id\u0151j\u00e1r\u00e1s)\b/i.test(routine.text)) submitText(routine.text);
+    else {
+      chat.messages.push({ id: uid('m_'), role: 'system', content: `Reminder: ${routine.text}`, ts: Date.now() });
+      save();
+      paint(false);
+    }
+  });
+}).catch(() => {});
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js', { type: 'module' }).catch(() => {});
+}
+const langButton = $('#voice-lang');
+if (langButton) langButton.textContent = voiceLang() === 'hu' ? 'HU' : 'EN';
+const speakButton = $('#speak-toggle');
+if (speakButton) speakButton.setAttribute('aria-pressed', speakEnabled() ? 'true' : 'false');
+
+function openRoutines() {
+  openModal(routinesPanelHTML(), (box) => {
+    box.querySelector('#routine-add')?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const text = box.querySelector('#routine-text')?.value || '';
+      const kind = box.querySelector('#routine-kind')?.value || 'daily';
+      const time = box.querySelector('#routine-time')?.value || '08:00';
+      const [hour, minute] = time.split(':').map((part) => Number(part));
+      const weekday = Number(box.querySelector('#routine-day')?.value || 0);
+      if (!text.trim() || !Number.isFinite(hour)) return;
+      await createRoutine({ text: text.trim(), kind, hour, minute: minute || 0, weekday: kind === 'weekly' ? weekday : null });
+      openRoutines();
+    });
+  }, closeModal);
+  $('#modal-box')?.classList.add('wide');
+}
+
+function bindMemoryPanel(box) {
+  box.querySelector('#memory-toggle')?.addEventListener('change', (event) => {
+    setMemoryEnabled(event.target.checked);
+  });
+  box.querySelector('#memory-add')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const text = box.querySelector('#memory-text')?.value || '';
+    if (!text.trim()) return;
+    await addMemory(text);
+    openModal(memoryPanelHTML(), bindMemoryPanel, closeModal);
+    $('#modal-box')?.classList.add('wide');
+  });
+  box.querySelector('#history-filter')?.addEventListener('input', (event) => filterHistory(event.target.value));
+}
+
+let listening = null;
+function toggleMic() {
+  if (listening) {
+    listening.stop();
+    listening = null;
+    $('#mic')?.setAttribute('aria-pressed', 'false');
+    return;
+  }
+  listening = startListening({
+    lang: voiceLang(),
+    onText(said) {
+      const input = $('#input');
+      if (input) input.value = said;
+    },
+    onEnd() {
+      listening = null;
+      $('#mic')?.setAttribute('aria-pressed', 'false');
+    },
+    onError(err) {
+      listening = null;
+      $('#mic')?.setAttribute('aria-pressed', 'false');
+      toast(err.message || 'Voice input stopped.');
+    },
+  });
+  if (listening) $('#mic')?.setAttribute('aria-pressed', 'true');
+}
+
+$('#file-input')?.addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  if (file.size > 2000000) { toast('That file is too big.'); return; }
+  try {
+    let text = '';
+    if (/pdf$/i.test(file.name) || file.type === 'application/pdf') {
+      text = await textFromPdf(new Uint8Array(await file.arrayBuffer()));
+      if (!text) { toast('No text could be read from that PDF.'); return; }
+    } else text = await file.text();
+    session.attachment = { name: file.name, text: attachmentBlock(file.name, text).split('\n').slice(1).join('\n') || text.slice(0, 8000) };
+    paintPending();
+  } catch {
+    toast('That file could not be read.');
+  }
+});
+$('#image-input')?.addEventListener('change', async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    session.image = await shrinkChatImage(file);
+    paintPending();
+  } catch (err) {
+    toast(err.message || 'That image could not be used.');
+  }
+});
 
 let connectorTab = 'store';
 async function openConnectors(tab) {

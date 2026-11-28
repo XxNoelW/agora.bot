@@ -7,4 +7,7 @@ export const session = {
   catalogQuery: '',
   pipelineRunning: false,
   runBucket: null,
+  chatQuery: '',
+  attachment: null,
+  image: '',
 };

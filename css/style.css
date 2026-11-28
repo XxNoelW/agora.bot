@@ -346,6 +346,19 @@ input, textarea, select {
 .empty-home, .welcome { margin: auto; text-align: center; max-width: 28rem; color: var(--muted); padding: 24px 8px; }
 .empty-home h1, .welcome h2 { color: var(--text); letter-spacing: -0.03em; }
 .composer { display: flex; flex-direction: column; align-items: center; }
+.composer-tools { display: flex; flex-wrap: wrap; gap: 6px; width: min(720px, 100%); margin: 0 auto 8px; }
+.composer-tools .quiet { min-height: 44px; }
+.chat-search { width: calc(100% - 8px); margin: 0 4px 8px; }
+.pending-file { width: min(720px, 100%); margin: 0 auto 8px; font-size: 13px; color: var(--muted); }
+.chat-image { display: block; max-width: min(320px, 100%); border-radius: 12px; margin: 6px 0; }
+.file-note { margin: 6px 0; }
+.file-note pre { white-space: pre-wrap; font: 12px/1.4 var(--mono); max-height: 180px; overflow: auto; }
+.rate { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.rate .on { outline: 2px solid var(--text); }
+.rate-note { flex: 1; min-width: 140px; }
+.memory-list { list-style: none; padding: 0; margin: 8px 0; }
+.memory-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.memory-row input { flex: 1; min-width: 140px; }
 .continue-btn { align-self: center; width: auto; height: 36px; margin: 0 0 8px; border: 1px solid var(--border); padding: 0 14px; color: var(--text); background: var(--surface); }
 .who .quiet { margin-left: 4px; }
 .connect-card, .connector-row {
