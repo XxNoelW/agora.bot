@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The connector catalog is a curated set of assistant services. Per-language Wikipedia copies, novelty APIs, and unused MCP servers are gone. Official remote MCP entries were added where a live server answered, including Discord, Dropbox, X, Shopify, Trello, Zoom, Calendly, Make, AgentMail, Kaggle, Twilio, Salesforce, and Zendesk.
+
+## 2026-11-28, memory and routines
+
 - Memory, searchable chats, local thumbs feedback with a JSONL download, voice in English and Hungarian, file and image attach, and routines that run while Agora is open.
 - The app shell can install as a PWA. The service worker does not cache model weights.
 

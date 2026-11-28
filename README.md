@@ -68,7 +68,7 @@ Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localSt
 
 ## Connectors
 
-Connectors is the store in the sidebar. It is a JSON catalog at `data/plugins.json`, so a new connector is one object in that list. The page searches it by name, category, and whether it needs a key.
+Connectors is the store in the sidebar. It is a curated JSON catalog at `data/plugins.json` (assistant services such as GitHub, Notion, Slack, and weather, not a copy of every public API). A new connector is one object in that list. The page searches it by name, category, and whether it needs a key. Tool names for training are in `data/tool-names.txt`.
 
 What works in the browser, with no Cloudflare deploy:
 
