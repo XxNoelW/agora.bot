@@ -1,5 +1,6 @@
 // Tools that work from a static page: no API key and no backend.
 import { state, save } from './store.js';
+import { createPage, updatePage } from './agora-pages.js';
 import { isConnectorTool } from './connectors.js';
 import { noteEvent } from './usage.js';
 
@@ -532,6 +533,23 @@ export const TOOLS = {
   read_file: { fn: read_file, sig: '{"path":"/notes.txt"}', desc: 'read a note on the shared computer' },
   list_files: { fn: list_files, sig: '{}', desc: 'list shared notes' },
   run_js: { fn: run_js, sig: '{"code":"console.log(2+2)"}', desc: 'run JavaScript in a sandbox (no page access, 3s limit)' },
+  create_page: {
+    fn: async (args) => {
+      const page = createPage({ title: args.title, html: args.html || args.content || '' });
+      return `PAGE ${page.id}\nCreated "${page.title}".`;
+    },
+    sig: '{"title":"Times table","html":"<h1>Times</h1><p>2 x 2 = 4</p>"}',
+    desc: 'make a small page, chart, table, or game inside Agora when the user asks for one',
+  },
+  update_page: {
+    fn: async (args) => {
+      const page = updatePage(args.id, { title: args.title, html: args.html || args.content });
+      if (!page) return 'That page was not found.';
+      return `PAGE ${page.id}\nUpdated "${page.title}".`;
+    },
+    sig: '{"id":"p_page","html":"<h1>Updated</h1>"}',
+    desc: 'replace the HTML of a page Agora already made',
+  },
   github_list_repos: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list repos on the connected GitHub account' },
   github_list_pages: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list GitHub Pages sites on the connected account' },
   github_list_gists: { fn: async () => 'GitHub is handled by the connector, not the model.', sig: '{}', desc: 'list gists on the connected GitHub account' },
@@ -541,7 +559,7 @@ export const TOOLS = {
   mastodon_profile: { fn: async () => 'Mastodon is handled by the connector, not the model.', sig: '{}', desc: 'read the connected Mastodon profile' },
 };
 
-const PROMPT_TOOLS = ['web_search', 'read_page', 'write_file', 'read_file', 'list_files', 'run_js'];
+const PROMPT_TOOLS = ['web_search', 'read_page', 'write_file', 'read_file', 'list_files', 'run_js', 'create_page', 'update_page'];
 
 export function toolPrompt(allowed) {
   const names = Array.isArray(allowed) ? PROMPT_TOOLS.filter((name) => allowed.includes(name)) : PROMPT_TOOLS;

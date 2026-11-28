@@ -18,6 +18,7 @@ import { routineToolLines, isRoutineTool, runRoutineTool } from './routines.js';
 import { homeworkExtra, isHomeworkAgent, isSolutionRequest } from './builtins.js';
 import { blockNetworkTool, isOnline, offlineConnectorMessage } from './offline.js';
 import { visionContext } from './vision.js';
+import { chatLibrary, libraryBlock } from './library.js';
 
 const MAX_TOOL_LOOPS = 2;
 const HISTORY_LIMIT = 12;
@@ -94,6 +95,7 @@ function systemFor(agent, conv, mode, clockLine = '') {
     'Ignore a tool result that is about a different topic. Cite a page as [Title](url) only when you used that page. If you did not use one, do not add a sources list.',
     connectorPrompt(agent),
     memoryBlock(latestUserText(conv), undefined, undefined, agent.id),
+    libraryBlock(chatLibrary(conv.id), latestUserText(conv)).text,
     homeworkLine(agent, conv),
   ].filter(Boolean).join(' ');
   if (mode === 'react') {

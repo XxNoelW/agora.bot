@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A chat can keep PDF, text, Markdown, and Word notes. Search stays on this device and a reply can cite the file and page. My pages holds small HTML pages from `create_page` and `update_page`, in a frame that cannot read the parent page. Connectors has a Marketplace tab for published agents. Publishing shows the exact definition and does not send memory, chats, files, or pages.
 - Agents are separate bots in the sidebar. Agora, Teacher, Homework helper, Coder, Game master, Writer, and Translator are preinstalled. Each agent has its own chats and its own memory. You can edit the personality, duplicate, or delete an agent. A duplicate starts with empty memory.
 - Homework helper gives one hint at a time and shows the full solution only from Show solution. School math uses `$...$` and `$$...$$`.
 - A picture is read by Agora vision when the device can run it, with a size warning and a progress bar. Otherwise the words in the picture are read, or Agora 1.0 asks you to describe it.

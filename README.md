@@ -71,6 +71,23 @@ Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localSt
 - Mic uses the browser speech API. EN / HU switches English and Hungarian. Speak reads replies aloud.
 - File accepts text, Markdown, CSV, JSON, and PDF text when the file contains real text. An image is read by Agora vision when this device can run it. The real helper name is not shown.
 
+## Pages and files
+
+A file in the composer (or dropped on it) can be PDF, text, Markdown, CSV, JSON, or Word. The text is split into chunks on this device. A later question can cite the file and page, for example `[notes.pdf p.2]`. That search does not use the network.
+
+When someone asks for a page, chart, table, or game, Agora 1.0 can answer with one line:
+
+```
+TOOL: create_page {"title":"Times table","html":"<h1>Times</h1><p>2 x 2 = 4</p>"}
+TOOL: update_page {"id":"p_page","html":"<h1>Updated</h1>"}
+```
+
+The page opens in My pages. Preview and Code are tabs. The frame is `sandbox="allow-scripts"` with no same-origin access and a strict content security policy. Earlier versions stay on the page. Settings sync includes the page library. A share link uses `POST /share` with `{ "kind": "page", "title", "html" }`.
+
+Connectors has a Marketplace tab. Get installs an agent with empty memory. Publish, from the agent editor, shows the exact definition first. That definition is the name, emoji, description, instructions, tools, and example prompts. Memory, chats, files, pages, and the sync code are not sent.
+
+The cloud Worker file to redeploy is `workers/agora-cloud/index.js`. Apply `workers/agora-cloud/migrations/003_agents.sql` to the D1 database first. New routes are `GET /agents`, `POST /agents`, `POST /agents/:id/install`, and `POST /agents/:id/report`.
+
 ## Connectors
 
 Connectors is the store in the sidebar. It is a curated JSON catalog at `data/plugins.json` (assistant services such as GitHub, Notion, Slack, and weather, not a copy of every public API). A new connector is one object in that list. The page searches it by name, category, and whether it needs a key. Tool names for training are in `data/tool-names.txt`.

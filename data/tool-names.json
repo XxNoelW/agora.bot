@@ -44,6 +44,8 @@
     "create_routine",
     "list_routines",
     "cancel_routine",
+    "create_page",
+    "update_page",
     "github_list_repos",
     "github_list_pages",
     "github_list_gists",
