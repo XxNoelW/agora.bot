@@ -5,6 +5,7 @@ import { CONNECTOR_IDS } from './connectors.js';
 import { clampParallel, DEFAULT_PARALLEL } from './scheduler.js';
 import { forgetOpenRouterKey, redactSecrets } from './openrouter.js';
 import { DEFAULT_STUDENT_REPO, STUDENT_MODEL_ID, TRAINED_MODEL_NAME, cleanRepo } from './student-model.js';
+import { cleanEmoji, cleanList, seedBuiltinAgents } from './builtins.js';
 
 const KEY = 'agona:v1';
 const OLD_KEY = 'agentcloud:v1';
@@ -115,17 +116,33 @@ function withSearch(tools) {
   return list;
 }
 
+function clipLine(value, max) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, max);
+}
+
 function normalizeAgent(agent) {
   const role = ROLE_DEFS.find((item) => item.id === agent.role);
   const prompt = agent.prompt === OLD_ADA ? NEW_ADA : (agent.prompt || role?.prompt || 'Reply in simple English. If the user writes in another language, answer in that language.');
+  const builtin = String(agent.builtin || '');
+  const rawTools = Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['web_search', 'read_page', 'read_file', 'list_files', 'write_file']);
+  const tools = builtin === 'homework'
+    ? rawTools.filter((name) => name !== 'web_search' && name !== 'read_page' && name !== 'fetch_wikipedia_page')
+    : withSearch(rawTools);
   return {
     id: agent.id || uid('a_'),
-    name: agent.name || role?.name || 'Agent',
+    name: clipLine(agent.name, 40) || role?.name || 'Agent',
+    nameHu: clipLine(agent.nameHu, 40),
     role: agent.role || 'custom',
+    builtin,
+    emoji: cleanEmoji(agent.emoji),
+    description: clipLine(agent.description, 180),
+    descriptionHu: clipLine(agent.descriptionHu, 180),
     color: role?.color || agent.color || '#E8B4B8',
     accessory: role?.accessory || agent.accessory || 'spark',
     prompt,
-    tools: withSearch(Array.isArray(agent.tools) ? agent.tools : (role ? role.tools.slice() : ['web_search', 'read_page', 'read_file', 'list_files', 'write_file'])),
+    examples: cleanList(agent.examples),
+    examplesHu: cleanList(agent.examplesHu),
+    tools: tools.length ? tools : ['run_js'],
     icon: normalizeIcon(agent.icon, role?.color || agent.color),
     connectors: Array.isArray(agent.connectors) ? agent.connectors.filter((id) => CONNECTOR_IDS.includes(id)) : [],
     status: agent.paused ? 'paused' : (agent.status || 'idle'),
@@ -167,7 +184,9 @@ export function migrateState(data, nav = globalThis.navigator) {
   delete settings.openrouterKey;
   delete settings.apiKey;
 
-  const agents = Array.isArray(src.agents) ? src.agents.map(normalizeAgent) : [];
+  const seeded = seedBuiltinAgents(Array.isArray(src.agents) ? src.agents : [], settings);
+  Object.assign(settings, seeded.settings);
+  const agents = seeded.agents.map(normalizeAgent);
 
   const chats = Array.isArray(src.chats) ? src.chats : base.chats;
   for (const chat of chats) {

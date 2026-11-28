@@ -1,6 +1,5 @@
-// Shell v3 includes the first-run, share, and stats scripts.
-// Model weights stay in WebLLM's own Cache API, not this shell.
-import { CACHE_NAME, SHELL_FILES, shouldCache } from './js/shell-cache.js';
+// Shell v3 precaches the app, including share and stats. The runtime cache keeps Agora 1.0 and Agora vision.
+import { CACHE_NAME, RUNTIME_CACHE, SHELL_FILES, shouldCache, shouldRuntimeCache } from './js/shell-cache.js';
 
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
@@ -27,6 +26,21 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
+  if (shouldRuntimeCache(request.url)) {
+    event.respondWith((async () => {
+      const cache = await caches.open(RUNTIME_CACHE);
+      const hit = await cache.match(request);
+      if (hit) return hit;
+      try {
+        const fresh = await fetch(request);
+        if (fresh.ok) await cache.put(request, fresh.clone());
+        return fresh;
+      } catch {
+        return hit || Response.error();
+      }
+    })());
+    return;
+  }
   if (!shouldCache(request.url, self.location.origin)) return;
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);

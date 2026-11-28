@@ -1,4 +1,5 @@
-import { esc, rich } from './text.js';
+import { esc } from './text.js';
+import { present } from './math.js';
 import { state, agentById, prefersSmallModel } from './store.js';
 import { readOpenRouterKey } from './openrouter.js';
 import { extractSources } from './tools.js';
@@ -11,6 +12,8 @@ import { doNotTrack } from './usage.js';
 import { GITHUB_OAUTH_NOTE, readClientId, redirectUri } from './oauth.js';
 import { DEFAULT_CLOUD_URL, cloudCode, cloudUrl, syncConflict, ui } from './cloud.js';
 import { qrSvg } from './qr.js';
+import { agentDescription, agentExamples, agentLabel, isHomeworkAgent } from './builtins.js';
+import { voiceLang } from './voice.js';
 
 const TOOL_LABEL = {
   web_search: 'looked on the web',
@@ -90,7 +93,7 @@ export function messageHTML(message) {
   if (!message) return '';
   if (message.role === 'connect') return connectCardHTML(message);
   if (message.role === 'user') {
-    return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${rich(message.content)}</div></div></div>`;
+    return `<div class="bubble-row user" data-mid="${esc(message.id)}"><div class="bubble"><div class="meta">You</div><div class="text" data-body>${present(message.content)}</div></div></div>`;
   }
   if (message.role === 'tool') {
     if (message.hidden) return '';
@@ -108,8 +111,11 @@ export function messageHTML(message) {
   const phase = message.pending
     ? (String(message.content || '').startsWith('Looking up') ? 'looking up' : (String(message.content || '').startsWith('Getting Agora') ? 'getting ready' : 'writing'))
     : (message.error ? 'could not finish' : 'Agora 1.0');
+  const imageNote = message.imageText
+    ? ui('Agora vision read this picture.', 'Az Agora vision elolvasta a k\u00e9pet.')
+    : (message.imageMiss || '');
   const image = message.image
-    ? `<img class="chat-image" alt="Attached image" src="${esc(message.image)}"><p class="small muted">Agora 1.0 cannot see this picture.</p>`
+    ? `<img class="chat-image" alt="${esc(ui('Attached picture', 'Csatolt k\u00e9p'))}" src="${esc(message.image)}">${imageNote ? `<p class="small muted">${esc(imageNote)}</p>` : ''}`
     : '';
   const file = message.attachment?.text
     ? `<details class="file-note"><summary>${esc(message.attachment.name || 'File')}</summary><pre>${esc(message.attachment.text)}</pre></details>`
@@ -124,7 +130,7 @@ export function messageHTML(message) {
     : '';
   return `<div class="bubble-row${message.pending ? ' pending' : ''}${message.error ? ' error' : ''}" data-mid="${esc(message.id)}">
     ${agent ? iconMarkup(agent) : ''}
-    <div class="bubble"><div class="meta" data-meta>${esc(agent?.name || 'Agent')} · ${esc(phase)}</div>${image}${file}<div class="text" data-body>${message.content ? rich(message.content) : (message.pending ? '…' : '')}</div>${rate}</div>
+    <div class="bubble"><div class="meta" data-meta>${esc(agentLabel(agent, voiceLang()))} · ${esc(phase)}</div>${image}${file}<div class="text" data-body>${message.content ? present(message.content) : (message.pending ? '…' : '')}</div>${isHomeworkAgent(agent) && !message.pending && message.content ? `<div class="row"><button type="button" class="quiet" data-act="show-solution">${esc(ui('Show solution', 'Megold\u00e1s mutat\u00e1sa'))}</button></div>` : ''}${rate}</div>
   </div>`;
 }
 
@@ -135,7 +141,7 @@ export function agentListHTML(activeId) {
     return `<div class="agent-row-wrap${on ? ' active' : ''}">
       <button type="button" class="agent-row${on ? ' active' : ''}" data-act="select-agent" data-id="${esc(agent.id)}" aria-current="${on ? 'true' : 'false'}">
         ${iconMarkup(agent)}
-        <span class="agent-name">${esc(agent.name)}</span>
+        <span class="agent-copy"><span class="agent-name">${esc(agentLabel(agent, voiceLang()))}</span>${agentDescription(agent, voiceLang()) ? `<span class="agent-desc">${esc(agentDescription(agent, voiceLang()))}</span>` : ''}</span>
       </button>
       <button type="button" class="quiet tiny" data-act="edit-agent" data-id="${esc(agent.id)}" aria-label="Edit ${esc(agent.name)}">Edit</button>
     </div>`;
@@ -180,8 +186,8 @@ export function chatHeadHTML(chat, agent) {
     return `<div class="who">
       <span class="face-stack">${members.map((item) => iconMarkup(item)).join('')}</span>
       <div>
-        <h1>${esc(chat.name || 'Group')}</h1>
-        <p class="model-pill">Agora 1.0 · ${esc(members.map((item) => item.name).join(', '))}</p>
+        <h1>${esc(agentLabel({ name: chat.name, nameHu: chat.nameHu }, voiceLang()) || chat.name || 'Group')}</h1>
+        <p class="model-pill">Agora 1.0 · ${esc(members.map((item) => agentLabel(item, voiceLang())).join(', '))}</p>
       </div>
       <button type="button" class="quiet" data-act="share-chat">${esc(ui('Share', 'Megoszt\u00e1s'))}</button>
     </div>`;
@@ -190,7 +196,7 @@ export function chatHeadHTML(chat, agent) {
   return `<div class="who">
     ${iconMarkup(agent)}
     <div>
-      <h1>${esc(agent.name)}</h1>
+      <h1>${esc(agentLabel(agent, voiceLang()))}</h1>
       <p class="model-pill">Agora 1.0</p>
     </div>
       <button type="button" class="quiet" data-act="share-chat">${esc(ui('Share', 'Megoszt\u00e1s'))}</button>
@@ -215,11 +221,15 @@ export function threadHTML(chat, agent) {
   if (!chat) return emptyHomeHTML();
   if (!messages.length) {
     const title = chat.type === 'group' ? (chat.name || 'Group') : (agent?.name || 'Agent');
+    const lang = voiceLang();
     const note = chat.type === 'group'
-      ? 'Everyone in the group sees the whole conversation and answers in turn.'
-      : 'Ask anything. Agora 1.0 answers in your language.';
-    const examples = examplePrompts().map((item, index) => `<button type="button" data-act="example" data-example="${index}">${esc(item.label)}</button>`).join('');
-    return `<div class="welcome">${chat.type === 'group' ? '' : (agent ? iconMarkup(agent) : '')}<h2>${esc(title)}</h2><p>${esc(note)}</p><div class="examples">${examples}</div></div>`;
+      ? ui('Everyone in the group sees the whole conversation and answers in turn.', 'A csoport minden tagja l\u00e1tja a besz\u00e9lget\u00e9st, \u00e9s sorban v\u00e1laszol.')
+      : (agentDescription(agent, lang) || ui('Ask anything. Agora 1.0 answers in your language.', 'K\u00e9rdezz b\u00e1tran. Az Agora 1.0 a te nyelveden v\u00e1laszol.'));
+    const examples = chat.type === 'group' ? [] : agentExamples(agent, lang);
+    const chips = examples.length
+      ? examples.map((prompt) => `<button type="button" class="chip" data-act="use-example" data-prompt="${esc(prompt)}">${esc(prompt)}</button>`).join('')
+      : examplePrompts().map((item, index) => `<button type="button" data-act="example" data-example="${index}">${esc(item.label)}</button>`).join('');
+    return `<div class="welcome">${chat.type === 'group' ? '' : (agent ? iconMarkup(agent) : '')}<h2>${esc(chat.type === 'group' ? title : agentLabel(agent, lang))}</h2><p>${esc(note)}</p>${chips ? `<div class="example-row">${chips}</div>` : ''}</div>`;
   }
   return messages.map(messageHTML).join('');
 }
@@ -229,18 +239,42 @@ export function agentFormHTML(draft, { editing = false } = {}) {
   const preview = icon.type === 'photo' && icon.dataUrl
     ? `<img class="avatar photo lg" alt="" src="${esc(icon.dataUrl)}">`
     : `<span class="avatar shape lg" style="--agent:${safeHex(icon.color)}">${iconSVG(icon.shape || 'robot')}</span>`;
-  return `<h2 id="modal-title">${editing ? 'Edit agent' : 'Create agent'}</h2>
-    <label for="agent-name">Name</label>
-    <input id="agent-name" maxlength="40" value="${esc(draft?.name || '')}">
+  const lang = voiceLang();
+  const shownName = lang === 'hu' && draft?.nameHu ? draft.nameHu : (draft?.name || '');
+  const shownDesc = lang === 'hu' && draft?.descriptionHu ? draft.descriptionHu : (draft?.description || '');
+  const shownExamples = (lang === 'hu' && draft?.examplesHu?.length ? draft.examplesHu : (draft?.examples || [])).join('\n');
+  const toolChoices = [
+    ['web_search', ui('Web search', 'Keres\u00e9s a weben')],
+    ['read_page', ui('Read a page', 'Oldal olvas\u00e1sa')],
+    ['run_js', ui('Calculator', 'Sz\u00e1mol\u00e1s')],
+    ['write_file', ui('Save a note', 'Jegyzet ment\u00e9se')],
+    ['read_file', ui('Read a note', 'Jegyzet olvas\u00e1sa')],
+  ];
+  const picked = new Set(draft?.tools || []);
+  const tools = toolChoices.map(([id, label]) => `<label class="checkline"><input type="checkbox" data-tool="${esc(id)}" ${picked.has(id) ? 'checked' : ''}>${esc(label)}</label>`).join('');
+  return `<h2 id="modal-title">${editing ? ui('Edit agent', 'Agent szerkeszt\u00e9se') : ui('New agent', '\u00daj agent')}</h2>
+    <label for="agent-name">${ui('Name', 'N\u00e9v')}</label>
+    <input id="agent-name" maxlength="40" value="${esc(shownName)}">
+    <label for="agent-emoji">${ui('Emoji', 'Emoji')}</label>
+    <input id="agent-emoji" maxlength="8" value="${esc(draft?.emoji || '')}">
+    <label for="agent-description">${ui('One-line description', 'Egy soros le\u00edr\u00e1s')}</label>
+    <input id="agent-description" maxlength="180" value="${esc(shownDesc)}">
+    <label for="agent-prompt">${ui('Personality', 'Szem\u00e9lyis\u00e9g')}</label>
+    <textarea id="agent-prompt" rows="6">${esc(draft?.prompt || '')}</textarea>
+    <label for="agent-examples">${ui('Example prompts, one per line', 'P\u00e9lda k\u00e9rd\u00e9sek, soronk\u00e9nt egy')}</label>
+    <textarea id="agent-examples" rows="4">${esc(shownExamples)}</textarea>
+    <p class="section-label">${ui('Tools', 'Eszk\u00f6z\u00f6k')}</p>
+    <div class="member-picks">${tools}</div>
     <p class="section-label">Icon</p>
     <div class="shape-grid">${SHAPES.map((shape) => `<button type="button" class="shape-btn${icon.type !== 'photo' && icon.shape === shape ? ' selected' : ''}" data-act="pick-shape" data-shape="${shape}" aria-label="${shape}" style="--agent:${safeHex(icon.color)}">${iconSVG(shape)}</button>`).join('')}</div>
     <div class="color-row">${ICON_COLORS.map((color) => `<button type="button" class="color-btn${icon.color === color ? ' selected' : ''}" data-act="pick-color" data-color="${color}" style="background:${color}" aria-label="Color ${color}"></button>`).join('')}</div>
     <div class="preview-row">${preview}<label class="btn ghost">Upload a photo<input id="agent-photo" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden></label></div>
     <p class="small muted">Photos stay on this computer. They are resized before they are saved.</p>
     <div class="row">
-      <button type="button" data-act="save-agent">${editing ? 'Save' : 'Create agent'}</button>
-      <button type="button" class="ghost" data-act="close-modal">Cancel</button>
-      ${editing ? `<button type="button" class="danger" data-act="delete-agent" data-id="${esc(draft?.id || '')}">Delete</button>` : ''}
+      <button type="button" data-act="save-agent">${editing ? ui('Save', 'Ment\u00e9s') : ui('Create agent', 'Agent l\u00e9trehoz\u00e1sa')}</button>
+      ${editing ? `<button type="button" class="ghost" data-act="duplicate-agent" data-id="${esc(draft?.id || '')}">${esc(ui('Duplicate', 'M\u00e1solat'))}</button>` : ''}
+      <button type="button" class="ghost" data-act="close-modal">${esc(ui('Cancel', 'M\u00e9gse'))}</button>
+      ${editing ? `<button type="button" class="danger" data-act="delete-agent" data-id="${esc(draft?.id || '')}">${esc(ui('Delete', 'T\u00f6rl\u00e9s'))}</button>` : ''}
     </div>`;
 }
 
@@ -414,6 +448,16 @@ export function settingsHTML() {
         <button type="button" class="danger" data-act="forget-key">Forget key</button>
       </div>
     </form>
+    <section class="settings-extra" id="offline-settings">
+      <h2>${ui('Offline', 'Offline')}</h2>
+      <p class="small" id="offline-copy">${ui(
+        'Download Agora 1.0 so the app still answers with no internet. Web search and connectors wait until you are back online.',
+        'T\u00f6ltsd le az Agora 1.0-t, hogy internet n\u00e9lk\u00fcl is v\u00e1laszoljon. A webes keres\u00e9s \u00e9s a csatlakoz\u00f3k addig v\u00e1rnak, am\u00edg \u00fajra online vagy.',
+      )}</p>
+      <label class="checkline"><input id="offline-vision" type="checkbox"> ${esc(ui('Also save Agora vision (about 4.4 GB)', 'Az Agora vision ment\u00e9se is (k\u00f6r\u00fclbel\u00fcl 4,4 GB)'))}</label>
+      <div class="row"><button type="button" data-act="download-offline">${esc(ui('Download for offline', 'Let\u00f6lt\u00e9s offline haszn\u00e1lathoz'))}</button></div>
+      <div id="offline-progress" class="small" hidden></div>
+    </section>
     <section class="settings-extra" id="account-sync">
       <h2>${ui('Account', 'Fi\u00f3k')}</h2>
       <p class="small">${ui(

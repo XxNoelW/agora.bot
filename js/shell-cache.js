@@ -1,4 +1,4 @@
-// App-shell files only. Model weights and the WebLLM library stay on their own hosts and caches.
+// App shell in one cache. Model weights, the helper library, and Agora vision use the runtime cache.
 export const CACHE_NAME = 'agora-shell-v3';
 
 export const SHELL_FILES = [
@@ -13,6 +13,7 @@ export const SHELL_FILES = [
   'js/agents.js',
   'js/attachments.js',
   'js/browser-store.js',
+  'js/builtins.js',
   'js/characters.js',
   'js/chats.js',
   'js/cloud.js',
@@ -27,7 +28,10 @@ export const SHELL_FILES = [
   'js/llm.js',
   'js/mcp-client.js',
   'js/memory.js',
+  'js/math.js',
   'js/metrics.js',
+  'js/offline-run.js',
+  'js/offline.js',
   'js/oauth.js',
   'js/openrouter.js',
   'js/orchestrator.js',
@@ -61,10 +65,27 @@ export const SHELL_FILES = [
   'js/tour.js',
   'js/training.js',
   'js/usage.js',
+  'js/vision-run.js',
+  'js/vision.js',
   'js/voice.js',
   'workers/agora-cloud/index.js',
   'sw.js',
 ];
+
+export const RUNTIME_CACHE = 'agora-runtime-v1';
+
+export function shouldRuntimeCache(requestUrl) {
+  let url;
+  try { url = new URL(requestUrl); } catch { return false; }
+  if (url.protocol !== 'https:') return false;
+  const host = url.hostname;
+  if (host === 'huggingface.co' || host.endsWith('.huggingface.co') || host.endsWith('.hf.co')) return true;
+  if (host === 'esm.run') return true;
+  if (host === 'raw.githubusercontent.com' && url.pathname.includes('/mlc-ai/')) return true;
+  if (host === 'cdn.jsdelivr.net' && /tesseract/i.test(url.pathname)) return true;
+  if (host === 'tessdata.projectnaptha.com') return true;
+  return false;
+}
 
 export function shouldCache(requestUrl, pageOrigin) {
   let url;

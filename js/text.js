@@ -7,6 +7,14 @@ export function clip(text, n) {
   return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
+export function hideModelNames(text) {
+  return String(text || '')
+    .replace(/phi[\w.+-]*vision[\w.-]*/gi, 'Agora vision')
+    .replace(/\bphi-?3(?:\.\d)?[\w.-]*/gi, 'Agora vision')
+    .replace(/\bqwen[\w.-]*/gi, 'Agora 1.0')
+    .replace(/\btesseract[\w.-]*/gi, 'Agora vision');
+}
+
 export function rich(s) {
   const escaped = esc(s);
   return escaped

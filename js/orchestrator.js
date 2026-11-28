@@ -15,6 +15,9 @@ import { pluginToolPrompt, matchPluginIntent, runPluginTool, isPluginTool } from
 import { loadPluginConfig } from './plugin-store.js';
 import { memoryBlock, memoryToolLines, isMemoryTool, runMemoryTool } from './memory.js';
 import { routineToolLines, isRoutineTool, runRoutineTool } from './routines.js';
+import { homeworkExtra, isHomeworkAgent, isSolutionRequest } from './builtins.js';
+import { blockNetworkTool, isOnline, offlineConnectorMessage } from './offline.js';
+import { visionContext } from './vision.js';
 
 const MAX_TOOL_LOOPS = 2;
 const HISTORY_LIMIT = 12;
@@ -90,7 +93,8 @@ function systemFor(agent, conv, mode, clockLine = '') {
     'If they ask the date or the time, answer from the visitor clock above. Never say a date was not provided.',
     'Ignore a tool result that is about a different topic. Cite a page as [Title](url) only when you used that page. If you did not use one, do not add a sources list.',
     connectorPrompt(agent),
-    memoryBlock(latestUserText(conv)),
+    memoryBlock(latestUserText(conv), undefined, undefined, agent.id),
+    homeworkLine(agent, conv),
   ].filter(Boolean).join(' ');
   if (mode === 'react') {
     return `${agent.prompt}\n\nYour name is ${agent.name}. ${group}\n${style}\nIf you have nothing new, reply with exactly PASS.`;
@@ -122,7 +126,9 @@ export function buildMessages(agent, conv, { mode = 'answer', clockLine = '' } =
       const who = m.role === 'user' ? 'User' : (agentById(m.agentId)?.name || 'Helper');
       let body = String(m.content || '');
       if (m.attachment?.text) body += `\n\n[File: ${m.attachment.name}]\n${clip(m.attachment.text, 2500)}`;
-      if (m.image) body += '\n\nThe user attached an image. Agora 1.0 is text-only and cannot see pictures.';
+      if (m.imageText) body += `\n\n${visionContext(m.imageText)}`;
+      else if (m.imageMiss) body += `\n\n${clip(m.imageMiss, 400)}`;
+      else if (m.image) body += '\n\nThe user attached a picture. No reading of it is available. Ask them to describe it.';
       content = `${who}: ${clip(body, 3200)}`;
     }
     if (!content) continue;
@@ -141,6 +147,12 @@ export function buildMessages(agent, conv, { mode = 'answer', clockLine = '' } =
     else msgs.push({ role: 'user', content: nudge });
   }
   return msgs;
+}
+
+function homeworkLine(agent, conv) {
+  if (!isHomeworkAgent(agent)) return '';
+  const last = [...(conv?.messages || [])].reverse().find((item) => item.role === 'user');
+  return homeworkExtra(!!(last?.solution || isSolutionRequest(last?.content)));
 }
 
 function latestUserText(conv) {
@@ -502,7 +514,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
     }
     const skipTools = react || isSmallTalk(userText) || isDateTimeQuestion(userText) || (tools && tools.length === 0);
     const allowSearch = !tools || tools.includes('web_search');
-    const factual = !skipTools && allowSearch && needsWebSearch(userText);
+    const factual = !skipTools && allowSearch && isOnline() && needsWebSearch(userText);
 
     if (factual) {
       try {
@@ -556,6 +568,14 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
         if (call.name === 'web_search' || call.name === 'fetch_wikipedia_page') continue;
         if (call.name === 'read_page' && !/https?:\/\//i.test(userText)) continue;
         if (isConnectorTool(call.name)) {
+          const pausedNet = offlineConnectorMessage();
+          if (pausedNet) {
+            insertAfterTurn(conv, msg, {
+              id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: {}, content: pausedNet, ts: Date.now(),
+            });
+            onUpdate?.();
+            continue;
+          }
           const outcome = await executeConnectorTool(agent, call.name, call.args || {});
           if (outcome.connect) ensureConnectCard(conv, msg, outcome.connect);
           insertAfterTurn(conv, msg, {
@@ -571,7 +591,7 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           const args = call.args || {};
           let result;
           try {
-            result = isMemoryTool(call.name) ? await runMemoryTool(call.name, args) : await runRoutineTool(call.name, args);
+            result = isMemoryTool(call.name) ? await runMemoryTool(call.name, args, agent.id) : await runRoutineTool(call.name, args);
           } catch (err) {
             if (aborted() || err?.name === 'AbortError') break;
             result = err.message || 'That did not work.';
@@ -582,6 +602,14 @@ export async function agentTurn(agent, conv, { onUpdate, signal, wave, react = f
           usedTool = true;
           direct = '';
           save();
+          onUpdate?.();
+          continue;
+        }
+        const paused = blockNetworkTool(call.name) || (isConnectorTool(call.name) ? offlineConnectorMessage() : '');
+        if (paused) {
+          insertAfterTurn(conv, msg, {
+            id: uid('m_'), role: 'tool', agentId: agent.id, wave, tool: call.name, args: call.args, content: paused, ts: Date.now(),
+          });
           onUpdate?.();
           continue;
         }

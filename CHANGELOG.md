@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Agents are separate bots in the sidebar. Agora, Teacher, Homework helper, Coder, Game master, Writer, and Translator are preinstalled. Each agent has its own chats and its own memory. You can edit the personality, duplicate, or delete an agent. A duplicate starts with empty memory.
+- Homework helper gives one hint at a time and shows the full solution only from Show solution. School math uses `$...$` and `$$...$$`.
+- A picture is read by Agora vision when the device can run it, with a size warning and a progress bar. Otherwise the words in the picture are read, or Agora 1.0 asks you to describe it.
+- Download for offline in Settings saves the app and Agora 1.0, and can also save Agora vision. The sidebar says Available offline. Web search and connectors wait while you are offline, and sync runs when you are back.
 - The connector proxy URL defaults to the deployed connectors Worker. Settings can create a sync account, show the code as text and a QR code, and copy chats, memory, and settings to another device. Routines still run only while Agora is open.
 - The connector catalog is a curated set of assistant services. Per-language Wikipedia copies, novelty APIs, and unused MCP servers are gone. Official remote MCP entries were added where a live server answered, including Discord, Dropbox, X, Shopify, Trello, Zoom, Calendly, Make, AgentMail, Kaggle, Twilio, Salesforce, and Zendesk.
 

@@ -7,6 +7,8 @@ import {
 } from './student-model.js';
 import { cachedModelId, rememberCachedModel, requestPersistentStorage } from './persist.js';
 import { describeProgress } from './progress.js';
+import { isOnline, readOfflineFlag } from './offline.js';
+import { hideModelNames } from './text.js';
 
 export const WEBLLM_VERSION = '0.2.87';
 export const WEBLLM_URL = `https://esm.run/@mlc-ai/web-llm@${WEBLLM_VERSION}`;
@@ -81,7 +83,7 @@ export function friendlyLoadText(raw, progress) {
   if (/shader|gpu|compil/i.test(t)) return `Starting on the graphics chip${pct}`;
   if (/lib/i.test(t)) return `Opening the helper library${pct}`;
   if (!t) return `Getting the helper ready${pct}`;
-  return t + pct;
+  return hideModelNames(t) + pct;
 }
 
 export function withTimeout(promise, ms, friendly) {
@@ -148,6 +150,20 @@ export async function checkWebGPU() {
   } catch (e) {
     return { ok: false, reason: e.friendly || friendlyMessage(e) };
   }
+}
+
+export function getWebLlm() {
+  return getLib();
+}
+
+export async function releaseAnswerModel() {
+  answerPromise = null;
+  answerKey = '';
+  loadEpoch += 1;
+  loading = null;
+  loadingModelId = null;
+  await dropEngine();
+  setStatus({ text: 'Ready when you send a message', detail: '', progress: 0, ready: false, error: false, busy: false });
 }
 
 async function getLib() {
@@ -348,7 +364,8 @@ async function pickAndLoad() {
   const choice = state.settings?.modelChoice === 'agora-lite' ? 'agora-lite' : 'agora';
   const fullRepo = cleanRepo(state.settings?.studentRepo) || DEFAULT_STUDENT_REPO;
   const builtin = builtinName(state.settings?.model);
-  const cached = cachedModelId() === (choice === 'agora-lite' ? LITE_MODEL_ID : STUDENT_MODEL_ID);
+  const modelId = choice === 'agora-lite' ? LITE_MODEL_ID : STUDENT_MODEL_ID;
+  const cached = cachedModelId() === modelId;
   setStatus({
     text: cached ? 'Loading the saved helper…' : 'Opening the helper library…',
     detail: '',
@@ -362,6 +379,14 @@ async function pickAndLoad() {
     busy: true,
   });
   noteAnswer({ kind: 'checking', repo: fullRepo, label: choice === 'agora-lite' ? 'Agora Lite' : TRAINED_MODEL_NAME, builtin, reason: '' });
+  if (!isOnline() && readOfflineFlag().model) {
+    const label = choice === 'agora-lite' ? 'Agora Lite' : TRAINED_MODEL_NAME;
+    const repo = choice === 'agora-lite' ? LITE_REPO : fullRepo;
+    noteAnswer({ kind: 'trained', repo, label, reason: '' });
+    try {
+      return await loadModel(modelId, { appConfig: choiceAppConfig(choice, repo) });
+    } catch { /* the saved copy did not start; try the usual path */ }
+  }
   if (choice === 'agora-lite') {
     let ready = false;
     try { ready = (await publishedModel(LITE_REPO)) === 'ready'; } catch { ready = false; }

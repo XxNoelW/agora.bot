@@ -4,9 +4,10 @@ import { memoryEnabled, cachedMemories } from './memory.js';
 import { cachedRoutines, routineLabel } from './routines.js';
 import { agentById } from './store.js';
 
-export function memoryPanelHTML() {
+export function memoryPanelHTML(agentId = '') {
   const on = memoryEnabled();
-  const rows = cachedMemories();
+  const who = agentById(agentId);
+  const rows = cachedMemories().filter((row) => !agentId || String(row.agentId || '') === agentId);
   const chats = (state.chats || []).filter((chat) => chat && chat.messages).slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
   const facts = rows.map((row) => `<li class="memory-row">
     <input data-memory="${esc(row.id)}" value="${esc(row.text)}" maxlength="240" aria-label="Memory">
@@ -24,7 +25,7 @@ export function memoryPanelHTML() {
     </li>`;
   }).join('');
   return `<h2 id="modal-title">Memory</h2>
-    <p class="small">Agora 1.0 keeps these notes in this browser and adds only the relevant ones to a reply. Say “remember that …” or “forget …”.</p>
+    <p class="small">${who ? `Notes for ${who.name}. ` : ''}Agora 1.0 keeps these notes in this browser and adds only the relevant ones to a reply. Say “remember that …” or “forget …”. Each agent remembers separately.</p>
     <label class="checkline"><input id="memory-toggle" type="checkbox" ${on ? 'checked' : ''}> Remember</label>
     <form id="memory-add">
       <label for="memory-text">Add a note</label>

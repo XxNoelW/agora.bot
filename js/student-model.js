@@ -126,8 +126,8 @@ export function answerLine({ kind, repo, builtin, reason, busy, progress, online
   if (busy) return `Downloading the built-in model${pct}`;
   if (kind === 'trained') return `Answering with ${name}`;
   if (kind === 'builtin') {
-    const name = builtin || 'built-in model';
-    return reason ? `Answering with the built-in ${name}. ${reason}` : `Answering with the built-in ${name}.`;
+    const why = reason ? ` ${reason}` : '';
+    return `Answering with ${TRAINED_MODEL_NAME}.${why}`;
   }
   if (gpuOk === false) return 'Answering from web search. This browser cannot run a model.';
   return 'Checking which model can answer';

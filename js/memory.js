@@ -21,6 +21,11 @@ export function cachedMemories() {
   return cache;
 }
 
+export function memoriesFor(agentId, list = cache) {
+  const id = String(agentId || '');
+  return (Array.isArray(list) ? list : []).filter((row) => String(row?.agentId || '') === id);
+}
+
 export async function loadMemories() {
   cache = (await listRows('memories')).sort((a, b) => (b.updated || 0) - (a.updated || 0));
   return cache;
@@ -52,41 +57,75 @@ export function parseMemoryCommand(text) {
   return null;
 }
 
-export function upsertMemory(list, { text, kind = 'fact', id, now = Date.now() }) {
+function sameAgent(row, agentId) {
+  if (agentId === undefined) return true;
+  return String(row?.agentId || '') === String(agentId || '');
+}
+
+export function upsertMemory(list, { text, kind = 'fact', id, now = Date.now(), agentId } = {}) {
   const clean = cleanText(text);
   if (!clean) return list;
-  const next = list.map((row) => ({ ...row }));
+  const next = (Array.isArray(list) ? list : []).map((row) => ({ ...row }));
+  const scope = agentId === undefined ? '' : String(agentId || '');
   if (kind === 'name') {
-    const existing = next.find((row) => row.kind === 'name');
+    const existing = next.find((row) => row.kind === 'name' && sameAgent(row, agentId));
     if (existing) {
       existing.text = clean;
       existing.updated = now;
+      if (agentId !== undefined) existing.agentId = scope;
       return next;
     }
   }
-  const same = next.find((row) => row.text.toLowerCase() === clean.toLowerCase());
+  const same = next.find((row) => sameAgent(row, agentId) && row.text.toLowerCase() === clean.toLowerCase());
   if (same) {
     same.kind = kind;
     same.updated = now;
+    if (agentId !== undefined) same.agentId = scope;
     return next;
   }
-  next.unshift({ id: id || `mem_${now.toString(36)}`, text: clean, kind, created: now, updated: now });
-  return next.slice(0, 80);
+  const row = { id: id || `mem_${now.toString(36)}`, text: clean, kind, created: now, updated: now };
+  if (agentId !== undefined) row.agentId = scope;
+  next.unshift(row);
+  const kept = [];
+  const counts = new Map();
+  for (const item of next) {
+    const key = String(item.agentId || '');
+    const n = counts.get(key) || 0;
+    if (n >= 80) continue;
+    counts.set(key, n + 1);
+    kept.push(item);
+  }
+  return kept;
 }
 
-export function forgetMemories(list, query) {
+export function forgetMemories(list, query, agentId) {
+  const rows = Array.isArray(list) ? list : [];
   const q = cleanText(query).toLowerCase();
-  if (!q) return { list, removed: [] };
+  if (!q) return { list: rows, removed: [] };
+  const inScope = (row) => sameAgent(row, agentId);
   if (/^(everything|all|all of it|mindent|minden)$/i.test(q)) {
-    return { list: [], removed: list.slice() };
+    return { list: rows.filter((row) => !inScope(row)), removed: rows.filter(inScope) };
   }
   const removed = [];
   const next = [];
-  for (const row of list) {
-    if (row.text.toLowerCase().includes(q) || (row.kind === 'name' && q.includes(row.text.toLowerCase()))) removed.push(row);
+  for (const row of rows) {
+    const hit = inScope(row) && (row.text.toLowerCase().includes(q) || (row.kind === 'name' && q.includes(row.text.toLowerCase())));
+    if (hit) removed.push(row);
     else next.push(row);
   }
   return { list: next, removed };
+}
+
+export function claimLegacyMemories(list, agentId) {
+  const id = String(agentId || '');
+  if (!id) return { list: list || [], changed: false };
+  let changed = false;
+  const next = (list || []).map((row) => {
+    if (row?.agentId) return row;
+    changed = true;
+    return { ...row, agentId: id };
+  });
+  return { list: next, changed };
 }
 
 function words(text) {
@@ -113,12 +152,13 @@ export function selectMemories(list, userText, limit = 6) {
   return picked.slice(0, limit);
 }
 
-export function memoryBlock(userText, list = cache, enabled = memoryEnabled()) {
+export function memoryBlock(userText, list = cache, enabled = memoryEnabled(), agentId) {
   if (!enabled) return '';
-  const picked = selectMemories(list, userText);
+  const rows = agentId === undefined ? list : memoriesFor(agentId, list);
+  const picked = selectMemories(rows, userText);
   if (!picked.length) return '';
   const lines = picked.map((row) => `- ${row.kind === 'name' ? 'Name: ' : ''}${row.text}`);
-  let body = `Notes about this visitor:\n${lines.join('\n')}\nUse a note only when it fits the question. Do not recite the list.`;
+  let body = `Notes saved for this agent:\n${lines.join('\n')}\nUse a note only when it fits the question. Do not recite the list.`;
   if (body.length > 480) body = body.slice(0, 477) + '…';
   return body;
 }
@@ -134,24 +174,25 @@ function reply(lang, en, hu) {
   return lang === 'hu' ? hu : en;
 }
 
-export async function applyMemoryCommand(command) {
+export async function applyMemoryCommand(command, agentId) {
   if (!memoryEnabled()) {
     return reply(command.lang, 'Memory is off. Turn it on in Memory.', 'A mem\u00f3ria ki van kapcsolva. Kapcsold be a Memory panelen.');
   }
   if (!cleanText(command.text)) {
     return reply(command.lang, 'Tell me what to remember or forget.', 'Mondd meg, mire eml\u00e9kezzek.');
   }
+  const scope = agentId === undefined ? undefined : agentId;
   if (command.op === 'forget') {
-    const result = forgetMemories(cache, command.text);
+    const result = forgetMemories(cache, command.text, scope);
     cache = result.list;
     await replaceRows('memories', cache);
     if (!result.removed.length) return reply(command.lang, 'I did not have that saved.', 'Ez nem volt elmentve.');
-    return reply(command.lang, 'Forgotten on this computer.', 'Elfelejtettem ezen a sz\u00e1m\u00edt\u00f3g\u00e9pen.');
+    return reply(command.lang, 'Forgotten for this agent.', 'Elfelejtettem enn\u00e9l az agentn\u00e9l.');
   }
-  cache = upsertMemory(cache, command);
-  const saved = cache.find((row) => row.text.toLowerCase() === command.text.toLowerCase()) || cache[0];
+  cache = upsertMemory(cache, { ...command, agentId: scope });
+  const saved = cache.find((row) => sameAgent(row, scope) && row.text.toLowerCase() === command.text.toLowerCase()) || cache[0];
   await saveRow('memories', saved);
-  return reply(command.lang, 'I will remember that on this computer.', 'Megjegyeztem ezen a sz\u00e1m\u00edt\u00f3g\u00e9pen.');
+  return reply(command.lang, 'I will remember that for this agent.', 'Megjegyeztem enn\u00e9l az agentn\u00e9l.');
 }
 
 export async function editMemory(id, text) {
@@ -176,32 +217,42 @@ export async function replaceMemories(rows) {
   for (const row of Array.isArray(rows) ? rows : []) {
     const text = cleanText(row?.text);
     if (!text) continue;
-    next.push({
+    const rowOut = {
       id: String(row.id || `mem_${now.toString(36)}_${next.length}`).slice(0, 40),
       text,
       kind: row.kind === 'name' ? 'name' : 'fact',
       created: Number(row.created) || now,
       updated: Number(row.updated) || now,
-    });
+    };
+    if (row.agentId) rowOut.agentId = String(row.agentId).slice(0, 40);
+    next.push(rowOut);
   }
   cache = next.sort((a, b) => (b.updated || 0) - (a.updated || 0)).slice(0, 200);
   await replaceRows('memories', cache);
   return cache;
 }
 
-export async function addMemory(text, kind = 'fact') {
-  cache = upsertMemory(cache, { text, kind });
-  const saved = cache[0];
+export async function addMemory(text, kind = 'fact', agentId) {
+  cache = upsertMemory(cache, { text, kind, agentId });
+  const saved = cache.find((row) => sameAgent(row, agentId) && row.text.toLowerCase() === cleanText(text).toLowerCase()) || cache[0];
   await saveRow('memories', saved);
   return saved;
+}
+
+export async function forgetAgent(agentId) {
+  const id = String(agentId || '');
+  if (!id) return cache;
+  cache = cache.filter((row) => String(row?.agentId || '') !== id);
+  await replaceRows('memories', cache);
+  return cache;
 }
 
 export function isMemoryTool(name) {
   return name === 'remember' || name === 'forget';
 }
 
-export async function runMemoryTool(name, args = {}) {
-  if (name === 'remember') return applyMemoryCommand({ op: 'remember', kind: 'fact', text: args.text || args.fact || '', lang: 'en' });
-  if (name === 'forget') return applyMemoryCommand({ op: 'forget', text: args.text || args.query || '', lang: 'en' });
+export async function runMemoryTool(name, args = {}, agentId) {
+  if (name === 'remember') return applyMemoryCommand({ op: 'remember', kind: 'fact', text: args.text || args.fact || '', lang: 'en' }, agentId);
+  if (name === 'forget') return applyMemoryCommand({ op: 'forget', text: args.text || args.query || '', lang: 'en' }, agentId);
   return '';
 }

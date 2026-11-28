@@ -6,7 +6,7 @@ The site stays at `https://xxnoelw.github.io/agora.bot/`.
 
 ## What it does
 
-- A dark chat workspace. You create the agents, give each a name and an icon, and open chats or groups.
+- A dark chat workspace. Built-in agents are already in the sidebar (Agora, Teacher, Homework helper, Coder, Game master, Writer, Translator). You can also create, edit, duplicate, and delete agents. Each agent has its own chats and its own memory.
 - Chats stay in this browser. A group lets the agents read each other and answer in turn.
 - Connectors let an agent use keys or sign-in for GitHub, GitLab, Bitbucket, OpenAI, Gemini, OpenRouter, Mistral, Groq, Hugging Face, Stability, ElevenLabs, Notion, Trello, Todoist, Airtable, Linear, Asana, ClickUp, Discord, Slack, Telegram, Bluesky, Mastodon, Spotify, Dropbox, Google Drive, Pexels, Unsplash, OpenWeather, and Stripe test reads. Keys stay encrypted in the browser and are not shown to the chat model.
 - One chat brand, Agora 1.0. On a computer with WebGPU it tries the trained weights first, then the built-in local model. A key in Settings can connect online when WebGPU is missing. The key stays in this browser. The sidebar says which one is answering.
@@ -62,14 +62,14 @@ Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localSt
 - Chats can be searched from the sidebar or the Memory panel, then renamed or deleted.
 - Each answer has thumbs up and down, plus an optional comment. **Export feedback** downloads JSONL (`messages`, `answer`, `rating`, `comment`) for training. Sharing that file is up to you.
 - Routines accept “every morning at 8 tell me the weather” and “remind me Friday 5pm”, or the form under Routines. Tools: `create_routine`, `list_routines`, `cancel_routine`. They run while Agora is open and catch up missed ones the next time you open it. A closed browser does not run them yet. The Routines panel says so.
-- The page is a PWA. The service worker caches the app shell only. It does not cache Hugging Face weights or the WebLLM library. WebLLM keeps the weights in the browser Cache API, and the page asks the browser to keep that storage. A bar shows percent, size, and time left so the first download does not look stuck. Later visits say when the saved copy is loading.
-- The first visit shows a short tour. An empty chat offers example questions. Skip the tour any time.
+- The page is a PWA. The service worker precaches the app shell and keeps a runtime cache for model files. WebLLM also keeps weights in the browser Cache API, and the page asks the browser to keep that storage. A bar shows percent, size, and time left. Settings has Download for offline, including optional Agora vision. After that, the sidebar can say Available offline.
+- The first visit shows a short tour. An empty chat offers the current agent's example questions. Skip the tour any time.
 - Settings can choose Agora Lite when `XxNoelW/Agora-1.0-Lite` is public. Until that repo exists, the choice says it is coming soon. Phones and low-memory devices see a suggestion.
 - Share on a chat uploads a read-only copy and copies a link like `https://xxnoelw.github.io/agora.bot/?share=ID`. Copy as text stays on this device.
 - Anonymous counts are optional. Do Not Track, or the settings switch, stops them. The public page is `stats.html`. No cookie is set.
 - Help improve Agora is off until you turn it on. A thumbs up or thumbs down then sends the last question and answer. Emails and phone numbers are removed.
 - Mic uses the browser speech API. EN / HU switches English and Hungarian. Speak reads replies aloud.
-- File accepts text, Markdown, CSV, JSON, and PDF text when the file contains real text. An image is shown with a note that Agora 1.0 cannot see pictures.
+- File accepts text, Markdown, CSV, JSON, and PDF text when the file contains real text. An image is read by Agora vision when this device can run it. The real helper name is not shown.
 
 ## Connectors
 

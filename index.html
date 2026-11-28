@@ -53,6 +53,7 @@ try {
       <button type="button" class="quiet settings-btn" data-act="open-routines">Routines</button>
       <button type="button" class="quiet settings-btn" data-act="open-connectors">Connectors</button>
       <button type="button" class="quiet settings-btn" data-act="open-settings">Settings</button>
+      <div id="offline-badge" class="offline-badge" hidden></div>
       <div id="model-status" class="model-status" role="status">Agora 1.0</div>
     </div>
   </aside>
@@ -86,6 +87,7 @@ try {
       <button type="button" class="quiet continue-btn" id="continue" data-act="continue-group" hidden>Continue</button>
       <div id="pending" class="pending-file" hidden></div>
       <div class="composer-tools">
+        <button type="button" class="quiet" id="show-solution" data-act="show-solution" hidden>Show solution</button>
         <button type="button" class="quiet" data-act="pick-file">File</button>
         <button type="button" class="quiet" data-act="pick-image">Image</button>
         <button type="button" class="quiet" data-act="voice-input" id="mic" aria-pressed="false">Mic</button>
