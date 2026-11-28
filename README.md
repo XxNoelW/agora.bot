@@ -62,7 +62,12 @@ Memory, chats, ratings, and routines stay in this browser (IndexedDB, or localSt
 - Chats can be searched from the sidebar or the Memory panel, then renamed or deleted.
 - Each answer has thumbs up and down, plus an optional comment. **Export feedback** downloads JSONL (`messages`, `answer`, `rating`, `comment`) for training. Sharing that file is up to you.
 - Routines accept “every morning at 8 tell me the weather” and “remind me Friday 5pm”, or the form under Routines. Tools: `create_routine`, `list_routines`, `cancel_routine`. They run while Agora is open and catch up missed ones the next time you open it. A closed browser does not run them yet. The Routines panel says so.
-- The page is a PWA. The service worker caches the app shell only. It does not cache Hugging Face weights or the WebLLM library.
+- The page is a PWA. The service worker caches the app shell only. It does not cache Hugging Face weights or the WebLLM library. WebLLM keeps the weights in the browser Cache API, and the page asks the browser to keep that storage. A bar shows percent, size, and time left so the first download does not look stuck. Later visits say when the saved copy is loading.
+- The first visit shows a short tour. An empty chat offers example questions. Skip the tour any time.
+- Settings can choose Agora Lite when `XxNoelW/Agora-1.0-Lite` is public. Until that repo exists, the choice says it is coming soon. Phones and low-memory devices see a suggestion.
+- Share on a chat uploads a read-only copy and copies a link like `https://xxnoelw.github.io/agora.bot/?share=ID`. Copy as text stays on this device.
+- Anonymous counts are optional. Do Not Track, or the settings switch, stops them. The public page is `stats.html`. No cookie is set.
+- Help improve Agora is off until you turn it on. A thumbs up or thumbs down then sends the last question and answer. Emails and phone numbers are removed.
 - Mic uses the browser speech API. EN / HU switches English and Hungarian. Speak reads replies aloud.
 - File accepts text, Markdown, CSV, JSON, and PDF text when the file contains real text. An image is shown with a note that Agora 1.0 cannot see pictures.
 

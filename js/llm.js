@@ -2,8 +2,11 @@
 // cannot silently change model ids or hang the import.
 import { state } from './store.js';
 import {
-  DEFAULT_STUDENT_REPO, STUDENT_MODEL_ID, answerLine, builtinName, cleanRepo, studentAppConfig, studentWeightsReady,
+  DEFAULT_STUDENT_REPO, LITE_MODEL_ID, LITE_REPO, STUDENT_MODEL_ID, TRAINED_MODEL_NAME, answerLine, builtinName,
+  choiceAppConfig, cleanRepo, publishedModel, studentWeightsReady,
 } from './student-model.js';
+import { cachedModelId, rememberCachedModel, requestPersistentStorage } from './persist.js';
+import { describeProgress } from './progress.js';
 
 export const WEBLLM_VERSION = '0.2.87';
 export const WEBLLM_URL = `https://esm.run/@mlc-ai/web-llm@${WEBLLM_VERSION}`;
@@ -30,6 +33,10 @@ export let status = {
   text: 'The helper is not loaded yet',
   detail: '',
   progress: 0,
+  percent: 0,
+  mb: null,
+  eta: null,
+  fromCache: false,
   ready: false,
   error: false,
   busy: false,
@@ -177,12 +184,25 @@ async function dropEngine() {
 
 async function doLoad(modelId, { appConfig } = {}) {
   const my = ++loadEpoch;
+  const fromCache = cachedModelId() === modelId;
+  requestPersistentStorage();
+  setStatus({
+    text: fromCache ? 'Loading the saved helper…' : 'Opening the helper library…',
+    detail: WEBLLM_URL,
+    progress: 0,
+    percent: 0,
+    mb: null,
+    eta: null,
+    fromCache,
+    ready: false,
+    error: false,
+    busy: true,
+  });
   const chk = await checkWebGPU();
   if (!chk.ok) {
-    setStatus({ text: chk.reason, detail: '', progress: 0, ready: false, error: true, busy: false });
+    setStatus({ text: chk.reason, detail: '', progress: 0, percent: 0, mb: null, eta: null, fromCache: false, ready: false, error: true, busy: false });
     throw new LlmError(chk.reason, { friendly: chk.reason, code: 'webgpu' });
   }
-  setStatus({ text: 'Opening the helper library…', detail: WEBLLM_URL, progress: 0, ready: false, error: false, busy: true });
   let lib;
   try { lib = await getLib(); }
   catch (e) {
@@ -215,11 +235,15 @@ async function doLoad(modelId, { appConfig } = {}) {
   });
   const onProgress = (report) => {
     watch.bump();
-    const progress = typeof report?.progress === 'number' ? report.progress : 0;
+    const described = describeProgress(report);
     setStatus({
-      text: friendlyLoadText(report?.text, progress),
+      text: friendlyLoadText(report?.text, described.progress),
       detail: report?.text || '',
-      progress,
+      progress: described.progress,
+      percent: described.percent,
+      mb: described.mb,
+      eta: described.eta,
+      fromCache: described.fromCache || cachedModelId() === modelId,
       ready: false,
       error: false,
       busy: true,
@@ -246,7 +270,11 @@ async function doLoad(modelId, { appConfig } = {}) {
   try {
     const ready = await Promise.race([task, watch.promise, maxPromise]);
     if (!ready || my !== loadEpoch) throw stalled();
-    setStatus({ text: 'Ready to chat', detail: modelId, progress: 1, ready: true, error: false, busy: false });
+    rememberCachedModel(modelId);
+    setStatus({
+      text: 'Ready to chat', detail: modelId, progress: 1, percent: 100, mb: null, eta: null,
+      fromCache: true, ready: true, error: false, busy: false,
+    });
     return ready;
   } catch (e) {
     if (my === loadEpoch) loadEpoch += 1;
@@ -285,6 +313,7 @@ export let answerSource = {
   repo: DEFAULT_STUDENT_REPO,
   builtin: '',
   reason: '',
+  label: TRAINED_MODEL_NAME,
 };
 
 function noteAnswer(patch) {
@@ -296,11 +325,12 @@ let answerPromise = null;
 let answerKey = '';
 
 export function ensureAnswerModel() {
-  const repo = cleanRepo(state.settings?.studentRepo) || DEFAULT_STUDENT_REPO;
-  const key = `${repo}|${state.settings?.model || ''}`;
+  const choice = state.settings?.modelChoice === 'agora-lite' ? 'agora-lite' : 'agora';
+  const repo = choice === 'agora-lite' ? LITE_REPO : (cleanRepo(state.settings?.studentRepo) || DEFAULT_STUDENT_REPO);
+  const key = `${choice}|${repo}|${state.settings?.model || ''}`;
   if (!answerPromise || answerKey !== key) {
     answerKey = key;
-    const run = pickAndLoad(repo);
+    const run = pickAndLoad();
     answerPromise = run;
     run.catch(() => {
       if (answerPromise === run) answerPromise = null;
@@ -309,29 +339,84 @@ export function ensureAnswerModel() {
   return answerPromise;
 }
 
-async function pickAndLoad(repo) {
-  noteAnswer({ kind: 'checking', repo, builtin: builtinName(state.settings?.model), reason: '' });
+async function tryTrained(repo, modelId, appConfig, label) {
+  noteAnswer({ kind: 'trained', repo, label, reason: '' });
+  return loadModel(modelId, { appConfig });
+}
+
+async function pickAndLoad() {
+  const choice = state.settings?.modelChoice === 'agora-lite' ? 'agora-lite' : 'agora';
+  const fullRepo = cleanRepo(state.settings?.studentRepo) || DEFAULT_STUDENT_REPO;
+  const builtin = builtinName(state.settings?.model);
+  const cached = cachedModelId() === (choice === 'agora-lite' ? LITE_MODEL_ID : STUDENT_MODEL_ID);
+  setStatus({
+    text: cached ? 'Loading the saved helper…' : 'Opening the helper library…',
+    detail: '',
+    progress: 0,
+    percent: 0,
+    mb: null,
+    eta: null,
+    fromCache: cached,
+    ready: false,
+    error: false,
+    busy: true,
+  });
+  noteAnswer({ kind: 'checking', repo: fullRepo, label: choice === 'agora-lite' ? 'Agora Lite' : TRAINED_MODEL_NAME, builtin, reason: '' });
+  if (choice === 'agora-lite') {
+    let ready = false;
+    try { ready = (await publishedModel(LITE_REPO)) === 'ready'; } catch { ready = false; }
+    if (ready) {
+      try {
+        return await tryTrained(LITE_REPO, LITE_MODEL_ID, choiceAppConfig('agora-lite'), 'Agora Lite');
+      } catch {
+        noteAnswer({
+          kind: 'builtin',
+          repo: fullRepo,
+          label: TRAINED_MODEL_NAME,
+          builtin,
+          reason: 'Agora Lite did not start, so this is the fallback.',
+        });
+      }
+    } else {
+      noteAnswer({
+        kind: 'checking',
+        repo: fullRepo,
+        label: TRAINED_MODEL_NAME,
+        builtin,
+        reason: 'Agora Lite is coming soon.',
+      });
+    }
+  }
   let trained = false;
-  try { trained = await studentWeightsReady(repo); }
+  try { trained = await studentWeightsReady(fullRepo); }
   catch { trained = false; }
   if (trained) {
-    noteAnswer({ kind: 'trained', repo, reason: '' });
     try {
-      return await loadModel(STUDENT_MODEL_ID, { appConfig: studentAppConfig(repo) });
+      return await tryTrained(fullRepo, STUDENT_MODEL_ID, choiceAppConfig('agora', fullRepo), TRAINED_MODEL_NAME);
     } catch {
       noteAnswer({
         kind: 'builtin',
-        repo,
-        builtin: builtinName(state.settings?.model),
+        repo: fullRepo,
+        builtin,
+        label: TRAINED_MODEL_NAME,
         reason: 'Agora 1.0 did not start, so this is the fallback.',
       });
     }
+  } else if (choice !== 'agora-lite') {
+    noteAnswer({
+      kind: 'builtin',
+      repo: fullRepo,
+      builtin,
+      label: TRAINED_MODEL_NAME,
+      reason: 'Agora 1.0 is not published yet.',
+    });
   } else {
     noteAnswer({
       kind: 'builtin',
-      repo,
-      builtin: builtinName(state.settings?.model),
-      reason: 'Agora 1.0 is not published yet.',
+      repo: fullRepo,
+      builtin,
+      label: TRAINED_MODEL_NAME,
+      reason: 'Agora Lite is coming soon.',
     });
   }
   return loadModel(state.settings.model);
@@ -341,10 +426,12 @@ export function currentAnswerLine(extra = {}) {
   return answerLine({
     kind: answerSource.kind,
     repo: answerSource.repo,
+    label: answerSource.label,
     builtin: answerSource.builtin || builtinName(state.settings?.model),
     reason: answerSource.reason,
     busy: status.busy,
     progress: status.progress,
+    fromCache: status.fromCache,
     ...extra,
   });
 }

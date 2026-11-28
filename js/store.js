@@ -87,6 +87,10 @@ function blank(nav) {
       replySource: 'auto',
       openrouterChatModel: '',
       studentRepo: DEFAULT_STUDENT_REPO,
+      modelChoice: 'agora',
+      helpImprove: false,
+      usageCounts: true,
+      liteDismissed: false,
       orPerRun: 8,
       orGlobal: 40,
     },
@@ -154,6 +158,10 @@ export function migrateState(data, nav = globalThis.navigator) {
   if (!['auto', 'local', 'openrouter'].includes(settings.replySource)) settings.replySource = 'auto';
   settings.openrouterChatModel = String(settings.openrouterChatModel || '');
   settings.studentRepo = cleanRepo(settings.studentRepo) || DEFAULT_STUDENT_REPO;
+  settings.modelChoice = settings.modelChoice === 'agora-lite' ? 'agora-lite' : 'agora';
+  settings.helpImprove = settings.helpImprove === true;
+  settings.usageCounts = settings.usageCounts !== false;
+  settings.liteDismissed = !!settings.liteDismissed;
   settings.orPerRun = clamp(settings.orPerRun, 1, 30, 8);
   settings.orGlobal = clamp(settings.orGlobal, 1, 500, 40);
   delete settings.openrouterKey;

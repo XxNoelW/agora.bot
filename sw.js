@@ -1,4 +1,5 @@
-// Shell v2 includes the account sync scripts.
+// Shell v3 includes the first-run, share, and stats scripts.
+// Model weights stay in WebLLM's own Cache API, not this shell.
 import { CACHE_NAME, SHELL_FILES, shouldCache } from './js/shell-cache.js';
 
 self.addEventListener('install', (event) => {

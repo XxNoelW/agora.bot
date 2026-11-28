@@ -10,4 +10,7 @@ export const session = {
   chatQuery: '',
   attachment: null,
   image: '',
+  tourStep: 0,
+  shared: null,
+  shareDraft: null,
 };

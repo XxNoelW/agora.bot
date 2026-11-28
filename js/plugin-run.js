@@ -5,6 +5,7 @@ import { runHttpTool } from './plugin-http.js';
 import { connectMcp, callMcpTool } from './mcp-client.js';
 import { readSecret } from './secrets.js';
 import { scrubSecrets } from './secrets.js';
+import { noteEvent } from './usage.js';
 
 const sessions = new Map();
 
@@ -153,6 +154,7 @@ export async function runPluginTool(name, args = {}, { fetchImpl = fetch, signal
   const found = toolIndex(catalogList()).get(name);
   if (!found) return `Unknown tool: ${name}`;
   const { plugin, tool } = found;
+  noteEvent('tool', { tool: name });
   if (!isEnabled(plugin.id)) return `${plugin.name} is off. Turn it on in Connectors.`;
   const config = loadPluginConfig();
   try {

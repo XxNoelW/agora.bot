@@ -1,11 +1,19 @@
-// Account sync for Agora. One module, no build step.
+// Account sync, shared chats, anonymous counts, and opt-in training notes.
+// One module, no build step.
 // Bindings: D1 `DB`. Var `ALLOWED_ORIGIN` (default https://xxnoelw.github.io).
-// No model key and no scheduled handler.
+// Secret `EXPORT_KEY` only for GET /feedback/export. If it is unset, that route is 403.
+// No model key and no scheduled handler. Stats rows do not store an IP or a cookie.
 
 const DEFAULT_ORIGIN = 'https://xxnoelw.github.io';
 const KINDS = new Set(['chats', 'memory', 'settings']);
 const MAX_BYTES = 1_000_000;
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+export const SHARE_MAX_BYTES = 256 * 1024;
+export const FEEDBACK_MAX_BYTES = 8 * 1024;
+export const SHARE_DAILY_LIMIT = 30;
+export const FEEDBACK_DAILY_LIMIT = 40;
+export const EVENT_DAILY_LIMIT = 200;
+const EVENT_TYPES = new Set(['visit', 'chat', 'tool', 'share', 'feedback']);
 
 export function base32Encode(bytes) {
   let bits = 0;
@@ -95,7 +103,7 @@ function corsHeaders(origin) {
   if (!origin) return headers;
   headers['Access-Control-Allow-Origin'] = origin;
   headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
-  headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+  headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-export-key';
   headers['Access-Control-Max-Age'] = '86400';
   return headers;
 }
@@ -237,6 +245,244 @@ async function putSync(request, env, account, kind, origin) {
   return json({ kind, version: decision.version, updated: now }, 200, origin);
 }
 
+export function stripPii(text) {
+  const input = String(text ?? '');
+  const noEmail = input.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[email]');
+  return noEmail.replace(
+    /(?:\+\d{1,3}|00\d{1,3}|06)(?:[\s.-]*\d){7,14}|\(\d{3}\)[\s.-]?\d{3}[\s.-]?\d{4}|\b\d{3}[\s.-]\d{3}[\s.-]\d{4}\b/g,
+    (match) => {
+      const digits = match.replace(/\D/g, '');
+      if (digits.length < 8 || digits.length > 15) return match;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(match.trim())) return match;
+      return '[phone]';
+    },
+  );
+}
+
+export async function keysMatch(provided, expected) {
+  if (!expected) return false;
+  const left = await hashSecretHex(String(provided ?? ''));
+  const right = await hashSecretHex(String(expected));
+  return timingSafeEqualHex(left, right);
+}
+
+function newPublicId() {
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  return base32Encode(bytes);
+}
+
+async function readJson(request, maxBytes, origin) {
+  const raw = await request.text();
+  if (byteLength(raw) > maxBytes) return { error: json({ error: 'That is too large.' }, 413, origin) };
+  try {
+    return { body: raw ? JSON.parse(raw) : {} };
+  } catch {
+    return { error: json({ error: 'Send JSON.' }, 400, origin) };
+  }
+}
+
+async function clientBucket(request, bucket) {
+  const ip = request.headers.get('CF-Connecting-IP')
+    || String(request.headers.get('x-forwarded-for') || '').split(',')[0].trim()
+    || '0';
+  const day = utcDay();
+  const hash = await hashSecretHex(`${bucket}:${day}:${ip}`);
+  return `rl:${bucket}:${hash.slice(0, 24)}`;
+}
+
+async function withinDailyLimit(db, accountId, limit) {
+  try {
+    await db.prepare(
+      'INSERT INTO usage (account_id, day, syncs) VALUES (?, ?, 1) ON CONFLICT(account_id, day) DO UPDATE SET syncs = syncs + 1',
+    ).bind(accountId, utcDay()).run();
+    const row = await db.prepare(
+      'SELECT syncs FROM usage WHERE account_id = ? AND day = ?',
+    ).bind(accountId, utcDay()).first();
+    return (Number(row?.syncs) || 1) <= limit;
+  } catch (err) {
+    console.error(JSON.stringify({ op: 'rate_limit', message: String(err?.message || err) }));
+    return true;
+  }
+}
+
+function cleanShareMessage(message) {
+  if (!message || typeof message !== 'object') return null;
+  const role = message.role === 'assistant' ? 'assistant' : (message.role === 'user' ? 'user' : '');
+  const content = stripControl(String(message.content || ''));
+  if (!role || !content.trim()) return null;
+  return {
+    role,
+    name: role === 'assistant' ? String(message.name || '').replace(/\s+/g, ' ').trim().slice(0, 40) : '',
+    content,
+  };
+}
+
+function stripControl(text) {
+  return text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '');
+}
+
+export function fitShare(body, maxBytes = SHARE_MAX_BYTES) {
+  const title = String(body?.title || 'Chat').replace(/\s+/g, ' ').trim().slice(0, 80) || 'Chat';
+  let messages = Array.isArray(body?.messages) ? body.messages.map(cleanShareMessage).filter(Boolean) : [];
+  if (messages.length > 200) messages = messages.slice(-200);
+  let trimmed = false;
+  const packed = () => JSON.stringify({ title, messages });
+  while (messages.length > 1 && byteLength(packed()) > maxBytes) {
+    messages.shift();
+    trimmed = true;
+  }
+  if (messages.length === 1 && byteLength(packed()) > maxBytes) {
+    const overhead = byteLength(packed()) - byteLength(messages[0].content);
+    const room = Math.max(0, maxBytes - overhead - 16);
+    messages[0] = { ...messages[0], content: messages[0].content.slice(0, room) };
+    trimmed = true;
+  }
+  return { title, messages, trimmed, bytes: byteLength(packed()) };
+}
+
+async function createShare(request, env, origin) {
+  const bucket = await clientBucket(request, 'share');
+  if (!(await withinDailyLimit(env.DB, bucket, SHARE_DAILY_LIMIT))) {
+    return json({ error: 'Too many shared chats from this network today.' }, 429, origin);
+  }
+  const read = await readJson(request, SHARE_MAX_BYTES + 8192, origin);
+  if (read.error) return read.error;
+  const fit = fitShare(read.body);
+  if (!fit.messages.length) return json({ error: 'There is nothing to share.' }, 400, origin);
+  if (fit.bytes > SHARE_MAX_BYTES) return json({ error: 'That chat is over 256 KB.' }, 413, origin);
+  const id = newPublicId();
+  const now = Date.now();
+  await env.DB.prepare(
+    'INSERT INTO shares (id, data, created) VALUES (?, ?, ?)',
+  ).bind(id, JSON.stringify({ title: fit.title, messages: fit.messages }), now).run();
+  return json({ id, created: now, trimmed: fit.trimmed }, 201, origin);
+}
+
+async function readShare(env, id, origin) {
+  const clean = String(id || '').toUpperCase();
+  if (!/^[A-Z2-7]{16}$/.test(clean)) return json({ error: 'That share was not found.' }, 404, origin);
+  const row = await env.DB.prepare(
+    'SELECT id, data, created FROM shares WHERE id = ?',
+  ).bind(clean).first();
+  if (!row) return json({ error: 'That share was not found.' }, 404, origin);
+  let data = {};
+  try { data = JSON.parse(row.data || '{}'); } catch { data = {}; }
+  return json({
+    id: row.id,
+    created: Number(row.created) || 0,
+    title: String(data.title || 'Chat'),
+    messages: Array.isArray(data.messages) ? data.messages : [],
+  }, 200, origin);
+}
+
+function eventKey(type, tool) {
+  if (type !== 'tool') return '';
+  const name = String(tool || '').trim();
+  if (!/^[A-Za-z0-9_]{1,40}$/.test(name)) return 'other';
+  return name;
+}
+
+async function recordEvent(request, env, origin) {
+  const bucket = await clientBucket(request, 'event');
+  if (!(await withinDailyLimit(env.DB, bucket, EVENT_DAILY_LIMIT))) {
+    return json({ error: 'Too many counts from this network today.' }, 429, origin);
+  }
+  const read = await readJson(request, 2048, origin);
+  if (read.error) return read.error;
+  const type = String(read.body?.type || '');
+  if (!EVENT_TYPES.has(type)) return json({ error: 'Unknown event.' }, 400, origin);
+  const key = eventKey(type, read.body?.tool);
+  await env.DB.prepare(
+    'INSERT INTO stats (day, type, key, count) VALUES (?, ?, ?, 1) ON CONFLICT(day, type, key) DO UPDATE SET count = count + 1',
+  ).bind(utcDay(), type, key).run();
+  return json({ ok: true }, 202, origin);
+}
+
+function statsSince(now = Date.now()) {
+  return new Date(now - 29 * 86400000).toISOString().slice(0, 10);
+}
+
+async function readStats(env, origin) {
+  const listed = await env.DB.prepare(
+    'SELECT day, type, key, count FROM stats WHERE day >= ? ORDER BY day ASC',
+  ).bind(statsSince()).all();
+  const rows = (listed?.results || []).map((row) => ({
+    day: String(row.day || ''),
+    type: String(row.type || ''),
+    key: String(row.key || ''),
+    count: Number(row.count) || 0,
+  }));
+  const totals = {};
+  for (const row of rows) totals[row.type] = (totals[row.type] || 0) + row.count;
+  return json({ days: 30, rows, totals }, 200, origin);
+}
+
+export function fitFeedback(body, maxBytes = FEEDBACK_MAX_BYTES) {
+  const ratingRaw = body?.rating;
+  const rating = ratingRaw === 1 || ratingRaw === 'up' || ratingRaw === '1'
+    ? 1
+    : (ratingRaw === -1 || ratingRaw === 'down' || ratingRaw === '-1' ? -1 : 0);
+  const lang = body?.lang === 'hu' ? 'hu' : 'en';
+  let messages = Array.isArray(body?.messages) ? body.messages.slice(-2) : [];
+  messages = messages.map((message) => ({
+    role: message?.role === 'assistant' ? 'assistant' : 'user',
+    content: stripPii(String(message?.content || '')),
+  })).filter((message) => message.content.trim());
+  while (messages.length && byteLength(JSON.stringify(messages)) > maxBytes) {
+    const last = messages[messages.length - 1];
+    if (last.content.length > 40) last.content = last.content.slice(0, Math.floor(last.content.length * 0.7));
+    else if (messages.length > 1) messages.shift();
+    else last.content = last.content.slice(0, 200);
+  }
+  return { rating, lang, messages, bytes: byteLength(JSON.stringify(messages)) };
+}
+
+async function saveTraining(request, env, origin) {
+  const bucket = await clientBucket(request, 'feedback');
+  if (!(await withinDailyLimit(env.DB, bucket, FEEDBACK_DAILY_LIMIT))) {
+    return json({ error: 'Too many notes from this network today.' }, 429, origin);
+  }
+  const read = await readJson(request, FEEDBACK_MAX_BYTES + 4096, origin);
+  if (read.error) return read.error;
+  const fit = fitFeedback(read.body);
+  if (!fit.rating) return json({ error: 'Rating must be up or down.' }, 400, origin);
+  if (!fit.messages.length) return json({ error: 'Missing the last turn.' }, 400, origin);
+  if (fit.bytes > FEEDBACK_MAX_BYTES) return json({ error: 'That note is over 8 KB.' }, 413, origin);
+  const id = newPublicId();
+  const now = Date.now();
+  await env.DB.prepare(
+    'INSERT INTO feedback (id, created, rating, lang, data, used) VALUES (?, ?, ?, ?, ?, 0)',
+  ).bind(id, now, fit.rating, fit.lang, JSON.stringify(fit.messages)).run();
+  return json({ id, created: now }, 201, origin);
+}
+
+async function exportTraining(request, env, origin, url) {
+  const expected = String(env?.EXPORT_KEY || '').trim();
+  if (!expected) return json({ error: 'Export is not configured.' }, 403, origin);
+  const provided = request.headers.get('x-export-key') || '';
+  if (!(await keysMatch(provided, expected))) return json({ error: 'Export is not configured.' }, 403, origin);
+  if (!env?.DB) return json({ error: 'Storage is not connected.' }, 500, origin);
+  const sinceRaw = Number(url.searchParams.get('since') || 0);
+  const since = Number.isFinite(sinceRaw) && sinceRaw > 0 ? sinceRaw : 0;
+  const listed = await env.DB.prepare(
+    'SELECT id, created, rating, lang, data, used FROM feedback WHERE created >= ? ORDER BY created ASC LIMIT 500',
+  ).bind(since).all();
+  const rows = (listed?.results || []).map((row) => {
+    let messages = [];
+    try { messages = JSON.parse(row.data || '[]'); } catch { messages = []; }
+    return {
+      id: row.id,
+      created: Number(row.created) || 0,
+      rating: Number(row.rating) || 0,
+      lang: row.lang === 'hu' ? 'hu' : 'en',
+      messages: Array.isArray(messages) ? messages : [],
+      used: Number(row.used) || 0,
+    };
+  });
+  return json({ rows }, 200, origin);
+}
+
 export async function handleRequest(request, env) {
   const allowed = String(env?.ALLOWED_ORIGIN || DEFAULT_ORIGIN).trim() || DEFAULT_ORIGIN;
   const requestOrigin = request.headers.get('Origin') || '';
@@ -248,11 +494,31 @@ export async function handleRequest(request, env) {
   const url = new URL(request.url);
   const path = url.pathname.replace(/\/+$/, '') || '/';
   try {
+    if (request.method === 'GET' && path === '/feedback/export') {
+      return exportTraining(request, env, origin, url);
+    }
     if (!env?.DB && path !== '/' && path !== '/health') {
       return json({ error: 'Storage is not connected.' }, 500, origin);
     }
     if (request.method === 'GET' && (path === '/' || path === '/health')) {
       return json({ ok: true, name: 'agora-cloud' }, 200, origin);
+    }
+    if (request.method === 'POST' && path === '/share') return createShare(request, env, origin);
+    if (path.startsWith('/share/')) {
+      if (request.method !== 'GET') return json({ error: 'Not found' }, 404, origin);
+      return readShare(env, decodeURIComponent(path.slice('/share/'.length)), origin);
+    }
+    if (path === '/event') {
+      if (request.method !== 'POST') return json({ error: 'Not found' }, 404, origin);
+      return recordEvent(request, env, origin);
+    }
+    if (path === '/stats') {
+      if (request.method !== 'GET') return json({ error: 'Not found' }, 404, origin);
+      return readStats(env, origin);
+    }
+    if (path === '/feedback') {
+      if (request.method !== 'POST') return json({ error: 'Not found' }, 404, origin);
+      return saveTraining(request, env, origin);
     }
     if (request.method === 'POST' && path === '/account') return createAccount(env, origin);
     const account = await authorize(request, env);
